@@ -1,0 +1,147 @@
+<!--
+SPDX-FileCopyrightText: 2024 Petros Koutsolampros
+
+SPDX-License-Identifier: GPL-3.0-only
+-->
+
+---
+title: "Visibility Graph Analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Visibility Graph Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(alcyon)
+
+galleryMap <- st_read(
+  system.file(
+    "extdata", "testdata", "gallery",
+    "gallery_lines.mif",
+    package = "alcyon"
+  ),
+  geometry_column = 1L, quiet = TRUE
+)
+```
+
+```{r}
+pointMap <- makeVGAPointMap(
+  galleryMap,
+  fillX = 3.01,
+  fillY = 6.7,
+  gridSize = 0.04
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap["Connectivity"])
+```
+
+```{r}
+linkCoords(pointMap, 1.74, 6.7, 5.05, 5.24)
+```
+
+
+```{r}
+vgaResult <- allToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Metric,
+  radii = -1,
+  radiusTraversalType = TraversalType$None
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+```{r}
+vgaResult <- allToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Angular,
+  radii = -1,
+  radiusTraversalType = TraversalType$None
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+
+```{r}
+vgaResult <- allToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Topological,
+  radii = -1,
+  radiusTraversalType = TraversalType$None
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+```{r}
+vgaResult <- vgaThroughVision(pointMap)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+```{r}
+vgaResult <- vgaVisualLocal(pointMap, FALSE)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+```{r}
+boundaryMap <- as(galleryMap, "ShapeMap")
+vgaResult <- vgaIsovist(pointMap, boundaryMap)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+```{r}
+vgaResult <- oneToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Metric,
+  fromX = 3.01,
+  fromY = 6.7
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+
+```{r}
+vgaResult <- oneToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Angular,
+  fromX = 3.01,
+  fromY = 6.7
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
+
+
+```{r}
+vgaResult <- oneToAllTraverse(
+  pointMap,
+  traversalType = TraversalType$Topological,
+  fromX = 3.01,
+  fromY = 6.7
+)
+vgaMap <- as(pointMap, "SpatialPixelsDataFrame")
+plot(vgaMap[vgaResult$newAttributes[[1]]],
+     main = vgaResult$newAttributes[[1]])
+```
