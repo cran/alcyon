@@ -1,20 +1,7 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-// parser class
 #include "dxfp.h"
 
 #include "genlib/comm.h" // for communicator
@@ -791,6 +778,7 @@ bool DxfPolyLine::parse(const DxfToken &token, DxfParser *parser) {
             break;
         case 70:
             m_attributes = std::stoi(token.data);
+            break;
         default:
             DxfEntity::parse(token, parser); // base class parse
             break;
@@ -846,8 +834,10 @@ bool DxfLwPolyLine::parse(const DxfToken &token, DxfParser *parser) {
         break;
     case 70:
         m_attributes = std::stoi(token.data);
+        break;
     case 90:
         m_expected_vertex_count = std::stoi(token.data);
+        break;
     default:
         DxfEntity::parse(token, parser); // base class parse
         break;
@@ -1189,6 +1179,7 @@ bool DxfSpline::parse(const DxfToken &token, DxfParser *parser) {
         break;
     case 40:
         m_knots.push_back(std::stod(token.data));
+        break;
     case 10:
         vertex.x = std::stod(token.data);
         m_xyz |= 0x0001;

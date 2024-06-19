@@ -1,26 +1,12 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "vgametricdepth.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/vgamodules/vgametricdepth.h"
-
-AnalysisResult VGAMetricDepth::run(Communicator *,
-                                   PointMap &map,
-                                   bool) {
+AnalysisResult VGAMetricDepth::run(Communicator *, PointMap &map, bool) {
 
     AnalysisResult result;
 
@@ -28,12 +14,12 @@ AnalysisResult VGAMetricDepth::run(Communicator *,
 
     // n.b., insert columns sets values to -1 if the column already exists
     std::string colText = "Metric Step Shortest-Path Angle";
-    int path_angle_col = attributes.insertOrResetColumn(colText);
+    auto path_angle_col = attributes.insertOrResetColumn(colText);
     result.addAttribute(colText);
     colText = "Metric Step Shortest-Path Length";
-    int path_length_col = attributes.insertOrResetColumn(colText);
+    auto path_length_col = attributes.insertOrResetColumn(colText);
     result.addAttribute(colText);
-    int dist_col = -1;
+    std::optional<size_t> dist_col = std::nullopt;
     if (map.getSelSet().size() == 1) {
         colText = "Metric Straight-Line Distance";
         // Note: Euclidean distance is currently only calculated from a single point
@@ -71,7 +57,7 @@ AnalysisResult VGAMetricDepth::run(Communicator *,
             row.setValue(path_angle_col, float(p.m_cumangle));
             if (map.getSelSet().size() == 1) {
                 // Note: Euclidean distance is currently only calculated from a single point
-                row.setValue(dist_col,
+                row.setValue(dist_col.value(),
                              float(map.getSpacing() * dist(here.pixel, *map.getSelSet().begin())));
             }
             if (!p.getMergePixel().empty()) {
@@ -85,8 +71,9 @@ AnalysisResult VGAMetricDepth::run(Communicator *,
                     if (map.getSelSet().size() == 1) {
                         // Note: Euclidean distance is currently only calculated from a single point
                         mergePixelRow.setValue(
-                            dist_col, float(map.getSpacing() *
-                                            dist(p.getMergePixel(), *map.getSelSet().begin())));
+                            dist_col.value(),
+                            float(map.getSpacing() *
+                                  dist(p.getMergePixel(), *map.getSelSet().begin())));
                     }
                     p2.getNode().extractMetric(search_list, &map,
                                                MetricTriple(here.dist, p.getMergePixel(), NoPixel));

@@ -1,18 +1,6 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2018, Christian Sailer
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2018 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
@@ -25,10 +13,11 @@ namespace depthmapX {
      *  Base class for 2 dimensional matrices. This can be used as reference/pointer, but you cannot
      *  create this directly - you need to create either a row or a column matrix (the difference
      *  being the memory layout either, contiguous rows, or contiguous columns.
-     *  Which layout to choose depends on the underlying data - if the data layout is given, it should be
-     *  simple to find the matching implementation. To choose a new data layout, think about access patterns.
-     *  If it is more likely to process several values from one row in one got, choose a row matrix. If processing
-     *  is more likely to be by column, choose a column matrix. If access is truly random, it makes no difference.
+     *  Which layout to choose depends on the underlying data - if the data layout is given, it
+     * should be simple to find the matching implementation. To choose a new data layout, think
+     * about access patterns. If it is more likely to process several values from one row in one
+     * got, choose a row matrix. If processing is more likely to be by column, choose a column
+     * matrix. If access is truly random, it makes no difference.
      */
     template <typename T> class BaseMatrix {
       protected:
@@ -42,7 +31,8 @@ namespace depthmapX {
             std::copy(other.begin(), other.end(), m_data);
         }
 
-        BaseMatrix<T>(BaseMatrix<T> &&other) : m_data(other.m_data), m_rows(other.m_rows), m_columns(other.m_columns) {
+        BaseMatrix<T>(BaseMatrix<T> &&other)
+            : m_data(other.m_data), m_rows(other.m_rows), m_columns(other.m_columns) {
             other.m_data = nullptr;
             other.m_rows = 0;
             other.m_columns = 0;
@@ -154,8 +144,8 @@ namespace depthmapX {
     };
 
     /**
-     * Row matrix implementation - the data for each row is contiguous in memory, columns jump by the
-     * number of rows.
+     * Row matrix implementation - the data for each row is contiguous in memory, columns jump by
+     * the number of rows.
      */
     template <typename T> class RowMatrix : public BaseMatrix<T> {
       public:
@@ -187,8 +177,8 @@ namespace depthmapX {
     };
 
     /**
-     * Column matrix implementation - the data for each column is contiguous in memory, rows jump by the
-     * number of columns.
+     * Column matrix implementation - the data for each column is contiguous in memory, rows jump by
+     * the number of columns.
      */
     template <typename T> class ColumnMatrix : public BaseMatrix<T> {
       public:

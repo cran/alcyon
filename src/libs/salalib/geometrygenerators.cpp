@@ -1,24 +1,13 @@
-// Copyright (C) 2017 Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2017 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "geometrygenerators.h"
 
-std::vector<Point2f> GeometryGenerators::generateDiskTriangles(int sides, float radius,
+std::vector<Point2f> GeometryGenerators::generateDiskTriangles(size_t sides, float radius,
                                                                Point2f position) {
     std::vector<Point2f> diskTriangles;
-    for (int i = 0; i < sides; i++) {
+    for (size_t i = 0; i < sides; i++) {
         diskTriangles.push_back(Point2f(position.x, position.y));
         diskTriangles.push_back(Point2f(position.x + radius * sin(2 * M_PI * (i + 1) / sides),
                                         position.y + radius * cos(2 * M_PI * (i + 1) / sides)));
@@ -29,7 +18,7 @@ std::vector<Point2f> GeometryGenerators::generateDiskTriangles(int sides, float 
 }
 
 std::vector<Point2f>
-GeometryGenerators::generateMultipleDiskTriangles(int sides, float radius,
+GeometryGenerators::generateMultipleDiskTriangles(size_t sides, float radius,
                                                   std::vector<Point2f> positions) {
     std::vector<Point2f> diskTriangles = generateDiskTriangles(sides, radius);
 
@@ -48,10 +37,10 @@ GeometryGenerators::generateMultipleDiskTriangles(int sides, float radius,
     return mulitpleDiskTriangles;
 }
 
-std::vector<SimpleLine> GeometryGenerators::generateCircleLines(int sides, float radius,
+std::vector<SimpleLine> GeometryGenerators::generateCircleLines(size_t sides, float radius,
                                                                 Point2f position) {
     std::vector<SimpleLine> cirleLines;
-    for (int i = 0; i < sides; i++) {
+    for (size_t i = 0; i < sides; i++) {
         cirleLines.push_back(
             SimpleLine(Point2f(position.x + radius * sin(2 * M_PI * (i + 1) / sides),
                                position.y + radius * cos(2 * M_PI * (i + 1) / sides)),
@@ -62,7 +51,7 @@ std::vector<SimpleLine> GeometryGenerators::generateCircleLines(int sides, float
 }
 
 std::vector<SimpleLine>
-GeometryGenerators::generateMultipleCircleLines(int sides, float radius,
+GeometryGenerators::generateMultipleCircleLines(size_t sides, float radius,
                                                 std::vector<Point2f> positions) {
     std::vector<SimpleLine> circleLines = generateCircleLines(sides, radius);
 

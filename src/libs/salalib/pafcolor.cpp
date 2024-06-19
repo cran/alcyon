@@ -1,23 +1,11 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#include "pafcolor.h" // <- sala actually includes vertex.h for us
 
 #include <float.h> // _finite support
 #include <math.h>
-
-#include <salalib/pafcolor.h> // <- sala actually includes vertex.h for us
 
 static unsigned int g_nicecolor[] = {
     0x003333DD, // 0 blue
@@ -32,8 +20,8 @@ static unsigned int g_nicecolor[] = {
     0x00DD3333, // 9 red
 };
 
-// Test a range designed to try to keep consistent saturation and brightness of g_nicecolor, and
-// only move hue
+// Test a range designed to try to keep consistent saturation and brightness of
+// g_nicecolor, and only move hue
 static unsigned int g_nicecolorhsb[] = {
     0x003333DD, // 0 blue
     0x003377DD, // 1
@@ -178,7 +166,8 @@ PafColor &PafColor::makeGreyScale(double field) {
 PafColor &PafColor::makeDepthmapClassic(double field, double blue, double red) {
     m_color = 0xff000000; // set alpha to 255, solid colour
     double green = blue + (red - blue) / 10.0;
-    // NB previously included colour muting: the 1.0 was originally 0.9 to mute the colours slightly
+    // NB previously included colour muting: the 1.0 was originally 0.9 to mute
+    // the colours slightly
     if (field >= 0.0 && field < blue) {
         setr(htmlByte(0.5 * (blue - field) / blue * 1.0));
         // Quick mod - TV

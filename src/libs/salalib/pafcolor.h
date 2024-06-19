@@ -1,23 +1,12 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
+#include "displayparams.h"
+
 #include "genlib/p2dpoly.h"
-#include "salalib/displayparams.h"
 
 // For my colour scheme... some parameters to pass, and my own colour class
 
@@ -53,19 +42,20 @@ struct PafColor {
         m_color = 0xff000000 | rgb;
     }
     PafColor(double r, double g, double b, double a = 1.0) {
-        m_color = 0x00000000 | (((unsigned char)(a * 255.0)) << 24) |
-                  (((unsigned char)(r * 255.0)) << 16) | (((unsigned char)(g * 255.0)) << 8) |
-                  (((unsigned char)(b * 255.0)));
+        m_color = static_cast<unsigned int>(0x00000000 | (((unsigned char)(a * 255.0)) << 24) |
+                                            (((unsigned char)(r * 255.0)) << 16) |
+                                            (((unsigned char)(g * 255.0)) << 8) |
+                                            (((unsigned char)(b * 255.0))));
     }
 
     PafColor(const Point2f &vec, double a = 1.0) {
-        m_color =
+        m_color = static_cast<unsigned int>(
             0x00000000 | (((unsigned char)(a * 255.0)) << 24) |
             (((unsigned char)(dot(vec, Point2f(1.0, 0.0)) * 255.0)) << 16) |
             (((unsigned char)(dot(vec, Point2f(-0.5, 0.86602540378443864676372317075294)) * 255.0))
              << 8) |
             (((unsigned char)(dot(vec, Point2f(-0.5, -0.86602540378443864676372317075294)) *
-                              255.0)));
+                              255.0))));
     }
 
     operator unsigned int() { return m_color & 0x00ffffff; }

@@ -14,35 +14,26 @@ lineStringMap <- st_read(
   ),
   geometry_column = 1L, quiet = TRUE
 )
-shapeGraph <- as(lineStringMap, "AxialShapeGraph")
+axMap <- as(lineStringMap, "AxialShapeGraph")
 
 ## -----------------------------------------------------------------------------
-axMap <- as(shapeGraph, "sf")
 plot(axMap[, "Connectivity"])
 
 ## -----------------------------------------------------------------------------
-axialResult <- allToAllTraverse(
-  shapeGraph,
+axAnalysed <- allToAllTraverse(
+  axMap,
   traversalType = TraversalType$Topological,
   radii = c("n", "3"),
   includeBetweenness = TRUE
 )
-axMap <- as(shapeGraph, "sf")
-plot(axMap[, "Choice [Norm] R3"])
-for (column in axialResult$newAttributes) {
-  
-}
+plot(axAnalysed[, "Choice [Norm] R3"])
 
 ## -----------------------------------------------------------------------------
-depthResult <- oneToAllTraverse(
-  shapeGraph,
+axAnalysed <- oneToAllTraverse(
+  axAnalysed,
   traversalType = TraversalType$Topological,
   fromX = 0982.8,
   fromY = -1620.3,
 )
-
-axMap <- as(shapeGraph, "sf")
-for (column in depthResult$newAttributes) {
-  plot(axMap[, column])
-}
+plot(axAnalysed["Step Depth"])
 

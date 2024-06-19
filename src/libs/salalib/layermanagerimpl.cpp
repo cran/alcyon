@@ -1,20 +1,10 @@
-// Copyright (C) 2017 Christian Sailer
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2017 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "layermanagerimpl.h"
-#include <genlib/stringutils.h>
+
+#include "genlib/stringutils.h"
 
 LayerManagerImpl::LayerManagerImpl() : m_visibleLayers(1) {
     m_layers.push_back("Everything");
@@ -50,15 +40,15 @@ size_t LayerManagerImpl::getLayerIndex(const std::string &layerName) const {
 void LayerManagerImpl::setLayerVisible(size_t layerIndex, bool visible) {
     checkIndex(layerIndex);
     if (layerIndex == 0) {
-        // this it the everything layer - if switching on just show everything, else switch
-        // everything off
+        // this it the everything layer - if switching on just show everything, else
+        // switch everything off
         m_visibleLayers = visible ? 1 : 0;
         return;
     }
     int64_t layerValue = ((KeyType)1) << layerIndex;
 
-    // if visible, switch on this layer and switch everything layer off, else just switch off this
-    // layer
+    // if visible, switch on this layer and switch everything layer off, else just
+    // switch off this layer
     if (visible) {
         m_visibleLayers = (m_visibleLayers | layerValue) & (~0x1);
     } else {
@@ -95,10 +85,10 @@ void LayerManagerImpl::write(std::ostream &stream) const {
     //        availableLayers |= ((KeyType)1) << i;
     //    }
 
-    // TODO: (PK) While the above seems to me like the sane solution and potentially
-    // what the intention was in the original implementation, the one in the old
-    // attributes table seems to be messed up because of its starting value.
-    // Therefore, for temporary binary compatibility at least until the new
+    // TODO: (PK) While the above seems to me like the sane solution and
+    // potentially what the intention was in the original implementation, the one
+    // in the old attributes table seems to be messed up because of its starting
+    // value. Therefore, for temporary binary compatibility at least until the new
     // attributes table is in place the original solution is used here as found
     // in AttributeTable::selectionToLayer():
 

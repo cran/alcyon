@@ -1,26 +1,16 @@
-// Copyright (C) 2017 Christian Sailer
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2017 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+
+#include "displayparams.h"
 #include "layermanager.h"
+
 #include <algorithm>
 #include <iterator>
 #include <map>
 #include <memory>
-#include <salalib/displayparams.h>
-#include <salalib/mgraph_consts.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -278,7 +268,7 @@ class AttributeTable : public AttributeColumnManager {
         if (selNum == 0) {
             return (-1);
         }
-        return (selTotal / selNum);
+        return (selTotal / static_cast<float>(selNum));
     }
 
     // interface AttributeColumnManager
@@ -357,8 +347,7 @@ class AttributeTable : public AttributeColumnManager {
     };
 
     // iterator implementation - templated on iterator type for const/non-const
-    template <typename iterator_type>
-    class const_iterator_impl {
+    template <typename iterator_type> class const_iterator_impl {
         template <typename other_type> friend class const_iterator_impl;
 
       public:

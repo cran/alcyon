@@ -1,26 +1,14 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "connector.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/connector.h"
-
-#include "genlib/comm.h" // for communicator
 #include "genlib/containerutils.h"
 #include "genlib/readwritehelpers.h"
 
 #include <float.h>
+#include <fstream>
 #include <math.h>
 #include <time.h>
 
@@ -30,7 +18,10 @@ bool Connector::read(std::istream &stream) {
     m_back_segconns.clear();
 
     // n.b., must set displayed attribute as soon as loaded...
-    dXreadwrite::readIntoVector(stream, m_connections);
+
+    // The metagraph file format uses signed integers for connections
+    // therefore we have to first read that vector and then convert
+    dXreadwrite::readFromCastIntoVector<int>(stream, m_connections);
 
     stream.read((char *)&m_segment_axialref, sizeof(m_segment_axialref));
 
@@ -42,7 +33,7 @@ bool Connector::read(std::istream &stream) {
 
 bool Connector::write(std::ofstream &stream) {
     // n.b., must set displayed attribute as soon as loaded...
-    dXreadwrite::writeVector(stream, m_connections);
+    dXreadwrite::writeCastVector<int>(stream, m_connections);
     stream.write((char *)&m_segment_axialref, sizeof(m_segment_axialref));
 
     dXreadwrite::writeMap(stream, m_forward_segconns);
@@ -55,8 +46,8 @@ bool Connector::write(std::ofstream &stream) {
 
 // Cursor extras
 
-int Connector::count(int mode) const {
-    int c = 0;
+size_t Connector::count(int mode) const {
+    size_t c = 0;
     switch (mode) {
     case CONN_ALL:
         c = m_connections.size();

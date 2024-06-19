@@ -1,18 +1,6 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // This is my code to make a set of axial lines from a set of boundary lines
 
@@ -20,13 +8,9 @@
 
 // New spark sieve implemementation (more accurate)
 
-#include <math.h>
-
-#include <salalib/mgraph.h>
-#include <salalib/pointdata.h>
-#include <salalib/spacepix.h>
-
 #include "sparksieve2.h"
+
+#include <math.h>
 
 sparkSieve2::sparkSieve2(const Point2f &centre, double maxdist) {
     m_centre = centre;
@@ -41,14 +25,15 @@ bool sparkSieve2::testblock(const Point2f &point, const std::vector<Line> &lines
                             double tolerance) {
     Line l(m_centre, point);
 
-    // maxdist is to construct graphs with a maximum visible distance: (-1.0 is infinite)
+    // maxdist is to construct graphs with a maximum visible distance: (-1.0 is
+    // infinite)
     if (m_maxdist != -1.0 && l.length() > m_maxdist) {
         return true;
     }
 
-    for (auto line : lines) {
-        // Note: must check regions intersect before using this intersect_line test -- see notes on
-        // intersect_line
+    for (const auto &line : lines) {
+        // Note: must check regions intersect before using this intersect_line test
+        // -- see notes on intersect_line
         if (intersect_region(l, line, tolerance) && intersect_line(l, line, tolerance)) {
             return true;
         }
@@ -60,7 +45,7 @@ bool sparkSieve2::testblock(const Point2f &point, const std::vector<Line> &lines
 //
 
 void sparkSieve2::block(const std::vector<Line> &lines, int q) {
-    for (auto line : lines) {
+    for (const auto &line : lines) {
         double a = tanify(line.start(), q);
         double b = tanify(line.end(), q);
 

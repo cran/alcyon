@@ -1,30 +1,19 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // This is my code to make a set of axial lines from a set of boundary lines
 
 // spatial data
 
-#include "salalib/spacepix.h"
+#include "spacepix.h"
 
 #include "genlib/containerutils.h"
 #include "genlib/readwritehelpers.h"
 #include "genlib/stringutils.h"
 
 #include <float.h>
+#include <fstream>
 #include <math.h>
 #include <set>
 
@@ -59,7 +48,8 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
     PixelRefVector pixel_list;
 
     // this is *not* correct for lines that are off the edge...
-    // should use non-constrained version (false), and find where line enters the region
+    // should use non-constrained version (false), and find where line enters the
+    // region
     PixelRef a = pixelate(l.start(), true, scalefactor);
     PixelRef b = pixelate(l.end(), true, scalefactor);
 
@@ -90,9 +80,8 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
         }
     } else {
 
-        double hw_ratio =
-            l.height() /
-            l.width(); // Working all of these out leaves less scope for floating point error
+        double hw_ratio = l.height() / l.width(); // Working all of these out leaves less scope
+                                                  // for floating point error
         double wh_ratio = l.width() / l.height();
         double x0_const = l.ay() - double(parity) * hw_ratio * l.ax();
         double y0_const = l.ax() - double(parity) * wh_ratio * l.ay();
@@ -148,8 +137,8 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
 PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
     PixelRefVector pixel_list;
 
-    // now assume that scaling to region then scaling up is going to give pixelation
-    // this is not necessarily the case!
+    // now assume that scaling to region then scaling up is going to give
+    // pixelation this is not necessarily the case!
     l.normalScale(m_region);
     l.scale(Point2f(m_cols, m_rows));
 
@@ -161,6 +150,10 @@ PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
         dir = XAXIS;
         grad = l.grad(YAXIS);
         constant = l.constant(YAXIS);
+    } else if (l.width() == 0 && l.height() == 0) {
+        dir = YAXIS;
+        grad = 0;
+        constant = 0;
     } else {
         dir = YAXIS;
         grad = l.grad(XAXIS);
@@ -465,7 +458,7 @@ void SpacePixel::reinitLines(double density) {
                                                            static_cast<size_t>(m_cols));
 
     // now re-add the lines:
-    for (auto line : m_lines) {
+    for (const auto &line : m_lines) {
         PixelRefVector list = pixelateLine(line.second.line);
         for (size_t j = 0; j < list.size(); j++) {
             // note: m_pixel_lines will be reordered by sortPixelLines
@@ -485,7 +478,8 @@ void SpacePixel::reinitLines(double density) {
 
 void SpacePixel::addLine(const Line &line) {
     // Fairly simple: just pixelates the line!
-    m_ref++; // need unique keys for the lines so they can be added / removed at any time
+    m_ref++; // need unique keys for the lines so they can be added / removed at
+             // any time
     m_lines.insert(std::make_pair(m_ref, LineTest(line, 0)));
     m_newline = true;
 
@@ -499,14 +493,16 @@ void SpacePixel::addLine(const Line &line) {
 }
 
 int SpacePixel::addLineDynamic(const Line &line) {
-    m_ref++; // need unique keys for the lines so they can be added / removed at any time
+    m_ref++; // need unique keys for the lines so they can be added / removed at
+             // any time
     m_lines.insert(std::make_pair(m_ref, LineTest(line, 0)));
     m_newline = true;
 
     PixelRefVector list = pixelateLine(line);
 
     for (size_t i = 0; i < list.size(); i++) {
-        // note: dynamic lines could be dodgy... only pixelate bits that fall in range
+        // note: dynamic lines could be dodgy... only pixelate bits that fall in
+        // range
         if (list[i].x >= 0 && list[i].y >= 0 && static_cast<size_t>(list[i].x) < m_cols &&
             static_cast<size_t>(list[i].y) < m_rows) {
             // note, this probably won't be reordered on dynamic
@@ -534,8 +530,8 @@ void SpacePixel::sortPixelLines() {
 }
 
 bool SpacePixel::intersect(const Line &l, double tolerance) {
-    m_test++; // note loops! (but vary rarely: inevitabley, lines will have been marked before it
-              // loops)
+    m_test++; // note loops! (but vary rarely: inevitabley, lines will have been
+              // marked before it loops)
 
     PixelRefVector list = pixelateLine(l);
 
@@ -559,8 +555,8 @@ bool SpacePixel::intersect(const Line &l, double tolerance) {
 }
 
 bool SpacePixel::intersect_exclude(const Line &l, double tolerance) {
-    m_test++; // note loops! (but vary rarely: inevitabley, lines will have been marked before it
-              // loops)
+    m_test++; // note loops! (but vary rarely: inevitabley, lines will have been
+              // marked before it loops)
 
     PixelRefVector list = pixelateLine(l);
 
@@ -631,8 +627,8 @@ void SpacePixel::cutLine(Line &l, short dir) {
                             } else {
                                 Point2f a, b;
                                 int pair = -1;
-                                // if there may be more than one touches in the same pixel, we have
-                                // to build a list of possibles...
+                                // if there may be more than one touches in the same pixel, we
+                                // have to build a list of possibles...
                                 for (size_t k = 0; k < touching_lines.size() && pair == -1; k++) {
                                     if (linetest.line.start() == touching_lines[k].start() ||
                                         linetest.line.end() == touching_lines[k].end()) {
@@ -781,7 +777,7 @@ bool SpacePixel::read(std::istream &stream) {
     dXreadwrite::readIntoMap(stream, m_lines);
     // now load into structure:
     int n = -1;
-    for (auto line : m_lines) {
+    for (const auto &line : m_lines) {
         n++;
 
         PixelRefVector list = pixelateLine(line.second.line);

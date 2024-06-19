@@ -16,7 +16,7 @@ lineStringMap <- st_read(
   geometry_column = 1L, quiet = TRUE
 )
 
-shapeMap <- as(lineStringMap, "ShapeMap")
+shapeMap <- as(lineStringMap[, vector()], "ShapeMap")
 
 ## -----------------------------------------------------------------------------
 isovistMap <- isovist(
@@ -28,8 +28,7 @@ isovistMap <- isovist(
   FALSE
 )
 
-isovists <- shapeMapToPolygonSf(isovistMap)
 
 ## -----------------------------------------------------------------------------
-plot(isovists$geometry)
+plot(isovistMap[1, 1])
 

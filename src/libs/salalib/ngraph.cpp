@@ -1,26 +1,13 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "ngraph.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-// ngraph.cpp
+#include "pointdata.h"
 
 #include "genlib/containerutils.h"
-#include <salalib/mgraph.h>
-#include <salalib/ngraph.h>
-#include <salalib/pointdata.h>
-#include <salalib/spacepix.h>
+#include "genlib/readwritehelpers.h"
 
 void Node::make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, int q_octants) {
     m_pixel = pix;
@@ -28,8 +15,8 @@ void Node::make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, 
     for (int i = 0; i < 32; i++) {
 
         if (q_octants != 0x00FF) {
-            // now, an octant filter has been used... note that the exact q-octants that
-            // will have been processed rely on adjacenies in the q_octants...
+            // now, an octant filter has been used... note that the exact q-octants
+            // that will have been processed rely on adjacenies in the q_octants...
             if (!(q_octants & processoctant(i))) {
                 continue;
             }
@@ -59,8 +46,9 @@ void Node::extractUnseen(PixelRefVector &pixels, PointMap *pointdata) {
 
 void Node::extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata,
                          const MetricTriple &curs) {
-    // if (dist == 0.0f || concaveConnected()) { // increases effiency but is too inaccurate
-    // if (dist == 0.0f || !fullyConnected()) { // increases effiency but can miss lines
+    // if (dist == 0.0f || concaveConnected()) { // increases effiency but is too
+    // inaccurate if (dist == 0.0f || !fullyConnected()) { // increases effiency
+    // but can miss lines
     if (curs.dist == 0.0f || pointdata->getPoint(curs.pixel).blocked() ||
         pointdata->blockedAdjacent(curs.pixel)) {
         for (int i = 0; i < 32; i++) {
@@ -82,8 +70,9 @@ void Node::extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata,
 }
 
 bool Node::concaveConnected() {
-    // not quite correct -- sometimes at corners you 'see through' the very first connection
-    // but a useful approximation: to be concave connected, you need less than 3 in a row somewhere:
+    // not quite correct -- sometimes at corners you 'see through' the very first
+    // connection but a useful approximation: to be concave connected, you need
+    // less than 3 in a row somewhere:
     unsigned int test = 0;
     // note wraps around
     test |= (m_bins[0].count()) ? 0 : 0x101;
@@ -106,7 +95,8 @@ bool Node::concaveConnected() {
 }
 
 bool Node::fullyConnected() {
-    // not quite correct -- sometimes at corners you 'see through' the very first connection
+    // not quite correct -- sometimes at corners you 'see through' the very first
+    // connection
     return (m_bins[0].count() && m_bins[4].count() && m_bins[8].count() && m_bins[12].count() &&
             m_bins[16].count() && m_bins[20].count() && m_bins[24].count() && m_bins[28].count());
 }
@@ -234,7 +224,7 @@ void Bin::make(const PixelRefVector &pixels, char dir) {
             }
 
             m_pixel_vecs.push_back(cur);
-            m_node_count = pixels.size();
+            m_node_count = static_cast<unsigned short>(pixels.size());
         } else {
             // Reorder the pixels:
             if (m_dir == PixelRef::HORIZONTAL) {
@@ -276,7 +266,7 @@ void Bin::make(const PixelRefVector &pixels, char dir) {
                 m_pixel_vecs.back().m_end = *pixels_v.rbegin();
             }
 
-            m_node_count = pixels.size();
+            m_node_count = static_cast<unsigned short>(pixels.size());
         }
     }
 }
@@ -291,8 +281,8 @@ void Bin::extractUnseen(PixelRefVector &pixels, PointMap *pointdata, int binmark
                 pixels.push_back(pix);
                 pointdata->getPoint(pix).m_misc |= binmark;
             }
-            // 10.2.02 revised --- diagonal was breaking this as it was extent in diagonal or
-            // horizontal
+            // 10.2.02 revised --- diagonal was breaking this as it was extent in
+            // diagonal or horizontal
             if (!(m_dir & PixelRef::DIAGONAL)) {
                 if (pt.m_extent.col(m_dir) >= pixVec.end().col(m_dir))
                     break;
@@ -353,7 +343,8 @@ void Bin::extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata,
 bool Bin::containsPoint(const PixelRef p) const {
     for (auto pixVec : m_pixel_vecs) {
         if (m_dir & PixelRef::DIAGONAL) {
-            // note abs is only allowed if you have pre-checked you are in the right quadrant!
+            // note abs is only allowed if you have pre-checked you are in the right
+            // quadrant!
             if (p.x >= pixVec.start().x && p.x <= pixVec.end().x &&
                 abs(p.y - pixVec.start().y) == p.x - pixVec.start().x) {
                 return true;
@@ -429,10 +420,10 @@ std::ostream &Bin::write(std::ostream &stream) {
             m_pixel_vecs[0].write(stream, m_dir);
         } else {
             // TODO: Remove this limitation in the next version of the .graph format
-            unsigned short length = m_pixel_vecs.size();
+            auto length = static_cast<unsigned short>(m_pixel_vecs.size());
             stream.write((char *)&length, sizeof(length));
             m_pixel_vecs[0].write(stream, m_dir);
-            for (int i = 1; i < length; i++) {
+            for (size_t i = 1; i < length; i++) {
                 m_pixel_vecs[i].write(stream, m_dir, m_pixel_vecs[i - 1]);
             }
         }
@@ -463,20 +454,20 @@ std::istream &PixelVec::read(std::istream &stream, const char dir) {
     stream.read((char *)&runlength, sizeof(runlength));
     switch (dir) {
     case PixelRef::POSDIAGONAL:
-        m_end.x = m_start.x + runlength;
-        m_end.y = m_start.y + runlength;
+        m_end.x = m_start.x + static_cast<short>(runlength);
+        m_end.y = m_start.y + static_cast<short>(runlength);
         break;
     case PixelRef::NEGDIAGONAL:
-        m_end.x = m_start.x + runlength;
-        m_end.y = m_start.y - runlength;
+        m_end.x = m_start.x + static_cast<short>(runlength);
+        m_end.y = m_start.y - static_cast<short>(runlength);
         break;
     case PixelRef::HORIZONTAL:
-        m_end.x = m_start.x + runlength;
+        m_end.x = m_start.x + static_cast<short>(runlength);
         m_end.y = m_start.y;
         break;
     case PixelRef::VERTICAL:
         m_end.x = m_start.x;
-        m_end.y = m_start.y + runlength;
+        m_end.y = m_start.y + static_cast<short>(runlength);
         break;
     }
     return stream;
@@ -489,10 +480,10 @@ std::ostream &PixelVec::write(std::ostream &stream, const char dir) {
     case PixelRef::HORIZONTAL:
     case PixelRef::POSDIAGONAL:
     case PixelRef::NEGDIAGONAL:
-        runlength = m_end.x - m_start.x;
+        runlength = static_cast<unsigned short>(m_end.x - m_start.x);
         break;
     case PixelRef::VERTICAL:
-        runlength = m_end.y - m_start.y;
+        runlength = static_cast<unsigned short>(m_end.y - m_start.y);
         break;
     }
     stream.write((char *)&runlength, sizeof(runlength));
@@ -533,13 +524,13 @@ std::ostream &PixelVec::write(std::ostream &stream, const char dir, const PixelV
     switch (dir) {
     case PixelRef::HORIZONTAL:
         stream.write((char *)&(m_start.x), sizeof(m_start.x));
-        shiftlength.runlength = m_end.x - m_start.x;
-        shiftlength.shift = m_start.y - context.m_start.y;
+        shiftlength.runlength = static_cast<unsigned short>(m_end.x - m_start.x);
+        shiftlength.shift = static_cast<unsigned short>(m_start.y - context.m_start.y);
         break;
     case PixelRef::VERTICAL:
         stream.write((char *)&(m_start.y), sizeof(m_start.y));
-        shiftlength.runlength = m_end.y - m_start.y;
-        shiftlength.shift = m_start.x - context.m_start.x;
+        shiftlength.runlength = static_cast<unsigned short>(m_end.y - m_start.y);
+        shiftlength.shift = static_cast<unsigned short>(m_start.x - context.m_start.x);
         break;
     }
     stream.write((char *)&shiftlength, sizeof(shiftlength));

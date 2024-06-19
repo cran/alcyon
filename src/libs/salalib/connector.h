@@ -1,18 +1,6 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
@@ -84,7 +72,7 @@ struct Connector {
     //  if this is a segment, this is the key for the axial line:
     int m_segment_axialref;
     // use one or other of these
-    std::vector<int> m_connections;
+    std::vector<size_t> m_connections;
     //
     std::map<SegmentRef, float> m_back_segconns;
     std::map<SegmentRef, float> m_forward_segconns;
@@ -106,7 +94,7 @@ struct Connector {
     // here for salaprogram which seems to be the only place they
     // are used. salaprogram seems to also be the only place where
     // the last two modes (SEG_CONN_FW, SEG_CONN_BK) are used
-    int count(int mode = CONN_ALL) const;
+    size_t count(int mode = CONN_ALL) const;
     int getConnectedRef(int cursor, int mode = CONN_ALL) const;
     int direction(int cursor, int mode = SEG_CONN_ALL) const;
     float weight(int cursor, int mode = SEG_CONN_ALL) const;

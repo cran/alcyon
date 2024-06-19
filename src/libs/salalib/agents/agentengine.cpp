@@ -1,29 +1,18 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2019, Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2019 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "agentengine.h"
+
 #include "agenthelpers.h"
 
 // run one agent engine only
 
 AgentEngine::AgentEngine() {
     m_timesteps = 5000;
-    m_gatelayer = -1;
+    m_gatelayer = std::nullopt;
     m_record_trails = false;
 }
 
@@ -40,10 +29,10 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap) {
     }
 
     AttributeTable &table = pointmap->getAttributeTable();
-    int displaycol = table.getOrInsertColumn(g_col_total_counts);
+    auto displaycol = table.getOrInsertColumn(g_col_total_counts);
 
     int output_mode = Agent::OUTPUT_COUNTS;
-    if (m_gatelayer != -1) {
+    if (m_gatelayer != std::nullopt) {
         output_mode |= Agent::OUTPUT_GATE_COUNTS;
     }
 
@@ -52,7 +41,7 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap) {
         if (m_trail_count < 1) {
             m_trail_count = 1;
         }
-        for (auto& agentSet: agentSets) {
+        for (auto &agentSet : agentSets) {
             agentSet.m_trails = std::vector<std::vector<Event2f>>(m_trail_count);
         }
         trail_num = 0;
@@ -63,10 +52,10 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap) {
         agentSet.agents.clear();
     }
 
-    for (int i = 0; i < m_timesteps; i++) {
+    for (size_t i = 0; i < m_timesteps; i++) {
         for (auto &agentSet : agentSets) {
             int q = invcumpoisson(prandomr(), agentSet.m_release_rate);
-            int length = agentSet.agents.size();
+            auto length = agentSet.agents.size();
             int k;
             for (k = 0; k < q; k++) {
                 agentSet.agents.push_back(Agent(&(agentSet), pointmap, output_mode));
@@ -101,7 +90,7 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap) {
     pointmap->setDisplayedAttribute(displaycol);
 }
 
-void AgentEngine::insertTrailsInMap(ShapeMap& trailsMap) {
+void AgentEngine::insertTrailsInMap(ShapeMap &trailsMap) {
     for (auto &agentSet : agentSets) {
         // there is currently only one AgentSet. If at any point there are more then
         // this could be amended to put the AgentSet id as a property of the trail

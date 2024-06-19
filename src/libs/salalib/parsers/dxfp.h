@@ -1,18 +1,6 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // DXF parser header file
 
@@ -100,8 +88,8 @@ class DxfEntity {
   protected:
     // Reference data
     int m_tag;
-    DxfLineType *m_p_line_type;
-    DxfLayer *m_p_layer;
+    DxfLineType *m_p_line_type = nullptr;
+    DxfLayer *m_p_layer = nullptr;
 
   public:
     DxfEntity(int tag = -1);
@@ -255,7 +243,7 @@ class DxfPolyLine : public DxfEntity, public DxfRegion {
     enum { CLOSED = 1 }; // CLOSED = closed polygon
   protected:
     int m_attributes;
-    int m_vertex_count;
+    size_t m_vertex_count;
     std::vector<DxfVertex> m_vertices;
 
   public:
@@ -269,17 +257,17 @@ class DxfPolyLine : public DxfEntity, public DxfRegion {
     //
     // some basic manipulation
     void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        for (int i = 0; i < m_vertex_count; i++)
+        for (size_t i = 0; i < m_vertex_count; i++)
             m_vertices[i].scale(base_vertex, scale);
         DxfRegion::scale(base_vertex, scale);
     }
     void rotate(const DxfVertex &base_vertex, double angle) {
-        for (int i = 0; i < m_vertex_count; i++)
+        for (size_t i = 0; i < m_vertex_count; i++)
             m_vertices[i].rotate(base_vertex, angle);
         DxfRegion::rotate(base_vertex, angle);
     }
     void translate(const DxfVertex &translation) {
-        for (int i = 0; i < m_vertex_count; i++)
+        for (size_t i = 0; i < m_vertex_count; i++)
             m_vertices[i].translate(translation);
         DxfRegion::translate(translation);
     }
@@ -454,8 +442,8 @@ class DxfSpline : public DxfEntity, public DxfRegion {
   protected:
     int m_xyz;
     int m_attributes;
-    int m_ctrl_pt_count;
-    int m_knot_count;
+    size_t m_ctrl_pt_count;
+    size_t m_knot_count;
     std::vector<DxfVertex> m_ctrl_pts;
     std::vector<double> m_knots;
 
@@ -469,17 +457,17 @@ class DxfSpline : public DxfEntity, public DxfRegion {
     //
     // some basic manipulation
     void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        for (int i = 0; i < m_ctrl_pt_count; i++)
+        for (size_t i = 0; i < m_ctrl_pt_count; i++)
             m_ctrl_pts[i].scale(base_vertex, scale);
         DxfRegion::scale(base_vertex, scale);
     }
     void rotate(const DxfVertex &base_vertex, double angle) {
-        for (int i = 0; i < m_ctrl_pt_count; i++)
+        for (size_t i = 0; i < m_ctrl_pt_count; i++)
             m_ctrl_pts[i].rotate(base_vertex, angle);
         DxfRegion::rotate(base_vertex, angle);
     }
     void translate(const DxfVertex &translation) {
-        for (int i = 0; i < m_ctrl_pt_count; i++)
+        for (size_t i = 0; i < m_ctrl_pt_count; i++)
             m_ctrl_pts[i].translate(translation);
         DxfRegion::translate(translation);
     }

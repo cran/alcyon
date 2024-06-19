@@ -1,32 +1,21 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2018, Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2018 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // This is my code to make a set of axial lines from a set of boundary lines
 
 #pragma once
 
-#include "salalib/pafcolor.h"
-#include "salalib/pixelref.h"
+#include "pafcolor.h"
+#include "pixelref.h"
 
 #include "genlib/p2dpoly.h"
 #include "genlib/simplematrix.h"
 
 #include <deque>
 #include <map>
+#include <string>
 
 class SalaShape;
 
@@ -62,7 +51,9 @@ struct LineTest {
     unsigned int test;
     LineTest(const Line &l = Line(), int t = -1) {
         line = l;
-        test = t;
+        // TODO: Shouldn't be casting an int with a known
+        // default value of -1
+        test = static_cast<unsigned int>(t);
     }
     // operator Line() {return line;}
 };
@@ -95,7 +86,7 @@ class SpacePixel : public PixelBase {
   protected:
     PafColor m_color;
     int m_style; // allows for bold / dotted lines etc
-    std::string m_name;
+    std::string m_name = "Default";
     bool m_show;
     bool m_edit;
     depthmapX::RowMatrix<std::vector<int>> m_pixel_lines;

@@ -1,4 +1,9 @@
+// SPDX-FileCopyrightText: 2017 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "gridproperties.h"
+
 #include <math.h>
 
 GridProperties::GridProperties(double maxDimension) {

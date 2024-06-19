@@ -1,7 +1,7 @@
 Package: alcyon
 Type: Package
 Title: Spatial Network Analysis
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(
     person(given = "Petros",
            family = "Koutsolampros",
@@ -49,14 +49,14 @@ Description: Interface package for 'sala', the spatial network analysis library
     handbook".
 License: GPL-3
 Encoding: UTF-8
-LinkingTo: Rcpp, sp
+LinkingTo: Rcpp
 Imports: Rcpp, methods
-Depends: sp, sf, igraph
+Depends: sf, stars, igraph
 Suggests: knitr, rmarkdown, testthat
 SystemRequirements: C++17
 VignetteBuilder: knitr
 Collate: 'generics.R' 'rcppRoxygen.R' 'helper-loadMapsRoxygen.R'
-        'ShapeMap.R' 'ShapeGraph.R' 'AxialShapeGraph.R'
+        'helper-processResult.R' 'ShapeMap.R' 'AxialShapeGraph.R'
         'AllLineShapeGraph.R' 'SegmentShapeGraph.R' 'PointMap.R'
         'TraversalType.R' 'AgentLookMode.R' 'RcppExports.R'
         'agentAnalysis.R' 'allFewestLineMap.R' 'axialAnalysis.R'
@@ -68,7 +68,7 @@ Collate: 'generics.R' 'rcppRoxygen.R' 'helper-loadMapsRoxygen.R'
 RoxygenNote: 7.3.1
 Language: en-GB
 NeedsCompilation: yes
-Packaged: 2024-05-25 18:58:22 UTC; petros
+Packaged: 2024-06-16 21:41:36 UTC; petros
 Author: Petros Koutsolampros [cre, aut, cph]
     (<https://orcid.org/0000-0003-2842-9899>, 'sala' library
     contributor through 'depthmapX'),
@@ -87,4 +87,4 @@ Author: Petros Koutsolampros [cre, aut, cph]
   Spacelab UK [fnd]
 Maintainer: Petros Koutsolampros <r-devel@pklampros.net>
 Repository: CRAN
-Date/Publication: 2024-05-27 17:20:07 UTC
+Date/Publication: 2024-06-19 07:30:17 UTC

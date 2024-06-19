@@ -1,18 +1,6 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // 2d poly (own format, adapted from the original Sala libraries
 
@@ -24,8 +12,7 @@
 // Using doubles right the way through can really eat memory for isovist
 // polygon files, thus we use a defined type, change as appropriate:
 
-#include "genlib/comm.h" // communicator used in BSP tree construction
-#include "genlib/pafmath.h"
+#include "pafmath.h"
 
 #include <algorithm>
 
@@ -323,7 +310,10 @@ class QtRegion {
         top_right = r.top_right;
         return *this;
     }
-    //
+    bool operator==(const QtRegion &other) const {
+        return bottom_left == other.bottom_left && top_right == other.top_right;
+    }
+
     double height() const { return fabs(top_right.y - bottom_left.y); }
     double width() const
     // The assumption that top_right.x is always > bottom_left.x is not always true.
@@ -399,11 +389,11 @@ class QtRegion {
 
 // First time we have a region available to use...
 inline void Point2f::normalScale(const QtRegion &r) {
-    if (r.width())
+    if (r.width() != 0)
         x = (x - r.bottom_left.x) / r.width();
     else
         x = 0.0;
-    if (r.height())
+    if (r.height() != 0)
         y = (y - r.bottom_left.y) / r.height();
     else
         y = 0.0;
@@ -446,7 +436,13 @@ class Line : public QtRegion {
         bits = l.bits;
         return *this;
     }
-    //
+    bool operator==(const Line &other) const {
+        // we could be comparing QtRegion and then the bits, but this
+        // is a line, and the two functions t_start and t_end seem
+        // to provide all the necessary information for the test.
+        return t_start() == other.t_start() && t_end() == other.t_end();
+    }
+
     friend bool intersect_line(const Line &a, const Line &b, double tolerance);
     friend bool intersect_line_no_touch(const Line &a, const Line &b, double tolerance);
     friend int intersect_line_distinguish(const Line &a, const Line &b, double tolerance);

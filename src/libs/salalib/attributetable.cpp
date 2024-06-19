@@ -1,22 +1,13 @@
-// Copyright (C) 2017 Christian Sailer
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2017 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "attributetable.h"
+
 #include "displayparams.h"
-#include <genlib/readwritehelpers.h>
-#include <genlib/stringutils.h>
+
+#include "genlib/readwritehelpers.h"
+#include "genlib/stringutils.h"
 
 #include <numeric>
 #include <sstream>
@@ -63,13 +54,14 @@ size_t AttributeColumnImpl::read(std::istream &stream) {
     m_stats.max = val;
     stream.read((char *)&m_stats.total, sizeof(double));
     int physical_column;
-    stream.read((char *)&physical_column, sizeof(int)); // physical column is obsolete
+    stream.read((char *)&physical_column,
+                sizeof(int)); // physical column is obsolete
     stream.read((char *)&m_hidden, sizeof(bool));
     stream.read((char *)&m_locked, sizeof(bool));
 
     stream.read((char *)&m_displayParams, sizeof(DisplayParams));
     m_formula = dXstring::readString(stream);
-    return physical_column;
+    return static_cast<size_t>(physical_column);
 }
 
 void AttributeColumnImpl::write(std::ostream &stream, int physicalCol) {

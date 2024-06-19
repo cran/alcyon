@@ -1,28 +1,16 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "segmmetric.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/segmmodules/segmmetric.h"
+#include "segmhelpers.h"
 
 #include "genlib/stringutils.h"
 
-AnalysisResult SegmentMetric::run(Communicator *comm,
-                                  ShapeGraph &map,
-                                  bool) {
+AnalysisResult SegmentMetric::run(Communicator *comm, ShapeGraph &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -35,7 +23,7 @@ AnalysisResult SegmentMetric::run(Communicator *comm,
         comm->CommPostMessage(Communicator::NUM_RECORDS,
                               (m_sel_only ? map.getSelSet().size() : map.getConnections().size()));
     }
-    int reccount = 0;
+    size_t reccount = 0;
 
     // record axial line refs for topological analysis
     std::vector<int> axialrefs;
@@ -102,8 +90,7 @@ AnalysisResult SegmentMetric::run(Communicator *comm,
             TopoMetSegmentRef(cursor, Connector::SEG_CONN_ALL, rootseglength * 0.5, -1);
         int open = 1;
         unsigned int segdepth = 0;
-        double total = 0.0, wtotal = 0.0, wtotaldepth = 0.0, totalsegdepth = 0.0,
-               totalmetdepth = 0.0;
+        double total = 0.0, wtotal = 0.0, wtotaldepth = 0.0, totalmetdepth = 0.0;
         while (open != 0) {
             while (list[bin].size() == 0) {
                 bin++;
@@ -124,7 +111,6 @@ AnalysisResult SegmentMetric::run(Communicator *comm,
             }
             //
             double len = seglengths[here.ref];
-            totalsegdepth += segdepth;
             totalmetdepth += here.dist - len * 0.5; // preloaded with length ahead
             wtotal += len;
             wtotaldepth += len * (here.dist - len * 0.5);
@@ -214,6 +200,8 @@ AnalysisResult SegmentMetric::run(Communicator *comm,
     } else {
         map.setDisplayedAttribute(attributes.getColumnIndex(meandepthcol.c_str()));
     }
+
+    result.completed = true;
 
     return result;
 }

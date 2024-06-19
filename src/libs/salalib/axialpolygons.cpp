@@ -1,6 +1,12 @@
-#include "salalib/axialpolygons.h"
-#include "salalib/tidylines.h"
-#include "salalib/tolerances.h"
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "axialpolygons.h"
+
+#include "tidylines.h"
+#include "tolerances.h"
 
 #include "genlib/containerutils.h"
 
@@ -17,7 +23,8 @@ AxialVertex AxialPolygons::makeVertex(const AxialVertexKey &vertexkey, const Poi
     Point2f o = av.m_point - av.m_openspace;
 
     // using an anglemap means that there are now no anti-clockwise vertices...
-    // TODO: (CS) Double as key is problematic - books have been written about double equality...
+    // TODO: (CS) Double as key is problematic - books have been written about
+    // double equality...
     std::map<double, int> anglemap;
     for (size_t i = 0; i < pointlist.size(); ++i) {
         anglemap.insert(std::make_pair(angle(openspace, av.m_point, pointlist[i]), i));
@@ -39,12 +46,14 @@ AxialVertex AxialPolygons::makeVertex(const AxialVertexKey &vertexkey, const Poi
 
     // can't handle these cases
     if (fabs(oa) < TOLERANCE_A || fabs(ob) < TOLERANCE_A || fabs(ab) < TOLERANCE_A) {
-        // although note that if ab == 0 and you've already checked intersection, it can't be convex
+        // although note that if ab == 0 and you've already checked intersection, it
+        // can't be convex
         return av;
     }
 
-    // ADDED 4-Nov-04 -- In order to stop too many lines being generated, don't include
-    // points that do not change surface direction:  -- notice: will create problems with circles
+    // ADDED 4-Nov-04 -- In order to stop too many lines being generated, don't
+    // include points that do not change surface direction:  -- notice: will
+    // create problems with circles
     if (fabs(dot(a, b)) > 0.999) {
         return av;
     }
@@ -224,7 +233,7 @@ void AxialPolygons::makePixelPolys() {
     m_pixel_polys = depthmapX::ColumnMatrix<std::vector<int>>(m_rows, m_cols);
     // now register the vertices in each pixel...
     int j = -1;
-    for (auto vertPoss : m_vertex_possibles) {
+    for (const auto &vertPoss : m_vertex_possibles) {
         j++;
         PixelRef pix = pixelate(vertPoss.first);
         m_pixel_polys(static_cast<size_t>(pix.y), static_cast<size_t>(pix.x)).push_back(j);
@@ -251,7 +260,8 @@ AxialVertexKey AxialPolygons::seedVertex(const Point2f &seed) {
             const Point2f &trialpoint =
                 depthmapX::getMapAtIndex(m_vertex_possibles, vertexref)->first;
             if (!intersect_exclude(Line(seed, trialpoint))) {
-                // yay... ...but wait... we need to see if it's a proper polygon vertex first...
+                // yay... ...but wait... we need to see if it's a proper polygon vertex
+                // first...
                 seedvertex = vertexref;
                 foundvertex = true;
             }
@@ -306,9 +316,10 @@ AxialVertexKey AxialPolygons::seedVertex(const Point2f &seed) {
     return seedvertex;
 }
 
-// adds any axial lines from this point to the list of lines, adds any unhandled visible vertices it
-// finds to the openvertices list axial lines themselves are added to the lines list - the axial
-// line is only there to record the key vertices that comprise the line
+// adds any axial lines from this point to the list of lines, adds any unhandled
+// visible vertices it finds to the openvertices list axial lines themselves are
+// added to the lines list - the axial line is only there to record the key
+// vertices that comprise the line
 void AxialPolygons::makeAxialLines(std::set<AxialVertex> &openvertices, std::vector<Line> &lines,
                                    KeyVertices &keyvertices,
                                    std::vector<PolyConnector> &poly_connections,
@@ -320,7 +331,7 @@ void AxialPolygons::makeAxialLines(std::set<AxialVertex> &openvertices, std::vec
     m_handled_list.insert(vertex);
 
     int i = -1;
-    for (auto vertPoss : m_vertex_possibles) {
+    for (const auto &vertPoss : m_vertex_possibles) {
         i++;
         if (i == vertex.m_ref_key) {
             continue;
@@ -362,7 +373,8 @@ void AxialPolygons::makeAxialLines(std::set<AxialVertex> &openvertices, std::vec
                         }
                     }
                     if (m_vertex_polys[vertex.m_ref_key] !=
-                        m_vertex_polys[next_vertex.m_ref_key]) { // must be on separate polygons
+                        m_vertex_polys[next_vertex.m_ref_key]) { // must be on separate
+                                                                 // polygons
                         // radial line(s) (for new point)
                         RadialLine radialshort(next_vertex, shortline_segend, vertex.m_point,
                                                next_vertex.m_point,
@@ -391,7 +403,8 @@ void AxialPolygons::makeAxialLines(std::set<AxialVertex> &openvertices, std::vec
                         }
                     }
                     if (m_vertex_polys[vertex.m_ref_key] !=
-                        m_vertex_polys[next_vertex.m_ref_key]) { // must be on separate polygons
+                        m_vertex_polys[next_vertex.m_ref_key]) { // must be on separate
+                                                                 // polygons
                         // radial line(s) (for original point)
                         RadialLine radialshort(vertex, shortline_segend, next_vertex.m_point,
                                                vertex.m_point, vertex.m_point + vertex.m_b);
@@ -438,7 +451,7 @@ void AxialPolygons::makePolygons(std::vector<std::vector<Point2f>> &polygons) {
     }
 
     int i = -1;
-    for (auto vertPoss : m_vertex_possibles) {
+    for (const auto &vertPoss : m_vertex_possibles) {
         i++;
         std::vector<int> &currList = handled_list[size_t(i)];
         if (vertPoss.second.size() == 1) {
@@ -478,7 +491,8 @@ void AxialPolygons::makePolygons(std::vector<std::vector<Point2f>> &polygons) {
                     }
                 }
                 if (winner == -1) {
-                    // this happens when you follow a false trail -- go back the way you came!
+                    // this happens when you follow a false trail -- go back the way you
+                    // came!
                     winner = wayback;
                 }
                 handled_list[std::distance(m_vertex_possibles.begin(), vertPossIter)].push_back(
@@ -498,7 +512,8 @@ void AxialPolygons::makePolygons(std::vector<std::vector<Point2f>> &polygons) {
 
 bool RadialLine::cuts(const Line &l) const {
     if (fabs(det(l.end() - keyvertex, l.end() - l.start())) < TOLERANCE_A) {
-        // point on line, check that openspace and next vertex are on opposite sides of the line
+        // point on line, check that openspace and next vertex are on opposite sides
+        // of the line
         Point2f x = l.end() - keyvertex;
         Point2f y = nextvertex - keyvertex;
         Point2f z = openspace - keyvertex;

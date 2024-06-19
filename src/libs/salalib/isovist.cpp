@@ -1,21 +1,9 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/isovist.h"
+#include "isovist.h"
 
 #include <float.h>
 #include <math.h>
@@ -23,23 +11,25 @@
 
 ///////////////////////////////////////////////////////////////////////
 
-// Interestingly, apparently ray tracing is faster using voxel techniques than octrees etc:
-// Akira Fujimotot, Takayuki Tanaka, and Kansei Iwata. ARTS: Accelerated ray-tracing system.  IEEE
-// Computer Graphics and Applications, 6(4):16--26, April 1986
+// Interestingly, apparently ray tracing is faster using voxel techniques than
+// octrees etc: Akira Fujimotot, Takayuki Tanaka, and Kansei Iwata. ARTS:
+// Accelerated ray-tracing system.  IEEE Computer Graphics and Applications,
+// 6(4):16--26, April 1986
 
 // This uses BSP trees, and appears to be superfast once the tree is built
 
 void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, double startangle,
                      double endangle) {
-    // region is used to give an idea of scale, so isovists can be linked when there is floating
-    // point error
+    // region is used to give an idea of scale, so isovists can be linked when
+    // there is floating point error
     double tolerance = std::max(region.width(), region.height()) * 1e-9;
 
     m_centre = p;
     m_blocks.clear();
     m_gaps.clear();
 
-    // still doesn't work when need centre point, but this will work for 180 degree isovists
+    // still doesn't work when need centre point, but this will work for 180
+    // degree isovists
     bool complete = false;
 
     if (startangle == endangle || (startangle == 0.0 && endangle == 2.0 * M_PI)) {
@@ -83,8 +73,8 @@ void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, do
             m_perimeter += occluded;
             m_occluded_perimeter += occluded;
             // record the near *point* for use in agent analysis
-            // (as the point will not move between isovists, so can record *which* occlusion this
-            // is, and spot novel ones)
+            // (as the point will not move between isovists, so can record *which*
+            // occlusion this is, and spot novel ones)
             if (dist(prev->endpoint, m_centre) < dist(curr->startpoint, m_centre)) {
                 m_occlusion_points.push_back(PointDist(prev->endpoint, occluded));
             } else {
@@ -95,8 +85,8 @@ void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, do
         m_perimeter += dist(curr->startpoint, curr->endpoint);
         prev = curr;
     }
-    // for some reason to do with ordering, if parity is true, the centre point must be last not
-    // first
+    // for some reason to do with ordering, if parity is true, the centre point
+    // must be last not first
     if (!complete && parity) {
         // centre
         m_poly.push_back(p);
@@ -110,8 +100,8 @@ void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, do
         m_perimeter += occluded;
         m_occluded_perimeter += occluded;
         // record the near *point* for use in agent analysis
-        // (as the point will not move between isovists, so can record *which* occlusion this is,
-        // and spot novel ones)
+        // (as the point will not move between isovists, so can record *which*
+        // occlusion this is, and spot novel ones)
         if (occluded > 1.5) {
             if (dist(m_blocks.rbegin()->endpoint, m_centre) <
                 dist(m_blocks.begin()->startpoint, m_centre)) {
@@ -260,8 +250,8 @@ void Isovist::addBlock(const Line &li, int tag, double startangle, double endang
 }
 
 std::pair<Point2f, double> Isovist::getCentroidArea() {
-    // the area / centre of gravity calculation is a duplicate of the SalaPolygon version,
-    // included here for general information about the isovist
+    // the area / centre of gravity calculation is a duplicate of the SalaPolygon
+    // version, included here for general information about the isovist
     double area = 0.0;
     Point2f centroid = Point2f(0, 0);
     for (size_t i = 0; i < m_poly.size(); i++) {

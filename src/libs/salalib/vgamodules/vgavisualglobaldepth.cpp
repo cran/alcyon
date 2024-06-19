@@ -1,26 +1,12 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "vgavisualglobaldepth.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/vgamodules/vgavisualglobaldepth.h"
-
-AnalysisResult VGAVisualGlobalDepth::run(Communicator *,
-                                         PointMap &map,
-                                         bool) {
+AnalysisResult VGAVisualGlobalDepth::run(Communicator *, PointMap &map, bool) {
 
     AnalysisResult result;
 
@@ -28,7 +14,7 @@ AnalysisResult VGAVisualGlobalDepth::run(Communicator *,
 
     // n.b., insert columns sets values to -1 if the column already exists
     std::string colText = "Visual Step Depth";
-    int col = attributes.insertOrResetColumn(colText);
+    auto col = attributes.insertOrResetColumn(colText);
     result.addAttribute(colText);
 
     for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
@@ -78,7 +64,7 @@ AnalysisResult VGAVisualGlobalDepth::run(Communicator *,
 
     // force redisplay:
     map.setDisplayedAttribute(-2);
-    map.setDisplayedAttribute(col);
+    map.setDisplayedAttribute(static_cast<int>(col));
 
     result.completed = true;
     return result;

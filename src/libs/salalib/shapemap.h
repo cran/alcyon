@@ -1,39 +1,25 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // This is my code to make a set of axial lines from a set of boundary lines
 
 #pragma once
 
-#include "salalib/attributetable.h"
-#include "salalib/attributetablehelpers.h"
-#include "salalib/attributetableview.h"
-#include "salalib/connector.h"
-#include "salalib/importtypedefs.h"
-#include "salalib/layermanagerimpl.h"
-#include "salalib/parsers/mapinfodata.h"
-#include "salalib/spacepix.h"
+#include "attributetable.h"
+#include "attributetablehelpers.h"
+#include "attributetableview.h"
+#include "connector.h"
+#include "importtypedefs.h"
+#include "layermanagerimpl.h"
+#include "parsers/mapinfodata.h"
+#include "spacepix.h"
 
-#include "genlib/bsptree.h"
 #include "genlib/containerutils.h"
 #include "genlib/p2dpoly.h"
-#include "genlib/readwritehelpers.h"
-#include "genlib/stringutils.h"
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -145,7 +131,18 @@ class SalaShape {
         m_area = 0.0;
         m_perimeter = m_region.length();
     }
-    //
+    bool operator==(const SalaShape &other) const {
+        return                                     //
+            m_type == other.getType() &&           //
+            m_centroid == other.getCentroid() &&   //
+            m_draworder == other.getDrawOrder() && //
+            m_region == other.getLine() &&         //
+            m_area == other.getArea() &&           //
+            m_perimeter == other.getPerimeter();
+    }
+    unsigned char getType() const { return m_type; }
+    int getDrawOrder() const { return m_draworder; }
+
     bool isOpen() const { return (m_type & SHAPE_CLOSED) == 0; }
     bool isClosed() const { return (m_type & SHAPE_CLOSED) == SHAPE_CLOSED; }
     bool isPoint() const { return (m_type == SHAPE_POINT); }
@@ -175,7 +172,7 @@ class SalaShape {
     std::vector<SalaEdgeU> getClippingSet(QtRegion &clipframe) const;
     //
     bool read(std::istream &stream);
-    bool write(std::ofstream &stream);
+    bool write(std::ofstream &stream) const;
 
     std::vector<Line> getAsLines() const {
         std::vector<Line> lines;
@@ -250,11 +247,6 @@ class ShapeMap : public PixelBase {
     // quick grab for shapes
     depthmapX::ColumnMatrix<std::vector<ShapeRef>> m_pixel_shapes; // i rows of j columns
     //
-    // allow quick closest line test (note only works for a given layer, with many layers will be
-    // tricky)
-    mutable BSPNode *m_bsp_root = nullptr;
-    mutable bool m_bsp_tree = false;
-    //
     std::map<int, SalaShape> m_shapes;
     //
     std::vector<SalaEvent> m_undobuffer;
@@ -271,7 +263,7 @@ class ShapeMap : public PixelBase {
     // for geometric operations
     double m_tolerance;
     // for screen drawing
-    mutable std::vector<int> m_display_shapes;
+    mutable std::vector<size_t> m_display_shapes;
     mutable int m_current;
     mutable bool m_invalidate;
     //
@@ -295,8 +287,11 @@ class ShapeMap : public PixelBase {
 
   public:
     ShapeMap(const std::string &name = std::string(), int type = EMPTYMAP);
-    virtual ~ShapeMap();
-    void copy(const ShapeMap &shapemap, int copyflags = 0);
+
+    // TODO: copyMapType is currently set to false, because previous versions
+    // of the library assume this, and some regression tests fail. Update
+    // on next regression baseline executabled
+    void copy(const ShapeMap &shapemap, int copyflags = 0, bool copyMapType = false);
 
     ShapeMap(ShapeMap &&other)
         : m_name(std::move(other.m_name)), m_pixel_shapes(std::move(other.m_pixel_shapes)),
@@ -315,6 +310,8 @@ class ShapeMap : public PixelBase {
     }
     ShapeMap(const ShapeMap &) = delete;
     ShapeMap &operator=(const ShapeMap &other) = delete;
+
+    virtual ~ShapeMap() = default;
 
     // TODO: These three functions should be refactored out of the code as much as possible
     // they are only left here because they're being used by various components that still
@@ -337,11 +334,11 @@ class ShapeMap : public PixelBase {
     size_t getShapeCount() const { return m_shapes.size(); }
     // num shapes for this object (note, request by object rowid
     // -- on interrogation, this is what you will usually receive)
-    size_t getShapeCount(int rowid) const {
+    size_t getShapeCount(size_t rowid) const {
         return depthmapX::getMapAtIndex(m_shapes, rowid)->second.m_points.size();
     }
     //
-    int getIndex(int rowid) const { return depthmapX::getMapAtIndex(m_shapes, rowid)->first; }
+    int getIndex(size_t rowid) const { return depthmapX::getMapAtIndex(m_shapes, rowid)->first; }
     //
     // add shape tools
     void makePolyPixels(int shaperef);
@@ -351,7 +348,7 @@ class ShapeMap : public PixelBase {
     void removePolyPixels(int shaperef);
     //
     //
-    void init(int size, const QtRegion &r);
+    void init(size_t size, const QtRegion &r);
     int getNextShapeKey();
     // convert a single point into a shape
     int makePointShapeWithRef(const Point2f &point, int shape_ref, bool tempshape = false,
@@ -411,29 +408,26 @@ class ShapeMap : public PixelBase {
     // test if point is inside a particular shape
     bool pointInPoly(const Point2f &p, int shaperef) const;
     // retrieve lists of polys point intersects:
-    std::vector<int> pointInPolyList(const Point2f &p) const;
-    std::vector<int> lineInPolyList(const Line &li, size_t lineref = -1,
-                                    double tolerance = 0.0) const;
-    std::vector<int> polyInPolyList(int polyref, double tolerance = 0.0) const;
-    std::vector<int> shapeInPolyList(const SalaShape &shape);
+    std::vector<size_t> pointInPolyList(const Point2f &p) const;
+    // TODO: Fix casting -1 to size_t
+    std::vector<size_t> lineInPolyList(const Line &li, std::optional<size_t> lineref = std::nullopt,
+                                       double tolerance = 0.0) const;
+    std::vector<size_t> polyInPolyList(int polyref, double tolerance = 0.0) const;
+    std::vector<size_t> shapeInPolyList(const SalaShape &shape);
     // helper to make actual test of point in shape:
-    int testPointInPoly(const Point2f &p, const ShapeRef &shape) const;
+    std::optional<size_t> testPointInPoly(const Point2f &p, const ShapeRef &shape) const;
     // also allow look for a close polyline:
     int getClosestOpenGeom(const Point2f &p) const;
-    // this version uses a BSP tree to find closest line (currently only line shapes)
-    int getClosestLine(const Point2f &p) const;
     // this version simply finds the closest vertex to the point
     Point2f getClosestVertex(const Point2f &p) const;
     // Connect a particular shape into the graph
-    int connectIntersected(int rowid, bool linegraph);
+    size_t connectIntersected(int rowid, bool linegraph);
     // Get the connections for a particular line
-    std::vector<int> getLineConnections(int lineref, double tolerance);
+    std::vector<size_t> getLineConnections(int lineref, double tolerance);
     // Get arbitrary shape connections for a particular shape
-    std::vector<int> getShapeConnections(int polyref, double tolerance);
+    std::vector<size_t> getShapeConnections(int polyref, double tolerance);
     // Make all connections
     void makeShapeConnections();
-    //
-    bool makeBSPtree() const;
     //
     const std::vector<Connector> &getConnections() const { return m_connectors; }
     std::vector<Connector> &getConnections() { return m_connectors; }
@@ -450,8 +444,8 @@ class ShapeMap : public PixelBase {
 
   public:
     const std::string &getName() const { return m_name; }
-    int addAttribute(const std::string &name) { return m_attributes->insertOrResetColumn(name); }
-    void removeAttribute(int col) { m_attributes->removeColumn(col); }
+    size_t addAttribute(const std::string &name) { return m_attributes->insertOrResetColumn(name); }
+    void removeAttribute(size_t col) { m_attributes->removeColumn(col); }
     // I don't want to do this, but every so often you will need to update this table
     // use const version by preference
     AttributeTable &getAttributeTable() { return *m_attributes.get(); }
@@ -463,31 +457,37 @@ class ShapeMap : public PixelBase {
 
   public:
     // layer functionality
-    bool isLayerVisible(int layerid) const { return m_layers.isLayerVisible(layerid); }
-    void setLayerVisible(int layerid, bool show) { m_layers.setLayerVisible(layerid, show); }
+    bool isLayerVisible(size_t layerid) const { return m_layers.isLayerVisible(layerid); }
+    void setLayerVisible(size_t layerid, bool show) { m_layers.setLayerVisible(layerid, show); }
     bool selectionToLayer(const std::string &name = std::string("Unnamed"));
 
   public:
     double getDisplayMinValue() const {
         return (m_displayed_attribute != -1)
-                   ? m_attributes->getColumn(m_displayed_attribute).getStats().min
+                   ? m_attributes->getColumn(static_cast<size_t>(m_displayed_attribute))
+                         .getStats()
+                         .min
                    : 0;
     }
     double getDisplayMaxValue() const {
         return (m_displayed_attribute != -1)
-                   ? m_attributes->getColumn(m_displayed_attribute).getStats().max
+                   ? m_attributes->getColumn(static_cast<size_t>(m_displayed_attribute))
+                         .getStats()
+                         .max
                    : (m_shapes.size() > 0 ? m_shapes.rbegin()->first : 0);
     }
 
     const DisplayParams &getDisplayParams() const {
-        return m_attributes->getColumn(m_displayed_attribute).getDisplayParams();
+        return m_attributes->getColumn(static_cast<size_t>(m_displayed_attribute))
+            .getDisplayParams();
     }
     // make a local copy of the display params for access speed:
     void setDisplayParams(const DisplayParams &dp, bool apply_to_all = false) {
         if (apply_to_all)
             m_attributes->setDisplayParams(dp);
         else
-            m_attributes->getColumn(m_displayed_attribute).setDisplayParams(dp);
+            m_attributes->getColumn(static_cast<size_t>(m_displayed_attribute))
+                .setDisplayParams(dp);
     }
     //
     mutable bool m_show_lines;
@@ -506,6 +506,7 @@ class ShapeMap : public PixelBase {
     //
   public:
     void setDisplayedAttribute(int col);
+    void setDisplayedAttribute(size_t col) { setDisplayedAttribute(static_cast<int>(col)); }
     // use set displayed attribute instead unless you are deliberately changing the column order:
     void overrideDisplayedAttribute(int attribute) { m_displayed_attribute = attribute; }
     // now, there is a slightly odd thing here: the displayed attribute can go out of step with the
@@ -523,8 +524,10 @@ class ShapeMap : public PixelBase {
     void invalidateDisplayedAttribute() { m_invalidate = true; }
     //
     double getDisplayedAverage() {
-        return m_attributes->getColumn(m_displayed_attribute).getStats().total /
-               m_attributes->getNumRows();
+        return m_attributes->getColumn(static_cast<unsigned int>(m_displayed_attribute))
+                   .getStats()
+                   .total /
+               static_cast<double>(m_attributes->getNumRows());
     }
     //
   protected:
@@ -567,13 +570,14 @@ class ShapeMap : public PixelBase {
     bool findNextShape(bool &nextlayer) const;
     const SalaShape &getNextShape() const;
     const PafColor getShapeColor() const {
-        AttributeKey key(m_display_shapes[m_current]);
+        AttributeKey key(static_cast<int>(m_display_shapes[static_cast<size_t>(m_current)]));
         const AttributeRow &row = m_attributes->getRow(key);
         return dXreimpl::getDisplayColor(key, row, *m_attribHandle.get(), true);
         ;
     }
     bool getShapeSelected() const {
-        return depthmapX::getMapAtIndex(m_shapes, m_display_shapes[m_current])->second.m_selected;
+        return depthmapX::getMapAtIndex(m_shapes, m_display_shapes[static_cast<size_t>(m_current)])
+            ->second.m_selected;
     }
     //
     double getLocationValue(const Point2f &point) const;
@@ -586,7 +590,7 @@ class ShapeMap : public PixelBase {
     //
     double getSpacing() const {
         return __max(m_region.width(), m_region.height()) /
-               (10 * log((double)10 + m_shapes.size()));
+               (10 * log((double)10 + static_cast<double>(m_shapes.size())));
     }
     //
     // dangerous: accessor for the shapes themselves:
@@ -604,8 +608,8 @@ class ShapeMap : public PixelBase {
     //
     // links and unlinks
   protected:
-    std::vector<OrderedIntPair> m_links;
-    std::vector<OrderedIntPair> m_unlinks;
+    std::vector<OrderedSizeTPair> m_links;
+    std::vector<OrderedSizeTPair> m_unlinks;
     mutable int m_curlinkline;
     mutable int m_curunlinkpoint;
 
@@ -613,11 +617,11 @@ class ShapeMap : public PixelBase {
     bool clearLinks();
     bool linkShapes(const Point2f &p);
     bool linkShapesFromRefs(int ref1, int ref2, bool refresh = true);
-    bool linkShapes(int index1, int index2, bool refresh = true);
-    bool linkShapes(int id1, int dir1, int id2, int dir2, float weight);
+    bool linkShapes(size_t index1, size_t index2, bool refresh = true);
+    bool linkShapes(size_t id1, int dir1, size_t id2, int dir2, float weight);
     bool unlinkShapes(const Point2f &p);
     bool unlinkShapesFromRefs(int index1, int index2, bool refresh = true);
-    bool unlinkShapes(int index1, int index2, bool refresh = true);
+    bool unlinkShapes(size_t index1, size_t index2, bool refresh = true);
     bool unlinkShapesByKey(int key1, int key2, bool refresh = true);
     bool unlinkShapeSet(std::istream &idset, int refcol);
 
@@ -627,8 +631,8 @@ class ShapeMap : public PixelBase {
     Line getNextLinkLine() const;
     std::vector<SimpleLine> getAllLinkLines();
 
-    const std::vector<OrderedIntPair> &getLinks() { return m_links; }
-    const std::vector<OrderedIntPair> &getUnlinks() { return m_unlinks; }
+    const std::vector<OrderedSizeTPair> &getLinks() { return m_links; }
+    const std::vector<OrderedSizeTPair> &getUnlinks() { return m_unlinks; }
     // specific to axial line graphs
     bool findNextUnlinkPoint() const;
     Point2f getNextUnlinkPoint() const;

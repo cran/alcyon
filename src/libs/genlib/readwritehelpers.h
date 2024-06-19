@@ -1,37 +1,26 @@
-// Copyright (C) 2017 Christian Sailer
-// Copyright (C) 2018 Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2017 Christian Sailer
+// SPDX-FileCopyrightText: 2018 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
-#include "genlib/exceptions.h"
+#include "exceptions.h"
 
 #include <iostream>
 #include <map>
 #include <vector>
 
 namespace dXreadwrite {
-    // The read/write methods can only be used for vectors of stack allocated types (basic data, POD)
-    // read in vector data and write to an existing vector (overwriting its previous contents)
+    // The read/write methods can only be used for vectors of stack allocated types (basic data,
+    // POD) read in vector data and write to an existing vector (overwriting its previous contents)
     template <typename T> size_t readIntoVector(std::istream &stream, std::vector<T> &vec) {
         vec.clear();
         unsigned int size;
         stream.read(reinterpret_cast<char *>(&size), sizeof(size));
         if (size > 0) {
             vec.resize(size);
-            stream.read(reinterpret_cast<char *>(vec.data()), sizeof(T) * std::streamsize(size));
+            stream.read(reinterpret_cast<char *>(vec.data()), sizeof(T) * size);
         }
         return size;
     }
@@ -40,6 +29,19 @@ namespace dXreadwrite {
         std::vector<T> vec;
         readIntoVector(stream, vec);
         return vec;
+    }
+
+    // read in a vector into a new vector and cast according to new type
+    template <typename F, typename T>
+    size_t readFromCastIntoVector(std::istream &stream, std::vector<T> &vecT) {
+        std::vector<F> vecF;
+        readIntoVector(stream, vecF);
+        vecT.clear();
+        vecT.reserve(vecF.size());
+        for (const auto &i : vecF) {
+            vecT.push_back(static_cast<T>(i));
+        }
+        return vecF.size();
     }
 
     template <typename T> void writeVector(std::ostream &stream, const std::vector<T> &vec) {
@@ -51,12 +53,32 @@ namespace dXreadwrite {
         const unsigned int length = static_cast<const unsigned int>(vec.size());
         stream.write(reinterpret_cast<const char *>(&length), sizeof(length));
         if (length > 0) {
-            stream.write(reinterpret_cast<const char *>(vec.data()), sizeof(T) * std::streamsize(length));
+            stream.write(reinterpret_cast<const char *>(vec.data()), sizeof(T) * length);
+        }
+    }
+
+    template <typename T, typename F>
+    void writeCastVector(std::ostream &stream, std::vector<F> &vecF) {
+        // READ / WRITE USES 32-bit LENGTHS (number of elements) for compatibility reasons
+
+        if (vecF.size() > size_t(static_cast<unsigned int>(-1))) {
+            throw new depthmapX::RuntimeException("Vector exceeded max size for streaming");
+        }
+        const unsigned int length = static_cast<const unsigned int>(vecF.size());
+        stream.write(reinterpret_cast<const char *>(&length), sizeof(length));
+        if (length > 0) {
+            std::vector<T> vecT;
+            vecT.reserve(vecF.size());
+            for (const auto &i : vecF) {
+                vecT.push_back(static_cast<T>(i));
+            }
+            stream.write(reinterpret_cast<const char *>(vecT.data()), sizeof(T) * length);
         }
     }
 
     // read in map data and write to an existing map (overwriting its previous contents)
-    template <typename K, typename V> size_t readIntoMap(std::istream &stream, std::map<K, V> &map) {
+    template <typename K, typename V>
+    size_t readIntoMap(std::istream &stream, std::map<K, V> &map) {
         map.clear();
         unsigned int size;
         stream.read(reinterpret_cast<char *>(&size), sizeof(size));
@@ -76,7 +98,8 @@ namespace dXreadwrite {
         return map;
     }
 
-    template <typename K, typename V> void writeMap(std::ostream &stream, const std::map<K, V> &map) {
+    template <typename K, typename V>
+    void writeMap(std::ostream &stream, const std::map<K, V> &map) {
         // READ / WRITE USES 32-bit LENGTHS (number of elements) for compatibility reasons
 
         if (map.size() > size_t(static_cast<unsigned int>(-1))) {

@@ -1,19 +1,7 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010 University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "bsptree.h"
 
@@ -42,7 +30,7 @@ void BSPTree::make(Communicator *communicator, time_t atime, const std::vector<T
     nodeStack.push(root);
     lineStack.push(makeLines(communicator, atime, lines, root));
 
-    int progress = 0;
+    size_t progress = 0;
     while (!nodeStack.empty()) {
         progress++; // might need to increase by 2 because it was one for each left/right in the
                     // previous iteration
@@ -84,7 +72,7 @@ int BSPTree::pickMidpointLine(const std::vector<TaggedLine> &lines, BSPNode *par
     for (size_t i = 0; i < lines.size(); i++) {
         midpoint += lines[i].line.start() + lines[i].line.end();
     }
-    midpoint /= 2.0 * lines.size();
+    midpoint /= 2.0 * static_cast<double>(lines.size());
     bool ver = true;
     if (par && par->getLine().height() > par->getLine().width()) {
         ver = false;
@@ -140,8 +128,8 @@ BSPTree::makeLines(Communicator *, time_t, const std::vector<TaggedLine> &lines,
         chosen = 0;
     }
 
-    Line chosenLine = lines[chosen].line;
-    int chosenTag = lines[chosen].tag;
+    Line chosenLine = lines[static_cast<unsigned int>(chosen)].line;
+    int chosenTag = lines[static_cast<unsigned int>(chosen)].tag;
     base->setLine(chosenLine);
     base->setTag(chosenTag);
 

@@ -1,5 +1,11 @@
-#include "salalib/axialminimiser.h"
-#include "salalib/tolerances.h"
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "axialminimiser.h"
+
+#include "tolerances.h"
 
 static int compareValueTriplet(const void *p1, const void *p2) {
     ValueTriplet *vp1 = (ValueTriplet *)p1;
@@ -46,7 +52,7 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
         m_radialsegcounts[x] = 0;
     }
     int y = -1;
-    for (auto axSegCut : axsegcuts) {
+    for (const auto &axSegCut : axsegcuts) {
         y++;
         for (int cut : axSegCut.second) {
             m_radialsegcounts[cut] += 1;
@@ -68,7 +74,7 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
 
         removedflag = false;
         for (size_t i = 0; i < m_axialconns.size(); i++) {
-            int ii = m_vps[i].index;
+            auto ii = static_cast<size_t>(m_vps[i].index);
             if (m_removed[ii] || !m_affected[ii] || m_vital[ii]) {
                 continue;
             }
@@ -76,8 +82,8 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
             {
                 bool vitalconn = false;
                 for (size_t j = 0; j < keyvertexconns[ii].size(); j++) {
-                    // first check to see if removing this line will cause elimination of a vital
-                    // connection
+                    // first check to see if removing this line will cause elimination of
+                    // a vital connection
                     if (keyvertexcounts[keyvertexconns[ii][j]] <= 1) {
                         // connect vital... just go on to the next one:
                         vitalconn = true;
@@ -94,21 +100,21 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
             m_affected[ii] = false;
             bool subset = false;
             for (size_t j = 0; j < axa.m_connections.size(); j++) {
-                int indextob = axa.m_connections[j];
+                auto indextob = axa.m_connections[j];
                 if (indextob == ii ||
-                    m_removed[indextob]) { // <- removed[indextob] should never happen as it should
-                                           // have been removed below
+                    m_removed[indextob]) { // <- removed[indextob] should never happen
+                                           // as it should have been removed below
                     continue;
                 }
                 Connector &axb = m_axialconns[indextob];
                 if (axa.m_connections.size() <= axb.m_connections.size()) {
-                    // change to 10.08, coconnecting is 1 -> connection to other line is implicitly
-                    // handled
+                    // change to 10.08, coconnecting is 1 -> connection to other line is
+                    // implicitly handled
                     int coconnecting = 1;
                     // first check it's a connection subset
-                    // note that changes in 10.08 mean that lines no longer connect to themselves
-                    // this means that the subset 1 connects {2,3} and 2 connects {1,3} are
-                    // equivalent
+                    // note that changes in 10.08 mean that lines no longer connect to
+                    // themselves this means that the subset 1 connects {2,3} and 2
+                    // connects {1,3} are equivalent
                     for (size_t axai = 0, axbi = 0;
                          axai < axa.m_connections.size() && axbi < axb.m_connections.size();
                          axai++, axbi++) {
@@ -116,7 +122,8 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
                         if (axa.m_connections[axai] == indextob) {
                             axai++;
                         }
-                        // extra 10.08 add axb.m_connections[axbi] == ii -> step over connection to
+                        // extra 10.08 add axb.m_connections[axbi] == ii -> step over
+                        // connection to
                         // a
                         while (axbi < axb.m_connections.size() &&
                                (axb.m_connections[axbi] == ii ||
@@ -162,7 +169,7 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int>> &axsegcuts,
                     for (auto affectedconnection : affectedconnections) {
                         if (!m_removed[affectedconnection]) {
                             auto &connections = m_axialconns[affectedconnection].m_connections;
-                            depthmapX::findAndErase(connections, int(removeindex));
+                            depthmapX::findAndErase(connections, removeindex);
                             m_affected[affectedconnection] = true;
                         }
                     }
@@ -213,7 +220,8 @@ void AxialMinimiser::fewestLongest(std::map<int, std::set<int>> &axsegcuts,
         bool vitalconn = false;
         size_t k;
         for (k = 0; k < keyvertexconns[j].size(); k++) {
-            // first check to see if removing this line will cause elimination of a vital connection
+            // first check to see if removing this line will cause elimination of a
+            // vital connection
             if (keyvertexcounts[keyvertexconns[j][k]] <= 1) {
                 // connect vital... just go on to the next one:
                 vitalconn = true;
@@ -255,7 +263,7 @@ void AxialMinimiser::fewestLongest(std::map<int, std::set<int>> &axsegcuts,
             for (auto affectedconnection : affectedconnections) {
                 if (!m_removed[affectedconnection]) {
                     auto &connections = m_axialconns[size_t(affectedconnection)].m_connections;
-                    depthmapX::findAndErase(connections, int(j));
+                    depthmapX::findAndErase(connections, static_cast<size_t>(j));
                     m_affected[affectedconnection] = true;
                 }
             }
@@ -280,7 +288,8 @@ bool AxialMinimiser::checkVital(int checkindex, std::set<int> &axSegCut,
 
     bool presumedvital = true;
     int nonvitalcount = 0, vitalsegs = 0;
-    // again, this time more rigourously... check any connected pairs don't cover the link...
+    // again, this time more rigourously... check any connected pairs don't cover
+    // the link...
     for (int cut : axSegCut) {
         if (m_radialsegcounts[cut] <= 1) {
             bool nonvitalseg = false;
@@ -312,8 +321,8 @@ bool AxialMinimiser::checkVital(int checkindex, std::set<int> &axSegCut,
                     auto &connections = m_axialconns[size_t(diva)].m_connections;
                     if (std::find(connections.begin(), connections.end(), divb) !=
                         connections.end()) {
-                        // as a further challenge, they must link within in the zone of interest,
-                        // not on the far side of it... arg!
+                        // as a further challenge, they must link within in the zone of
+                        // interest, not on the far side of it... arg!
                         Point2f p = intersection_point(axiallines[diva].getLine(),
                                                        axiallines[divb].getLine(), TOLERANCE_A);
                         if (p.insegment(rlinea.keyvertex, rlinea.openspace, rlineb.openspace,

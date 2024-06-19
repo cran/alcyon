@@ -1,23 +1,12 @@
-// salaprogram.h - a component of the depthmapX - spatial network analysis platform
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 // SalaScripting language
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "salalib/attributetable.h"
+#include "attributetable.h"
 
 #include "genlib/stringutils.h"
 
@@ -91,12 +80,15 @@ struct SalaList {
 };
 
 struct SalaGrf {
-    int node;
+    int node = 0;
     union Map {
         PointMap *point; // vga
         ShapeMap *shape; // everything else
     };
     Map map;
+
+  public:
+    SalaGrf() : map(){};
 };
 
 // SalaObj is 16 bytes, which is larger than I intended, but it appears
@@ -215,7 +207,7 @@ class SalaObj {
         int var;
         int count; // used by brackets to count how many objects they have
     };
-    Data data;
+    Data data{};
     Type type;
 
   public:
@@ -237,7 +229,7 @@ class SalaObj {
         type = t;
         if (t & S_LIST) {
             data.list.refcount = new int(1);
-            data.list.list = new std::vector<SalaObj>(v); // set blanks
+            data.list.list = new std::vector<SalaObj>(static_cast<size_t>(v)); // set blanks
         } else {
             data.var = v;
         }
@@ -280,7 +272,7 @@ class SalaObj {
         type = S_UNINIT;
     } // <- used to uninitialise variables before running program, thus they give nice error
       // messages if used before initialisation
-    int func() const { return data.func; }
+    int func() const { return static_cast<int>(data.func); }
     int precedence() const;
     bool toBool() const;
     int toInt() const;
@@ -470,6 +462,7 @@ inline SalaObj::SalaObj(const SalaObj &obj) {
         throw SalaError("Cannot instantiate unknown type");
     }
 }
+
 inline SalaObj &SalaObj::operator=(const SalaObj &obj) {
     if (this != &obj) {
         reset();
@@ -867,15 +860,15 @@ inline SalaObj &SalaObj::list_at(int i) {
         i += (int)data.list.list->size();
     if (i < 0 || size_t(i) >= data.list.list->size())
         throw SalaError("Index out of range");
-    return data.list.list->at(i);
+    return data.list.list->at(static_cast<size_t>(i));
 }
 inline SalaObj SalaObj::char_at(int i) // actually returns a string of the char
 {
     if (i < 0)
-        i += data.str.length();
+        i += static_cast<int>(data.str.length());
     if (i < 0 || i >= static_cast<int>(data.str.length()))
         throw SalaError("String index out of range");
-    return SalaObj(std::string(1, data.str.char_at(i)));
+    return SalaObj(std::string(1, data.str.char_at(static_cast<size_t>(i))));
 }
 inline int SalaObj::length() {
     if (type & S_LIST)

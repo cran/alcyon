@@ -1,28 +1,14 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/vgamodules/vgavisualglobal.h"
+#include "vgavisualglobal.h"
 
 #include "genlib/stringutils.h"
 
-AnalysisResult VGAVisualGlobal::run(Communicator *comm,
-                                    PointMap &map,
-                                    bool simple_version) {
+AnalysisResult VGAVisualGlobal::run(Communicator *comm, PointMap &map, bool simple_version) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -33,8 +19,10 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
 
     AttributeTable &attributes = map.getAttributeTable();
 
-    int entropy_col = -1, rel_entropy_col = -1, integ_dv_col = -1, integ_pv_col = -1,
-        integ_tk_col = -1, depth_col = -1, count_col = -1;
+    std::optional<size_t> entropy_col = std::nullopt, rel_entropy_col = std::nullopt,
+                          integ_dv_col = std::nullopt, integ_pv_col = std::nullopt,
+                          integ_tk_col = std::nullopt, depth_col = std::nullopt,
+                          count_col = std::nullopt;
     std::string radius_text;
     if (m_radius != -1) {
         radius_text = std::string(" R") + dXstring::formatString(int(m_radius), "%d");
@@ -74,14 +62,14 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
     }
 #endif
 
-    int count = 0;
+    size_t count = 0;
 
     depthmapX::RowMatrix<int> miscs(map.getRows(), map.getCols());
     depthmapX::RowMatrix<PixelRef> extents(map.getRows(), map.getCols());
 
     for (size_t i = 0; i < map.getCols(); i++) {
         for (size_t j = 0; j < map.getRows(); j++) {
-            PixelRef curs = PixelRef(i, j);
+            PixelRef curs = PixelRef(static_cast<short>(i), static_cast<short>(j));
             if (map.getPoint(curs).filled()) {
 
                 if ((map.getPoint(curs).contextfilled() && !curs.iseven()) || (m_gates_only)) {
@@ -92,7 +80,7 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                 for (size_t ii = 0; ii < map.getCols(); ii++) {
                     for (size_t jj = 0; jj < map.getRows(); jj++) {
                         miscs(jj, ii) = 0;
-                        extents(jj, ii) = PixelRef(ii, jj);
+                        extents(jj, ii) = PixelRef(static_cast<short>(ii), static_cast<short>(jj));
                     }
                 }
 
@@ -104,7 +92,7 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                 search_tree.push_back(PixelRefVector());
                 search_tree.back().push_back(curs);
 
-                int level = 0;
+                size_t level = 0;
                 while (search_tree[level].size()) {
                     search_tree.push_back(PixelRefVector());
                     const PixelRefVector &searchTreeAtLevel = search_tree[level];
@@ -118,7 +106,7 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                             total_nodes += 1;
                             distribution.back() += 1;
                             if ((int)m_radius == -1 ||
-                                (level < (int)m_radius &&
+                                (level < static_cast<size_t>(m_radius) &&
                                  (!p.contextfilled() || currLvlIter->iseven()))) {
                                 extractUnseen(p.getNode(), search_tree[level + 1], miscs, extents);
                                 pmisc = ~0;
@@ -145,14 +133,14 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                 // note -- total_nodes includes this one -- mean depth as per p.108 Social Logic of
                 // Space
                 if (!simple_version) {
-                    row.setValue(count_col,
+                    row.setValue(count_col.value(),
                                  float(total_nodes)); // note: total nodes includes this one
                 }
                 // ERROR !!!!!!
                 if (total_nodes > 1) {
                     double mean_depth = double(total_depth) / double(total_nodes - 1);
                     if (!simple_version) {
-                        row.setValue(depth_col, float(mean_depth));
+                        row.setValue(depth_col.value(), float(mean_depth));
                     }
                     // total nodes > 2 to avoid divide by 0 (was > 3)
                     if (total_nodes > 2 && mean_depth > 1.0) {
@@ -162,24 +150,24 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                         double rra_d = ra / dvalue(total_nodes);
                         double rra_p = ra / pvalue(total_nodes);
                         double integ_tk = teklinteg(total_nodes, total_depth);
-                        row.setValue(integ_dv_col, float(1.0 / rra_d));
+                        row.setValue(integ_dv_col.value(), float(1.0 / rra_d));
                         if (!simple_version) {
-                            row.setValue(integ_pv_col, float(1.0 / rra_p));
+                            row.setValue(integ_pv_col.value(), float(1.0 / rra_p));
                         }
                         if (total_depth - total_nodes + 1 > 1) {
                             if (!simple_version) {
-                                row.setValue(integ_tk_col, float(integ_tk));
+                                row.setValue(integ_tk_col.value(), float(integ_tk));
                             }
                         } else {
                             if (!simple_version) {
-                                row.setValue(integ_tk_col, -1.0f);
+                                row.setValue(integ_tk_col.value(), -1.0f);
                             }
                         }
                     } else {
-                        row.setValue(integ_dv_col, (float)-1);
+                        row.setValue(integ_dv_col.value(), (float)-1);
                         if (!simple_version) {
-                            row.setValue(integ_pv_col, (float)-1);
-                            row.setValue(integ_tk_col, (float)-1);
+                            row.setValue(integ_pv_col.value(), (float)-1);
+                            row.setValue(integ_tk_col.value(), (float)-1);
                         }
                     }
                     double entropy = 0.0, rel_entropy = 0.0, factorial = 1.0;
@@ -197,14 +185,14 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
                         }
                     }
                     if (!simple_version) {
-                        row.setValue(entropy_col, float(entropy));
-                        row.setValue(rel_entropy_col, float(rel_entropy));
+                        row.setValue(entropy_col.value(), float(entropy));
+                        row.setValue(rel_entropy_col.value(), float(rel_entropy));
                     }
                 } else {
                     if (!simple_version) {
-                        row.setValue(depth_col, (float)-1);
-                        row.setValue(entropy_col, (float)-1);
-                        row.setValue(rel_entropy_col, (float)-1);
+                        row.setValue(depth_col.value(), (float)-1);
+                        row.setValue(entropy_col.value(), (float)-1);
+                        row.setValue(rel_entropy_col.value(), (float)-1);
                     }
                 }
                 count++; // <- increment count
@@ -226,7 +214,7 @@ AnalysisResult VGAVisualGlobal::run(Communicator *comm,
             map.getPoint(curs).m_extent = extents(j, i);
         }
     }
-    map.setDisplayedAttribute(integ_dv_col);
+    map.setDisplayedAttribute(integ_dv_col.value());
 
     result.completed = true;
 

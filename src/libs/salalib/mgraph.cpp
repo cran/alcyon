@@ -1,57 +1,44 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2024, Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // The meta graph
 
-#include "salalib/mgraph.h"
-#include "salalib/alllinemap.h"
-#include "salalib/isovist.h"
-#include "salalib/mapconverter.h"
+#include "mgraph.h"
 
-#include "salalib/importutils.h"
-#include "salalib/parsers/ntfp.h"
-#include "salalib/parsers/tigerp.h"
-
-#include "salalib/agents/agenthelpers.h"
-#include "salalib/axialmodules/axialintegration.h"
-#include "salalib/axialmodules/axiallocal.h"
-#include "salalib/axialmodules/axialstepdepth.h"
-#include "salalib/segmmodules/segmangular.h"
-#include "salalib/segmmodules/segmmetric.h"
-#include "salalib/segmmodules/segmmetricpd.h"
-#include "salalib/segmmodules/segmtopological.h"
-#include "salalib/segmmodules/segmtopologicalpd.h"
-#include "salalib/segmmodules/segmtulip.h"
-#include "salalib/segmmodules/segmtulipdepth.h"
-#include "salalib/vgamodules/vgaangular.h"
-#include "salalib/vgamodules/vgaangulardepth.h"
-#include "salalib/vgamodules/vgaisovist.h"
-#include "salalib/vgamodules/vgametric.h"
-#include "salalib/vgamodules/vgametricdepth.h"
-#include "salalib/vgamodules/vgathroughvision.h"
-#include "salalib/vgamodules/vgavisualglobal.h"
-#include "salalib/vgamodules/vgavisualglobaldepth.h"
-#include "salalib/vgamodules/vgavisuallocal.h"
+#include "agents/agenthelpers.h"
+#include "alllinemap.h"
+#include "axialmodules/axialintegration.h"
+#include "axialmodules/axiallocal.h"
+#include "axialmodules/axialstepdepth.h"
+#include "importutils.h"
+#include "isovist.h"
+#include "mapconverter.h"
+#include "parsers/ntfp.h"
+#include "parsers/tigerp.h"
+#include "segmmodules/segmangular.h"
+#include "segmmodules/segmmetric.h"
+#include "segmmodules/segmmetricpd.h"
+#include "segmmodules/segmtopological.h"
+#include "segmmodules/segmtopologicalpd.h"
+#include "segmmodules/segmtulip.h"
+#include "segmmodules/segmtulipdepth.h"
+#include "vgamodules/vgaangular.h"
+#include "vgamodules/vgaangulardepth.h"
+#include "vgamodules/vgaisovist.h"
+#include "vgamodules/vgametric.h"
+#include "vgamodules/vgametricdepth.h"
+#include "vgamodules/vgathroughvision.h"
+#include "vgamodules/vgavisualglobal.h"
+#include "vgamodules/vgavisualglobaldepth.h"
+#include "vgamodules/vgavisuallocal.h"
 
 #include "genlib/comm.h"
 #include "genlib/p2dpoly.h"
+#include "genlib/readwritehelpers.h"
 
-#include "math.h"
-
+#include <math.h>
 #include <sstream>
 #include <tuple>
 
@@ -177,7 +164,8 @@ bool MetaGraph::setViewClass(int command) {
 }
 
 double MetaGraph::getLocationValue(const Point2f &point) {
-    // this varies according to whether axial or vga information is displayed on top
+    // this varies according to whether axial or vga information is displayed on
+    // top
     double val = -2;
 
     if (viewingProcessedPoints()) {
@@ -198,8 +186,8 @@ bool MetaGraph::setGrid(double spacing, const Point2f &offset) {
 
     m_state |= POINTMAPS;
 
-    // just reassert that we should be viewing this (since set grid is essentially a "new point
-    // map")
+    // just reassert that we should be viewing this (since set grid is essentially
+    // a "new point map")
     setViewClass(SHOWVGATOP);
 
     return true;
@@ -275,9 +263,7 @@ bool MetaGraph::makeGraph(Communicator *communicator, int algorithm, double maxd
         std::vector<Line> lines = getShownDrawingFilesAsLines();
         getDisplayedPointMap().blockLines(lines);
         // algorithm is now used for boundary graph option (as a simple boolean)
-        graphMade = getDisplayedPointMap().sparkGraph2(communicator,
-                                                       (algorithm != 0),
-                                                       maxdist);
+        graphMade = getDisplayedPointMap().sparkGraph2(communicator, (algorithm != 0), maxdist);
     } catch (Communicator::CancelledException) {
         graphMade = false;
     }
@@ -316,15 +302,18 @@ bool MetaGraph::analyseGraph(Communicator *communicator, Options options,
         analysisCompleted = true;
         if (options.point_depth_selection == 1) {
             if (m_view_class & VIEWVGA) {
-                analysisCompleted =
-                    VGAVisualGlobalDepth().run(communicator, getDisplayedPointMap(), false).completed;
+                analysisCompleted = VGAVisualGlobalDepth()
+                                        .run(communicator, getDisplayedPointMap(), false)
+                                        .completed;
             } else if (m_view_class & VIEWAXIAL) {
                 if (!getDisplayedShapeGraph().isSegmentMap()) {
-                    analysisCompleted =
-                        AxialStepDepth().run(communicator, getDisplayedShapeGraph(), false).completed;
+                    analysisCompleted = AxialStepDepth()
+                                            .run(communicator, getDisplayedShapeGraph(), false)
+                                            .completed;
                 } else {
-                    analysisCompleted =
-                        SegmentTulipDepth(1024).run(communicator, getDisplayedShapeGraph(), false).completed;
+                    analysisCompleted = SegmentTulipDepth(1024)
+                                            .run(communicator, getDisplayedShapeGraph(), false)
+                                            .completed;
                 }
             }
             // REPLACES:
@@ -338,39 +327,47 @@ bool MetaGraph::analyseGraph(Communicator *communicator, Options options,
                     SegmentMetricPD().run(communicator, getDisplayedShapeGraph(), false).completed;
             }
         } else if (options.point_depth_selection == 3) {
-            analysisCompleted = VGAAngularDepth().run(communicator, getDisplayedPointMap(), false).completed;
+            analysisCompleted =
+                VGAAngularDepth().run(communicator, getDisplayedPointMap(), false).completed;
         } else if (options.point_depth_selection == 4) {
             if (m_view_class & VIEWVGA) {
                 getDisplayedPointMap().binDisplay(communicator);
             } else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
-                analysisCompleted =
-                    SegmentTopologicalPD().run(communicator, getDisplayedShapeGraph(), false).completed;
+                analysisCompleted = SegmentTopologicalPD()
+                                        .run(communicator, getDisplayedShapeGraph(), false)
+                                        .completed;
             }
         } else if (options.output_type == Options::OUTPUT_ISOVIST) {
             auto shapes = getShownDrawingFilesAsShapes();
-            analysisCompleted =
-                VGAIsovist(shapes).run(communicator, getDisplayedPointMap(), simple_version).completed;
+            analysisCompleted = VGAIsovist(shapes)
+                                    .run(communicator, getDisplayedPointMap(), simple_version)
+                                    .completed;
         } else if (options.output_type == Options::OUTPUT_VISUAL) {
             bool localResult = true;
             bool globalResult = true;
             if (options.local) {
                 localResult = VGAVisualLocal(options.gates_only)
-                                  .run(communicator, getDisplayedPointMap(), simple_version).completed;
+                                  .run(communicator, getDisplayedPointMap(), simple_version)
+                                  .completed;
             }
             if (options.global) {
                 globalResult = VGAVisualGlobal(options.radius, options.gates_only)
-                                   .run(communicator, getDisplayedPointMap(), simple_version).completed;
+                                   .run(communicator, getDisplayedPointMap(), simple_version)
+                                   .completed;
             }
             analysisCompleted = globalResult & localResult;
         } else if (options.output_type == Options::OUTPUT_METRIC) {
             analysisCompleted = VGAMetric(options.radius, options.gates_only)
-                                    .run(communicator, getDisplayedPointMap(), simple_version).completed;
+                                    .run(communicator, getDisplayedPointMap(), simple_version)
+                                    .completed;
         } else if (options.output_type == Options::OUTPUT_ANGULAR) {
             analysisCompleted = VGAAngular(options.radius, options.gates_only)
-                                    .run(communicator, getDisplayedPointMap(), simple_version).completed;
+                                    .run(communicator, getDisplayedPointMap(), simple_version)
+                                    .completed;
         } else if (options.output_type == Options::OUTPUT_THRU_VISION) {
-            analysisCompleted =
-                VGAThroughVision().run(communicator, getDisplayedPointMap(), simple_version).completed;
+            analysisCompleted = VGAThroughVision()
+                                    .run(communicator, getDisplayedPointMap(), simple_version)
+                                    .completed;
         }
     } catch (Communicator::CancelledException) {
         analysisCompleted = false;
@@ -480,7 +477,8 @@ bool MetaGraph::moveSelShape(const Line &line) {
 
 //////////////////////////////////////////////////////////////////
 
-// returns 0: fail, 1: made isovist, 2: made isovist and added new shapemap layer
+// returns 0: fail, 1: made isovist, 2: made isovist and added new shapemap
+// layer
 int MetaGraph::makeIsovist(Communicator *communicator, const Point2f &p, double startangle,
                            double endangle, bool simple_version) {
     int isovistMade = 0;
@@ -491,13 +489,16 @@ int MetaGraph::makeIsovist(Communicator *communicator, const Point2f &p, double 
         m_view_class &= ~VIEWDATA;
         isovistMade = 1;
         iso.makeit(m_bsp_root, p, m_region, startangle, endangle);
-        int shapelayer = getMapRef(m_dataMaps, "Isovists");
-        if (shapelayer == -1) {
+        size_t shapelayer = 0;
+        auto mapRef = getMapRef(m_dataMaps, "Isovists");
+        if (!mapRef.has_value()) {
             m_dataMaps.emplace_back("Isovists", ShapeMap::DATAMAP);
             setDisplayedDataMapRef(m_dataMaps.size() - 1);
             shapelayer = m_dataMaps.size() - 1;
             m_state |= DATAMAPS;
             isovistMade = 2;
+        } else {
+            shapelayer = mapRef.value();
         }
         ShapeMap &map = m_dataMaps[shapelayer];
         // false: closed polygon, true: isovist
@@ -514,14 +515,14 @@ int MetaGraph::makeIsovist(Communicator *communicator, const Point2f &p, double 
 }
 
 std::set<std::string> MetaGraph::setIsovistData(Isovist &isovist, AttributeTable &table,
-                                                 AttributeRow &row, bool simple_version) {
+                                                AttributeRow &row, bool simple_version) {
     std::set<std::string> newColumns;
     auto [centroid, area] = isovist.getCentroidArea();
     auto [driftmag, driftang] = isovist.getDriftData();
     double perimeter = isovist.getPerimeter();
 
     std::string colText = "Isovist Area";
-    int col = table.getOrInsertColumn(colText);
+    auto col = table.getOrInsertColumn(colText);
     newColumns.insert(colText);
     row.setValue(col, float(area));
 
@@ -577,13 +578,15 @@ static std::pair<double, double> startendangle(Point2f vec, double fov) {
     return angles;
 }
 
-// returns 0: fail, 1: made isovist, 2: made isovist and added new shapemap layer
+// returns 0: fail, 1: made isovist, 2: made isovist and added new shapemap
+// layer
 int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simple_version) {
     int pathMade = 0;
 
-    // must be showing a suitable map -- that is, one which may have polylines or lines
+    // must be showing a suitable map -- that is, one which may have polylines or
+    // lines
     ShapeMap *map = NULL, *isovists = NULL;
-    int isovistmapref = -1;
+    size_t isovistmapref = 0;
     int viewclass = getViewClass() & VIEWFRONT;
     if (viewclass == VIEWAXIAL) {
         map = &getDisplayedShapeGraph();
@@ -593,8 +596,8 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
         return 0;
     }
 
-    // must have a selection: the selected shapes will form the set from which to create the isovist
-    // paths
+    // must have a selection: the selected shapes will form the set from which to
+    // create the isovist paths
     if (!map->hasSelectedElements()) {
         return 0;
     }
@@ -608,12 +611,14 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
             if (path.isLine() || path.isPolyLine()) {
                 if (first) {
                     pathMade = 1;
-                    isovistmapref = getMapRef(m_dataMaps, "Isovists");
-                    if (isovistmapref == -1) {
+                    auto imrf = getMapRef(m_dataMaps, "Isovists");
+                    if (!imrf.has_value()) {
                         m_dataMaps.emplace_back("Isovists", ShapeMap::DATAMAP);
                         isovistmapref = m_dataMaps.size() - 1;
                         setDisplayedDataMapRef(isovistmapref);
                         pathMade = 2;
+                    } else {
+                        isovistmapref = imrf.value();
                     }
                     isovists = &(m_dataMaps[isovistmapref]);
                     first = false;
@@ -664,7 +669,8 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
     return pathMade;
 }
 
-// this version uses your own isovist (and assumes no communicator required for BSP tree
+// this version uses your own isovist (and assumes no communicator required for
+// BSP tree
 bool MetaGraph::makeIsovist(const Point2f &p, Isovist &iso) {
     if (makeBSPtree()) {
         iso.makeit(m_bsp_root, p, m_region);
@@ -689,8 +695,8 @@ bool MetaGraph::makeBSPtree(Communicator *communicator) {
                     k++;
                     std::vector<Line> newLines = refShape.second.getAsLines();
                     // I'm not sure what the tagging was meant for any more,
-                    // tagging at the moment tags the *polygon* it was original attached to
-                    // must check it is not a zero length line:
+                    // tagging at the moment tags the *polygon* it was original attached
+                    // to must check it is not a zero length line:
                     for (const Line &line : newLines) {
                         if (line.length() > 0.0) {
                             partitionlines.push_back(TaggedLine(line, k));
@@ -713,7 +719,8 @@ bool MetaGraph::makeBSPtree(Communicator *communicator) {
 
         time_t atime = 0;
         if (communicator) {
-            communicator->CommPostMessage(Communicator::NUM_RECORDS, partitionlines.size());
+            communicator->CommPostMessage(Communicator::NUM_RECORDS,
+                                          static_cast<int>(partitionlines.size()));
             qtimer(atime, 0);
         }
 
@@ -735,52 +742,59 @@ bool MetaGraph::makeBSPtree(Communicator *communicator) {
 
 //////////////////////////////////////////////////////////////////
 
-int MetaGraph::addShapeGraph(std::unique_ptr<ShapeGraph> &shapeGraph) {
+size_t MetaGraph::addShapeGraph(std::unique_ptr<ShapeGraph> &shapeGraph) {
     m_shapeGraphs.push_back(std::move(shapeGraph));
-    int mapref = int(m_shapeGraphs.size() - 1);
+    auto mapref = m_shapeGraphs.size() - 1;
     setDisplayedShapeGraphRef(mapref);
     m_state |= SHAPEGRAPHS;
     setViewClass(SHOWAXIALTOP);
     return mapref;
 }
 
-int MetaGraph::addShapeGraph(const std::string &name, int type) {
+size_t MetaGraph::addShapeGraph(const std::string &name, int type) {
     std::unique_ptr<ShapeGraph> shapeGraph(new ShapeGraph(name, type));
-    int mapref = addShapeGraph(shapeGraph);
+    auto mapref = addShapeGraph(shapeGraph);
     // add a couple of default columns:
     AttributeTable &table = m_shapeGraphs[size_t(mapref)]->getAttributeTable();
-    int connIdx = table.insertOrResetLockedColumn("Connectivity");
+    auto connIdx = table.insertOrResetLockedColumn("Connectivity");
     if ((type & ShapeMap::LINEMAP) != 0) {
         table.insertOrResetLockedColumn("Line Length");
     }
-    m_shapeGraphs[mapref]->setDisplayedAttribute(connIdx);
+    m_shapeGraphs[mapref]->setDisplayedAttribute(static_cast<int>(connIdx));
     return mapref;
 }
-int MetaGraph::addShapeMap(const std::string &name) {
+size_t MetaGraph::addShapeMap(const std::string &name) {
     m_dataMaps.emplace_back(name, ShapeMap::DATAMAP);
     m_state |= DATAMAPS;
     setViewClass(SHOWSHAPETOP);
     return m_dataMaps.size() - 1;
 }
 void MetaGraph::removeDisplayedMap() {
-    int ref = getDisplayedMapRef();
     switch (m_view_class & VIEWFRONT) {
-    case VIEWVGA:
-        removePointMap(ref);
+    case VIEWVGA: {
+        if (!hasDisplayedPointMap())
+            return;
+        removePointMap(getDisplayedPointMapRef());
         if (m_pointMaps.empty()) {
             setViewClass(SHOWHIDEVGA);
             m_state &= ~POINTMAPS;
         }
         break;
-    case VIEWAXIAL:
-        removeShapeGraph(ref);
+    }
+    case VIEWAXIAL: {
+        if (!hasDisplayedShapeGraph())
+            return;
+        removeShapeGraph(getDisplayedShapeGraphRef());
         if (m_shapeGraphs.empty()) {
             setViewClass(SHOWHIDEAXIAL);
             m_state &= ~SHAPEGRAPHS;
         }
         break;
+    }
     case VIEWDATA:
-        removeDataMap(ref);
+        if (!hasDisplayedDataMap())
+            return;
+        removeDataMap(getDisplayedDataMapRef());
         if (m_dataMaps.empty()) {
             setViewClass(SHOWHIDESHAPE);
             m_state &= ~DATAMAPS;
@@ -800,7 +814,7 @@ bool MetaGraph::convertDrawingToAxial(Communicator *comm, std::string layer_name
 
     try {
         auto shapeGraph = MapConverter::convertDrawingToAxial(comm, layer_name, m_drawingFiles);
-        int mapref = addShapeGraph(shapeGraph);
+        auto mapref = addShapeGraph(shapeGraph);
         setDisplayedShapeGraphRef(mapref);
     } catch (Communicator::CancelledException) {
         converted = false;
@@ -833,7 +847,7 @@ bool MetaGraph::convertDataToAxial(Communicator *comm, std::string layer_name, b
         m_shapeGraphs.back()->setDisplayedAttribute(
             m_shapeGraphs.back()->getAttributeTable().getColumnIndex("Connectivity"));
 
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 1));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 1);
     } catch (Communicator::CancelledException) {
         converted = false;
     }
@@ -855,7 +869,8 @@ bool MetaGraph::convertDataToAxial(Communicator *comm, std::string layer_name, b
     return converted;
 }
 
-// typeflag: -1 convert drawing to convex, 0 or 1, convert data to convex (1 is pushvalues)
+// typeflag: -1 convert drawing to convex, 0 or 1, convert data to convex (1 is
+// pushvalues)
 bool MetaGraph::convertToConvex(Communicator *comm, std::string layer_name, bool keeporiginal,
                                 int shapeMapType, bool copydata) {
     int oldstate = m_state;
@@ -865,24 +880,22 @@ bool MetaGraph::convertToConvex(Communicator *comm, std::string layer_name, bool
     bool converted = false;
 
     try {
-        int mapref = -1;
         if (shapeMapType == ShapeMap::DRAWINGMAP) {
             auto shapeGraph =
                 MapConverter::convertDrawingToConvex(comm, layer_name, m_drawingFiles);
-            mapref = addShapeGraph(shapeGraph);
+            addShapeGraph(shapeGraph);
+            converted = true;
         } else if (shapeMapType == ShapeMap::DATAMAP) {
             auto shapeGraph = MapConverter::convertDataToConvex(comm, layer_name,
                                                                 getDisplayedDataMap(), copydata);
-            mapref = addShapeGraph(shapeGraph);
+            addShapeGraph(shapeGraph);
+            converted = true;
         }
 
         m_shapeGraphs.back()->overrideDisplayedAttribute(-2); // <- override if it's already showing
         m_shapeGraphs.back()->setDisplayedAttribute(-1);
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 1));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 1);
 
-        if (mapref != -1) {
-            converted = true;
-        }
     } catch (Communicator::CancelledException) {
         converted = false;
     }
@@ -915,7 +928,7 @@ bool MetaGraph::convertDrawingToSegment(Communicator *comm, std::string layer_na
         auto shapeGraph = MapConverter::convertDrawingToSegment(comm, layer_name, m_drawingFiles);
         addShapeGraph(shapeGraph);
 
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 1));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 1);
     } catch (Communicator::CancelledException) {
         converted = false;
     }
@@ -945,7 +958,7 @@ bool MetaGraph::convertDataToSegment(Communicator *comm, std::string layer_name,
 
         m_shapeGraphs.back()->overrideDisplayedAttribute(-2); // <- override if it's already showing
         m_shapeGraphs.back()->setDisplayedAttribute(-1);
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 1));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 1);
     } catch (Communicator::CancelledException) {
         converted = false;
     }
@@ -983,14 +996,14 @@ bool MetaGraph::convertToData(Communicator *, std::string layer_name, bool keepo
         // note however that more than one layer might be combined:
         // create map layer...
         m_dataMaps.emplace_back(layer_name, ShapeMap::DATAMAP);
-        int destmapref = m_dataMaps.size() - 1;
+        auto destmapref = m_dataMaps.size() - 1;
         ShapeMap &destmap = m_dataMaps.back();
         AttributeTable &table = destmap.getAttributeTable();
-        int count = 0;
+        size_t count = 0;
         //
         // drawing to data
         if (shapeMapType == ShapeMap::DRAWINGMAP) {
-            int layercol = destmap.addAttribute("Drawing Layer");
+            auto layercol = destmap.addAttribute("Drawing Layer");
             // add all visible layers to the set of map:
             for (const auto &pixelGroup : m_drawingFiles) {
                 int j = 0;
@@ -1012,8 +1025,8 @@ bool MetaGraph::convertToData(Communicator *, std::string layer_name, bool keepo
         else {
             ShapeGraph &sourcemap = getDisplayedShapeGraph();
             count = sourcemap.getShapeCount();
-            // take viewed graph and push all geometry to it (since it is *all* geometry, pushing is
-            // easy)
+            // take viewed graph and push all geometry to it (since it is *all*
+            // geometry, pushing is easy)
             int copyflag = copydata ? (ShapeMap::COPY_GEOMETRY | ShapeMap::COPY_ATTRIBUTES)
                                     : (ShapeMap::COPY_GEOMETRY);
             destmap.copy(sourcemap, copyflag);
@@ -1116,19 +1129,18 @@ bool MetaGraph::convertToDrawing(Communicator *, std::string layer_name,
 
 bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name, bool keeporiginal,
                                       bool pushvalues, double stubremoval) {
-    int oldstate = m_state;
+    if (!hasDisplayedShapeGraph()) {
+        return false;
+    }
 
+    auto axialShapeGraphRef = getDisplayedShapeGraphRef();
+
+    int oldstate = m_state;
     m_state &= ~SHAPEGRAPHS;
 
     bool converted = true;
 
-    int orig_ref = getDisplayedShapeGraphRef();
-
     try {
-        if (orig_ref == -1) {
-            return false;
-        }
-
         auto shapeGraph = MapConverter::convertAxialToSegment(
             comm, getDisplayedShapeGraph(), layer_name, keeporiginal, pushvalues, stubremoval);
         addShapeGraph(shapeGraph);
@@ -1137,7 +1149,7 @@ bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name
         m_shapeGraphs.back()->setDisplayedAttribute(
             m_shapeGraphs.back()->getAttributeTable().getColumnIndex("Connectivity"));
 
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 1));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 1);
     } catch (Communicator::CancelledException) {
         converted = false;
     }
@@ -1146,7 +1158,7 @@ bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name
 
     if (converted) {
         if (!keeporiginal) {
-            removeShapeGraph(orig_ref);
+            removeShapeGraph(axialShapeGraphRef);
         }
         m_state |= SHAPEGRAPHS;
         setViewClass(SHOWAXIALTOP);
@@ -1164,7 +1176,7 @@ int MetaGraph::loadMifMap(Communicator *comm, std::istream &miffile, std::istrea
     try {
         // create map layer...
         m_dataMaps.emplace_back(comm->GetMBInfileName(), ShapeMap::DATAMAP);
-        int mifmapref = m_dataMaps.size() - 1;
+        auto mifmapref = m_dataMaps.size() - 1;
         ShapeMap &mifmap = m_dataMaps.back();
         mapLoaded = mifmap.loadMifMap(miffile, midfile);
         if (mapLoaded == MINFO_OK || mapLoaded == MINFO_MULTIPLE) { // multiple is just a warning
@@ -1192,17 +1204,18 @@ int MetaGraph::loadMifMap(Communicator *comm, std::istream &miffile, std::istrea
 
 bool MetaGraph::makeAllLineMap(Communicator *communicator, const Point2f &seed) {
     int oldstate = m_state;
-    m_state &= ~SHAPEGRAPHS;    // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS;    // Clear axial map data flag (stops accidental redraw
+                                // during reload)
     m_view_class &= ~VIEWAXIAL; // Also clear the view_class flag
 
     bool mapMade = true;
 
     try {
-        // this is an index to look up the all line map, used by UI to determine if can make fewest
-        // line map note: it is not saved for historical reasons
-        if (m_all_line_map != -1) {
-            removeShapeGraph(m_all_line_map);
-            m_all_line_map = -1;
+        // this is an index to look up the all line map, used by UI to determine if
+        // can make fewest line map note: it is not saved for historical reasons
+        if (hasAllLineMap()) {
+            removeShapeGraph(m_all_line_map.value());
+            m_all_line_map = std::nullopt;
         }
 
         {
@@ -1211,8 +1224,8 @@ bool MetaGraph::makeAllLineMap(Communicator *communicator, const Point2f &seed) 
             m_shapeGraphs.push_back(std::move(allm));
         }
 
-        m_all_line_map = int(m_shapeGraphs.size() - 1);
-        setDisplayedShapeGraphRef(m_all_line_map);
+        m_all_line_map = m_shapeGraphs.size() - 1;
+        setDisplayedShapeGraphRef(m_all_line_map.value());
     } catch (Communicator::CancelledException) {
         mapMade = false;
     }
@@ -1229,18 +1242,19 @@ bool MetaGraph::makeAllLineMap(Communicator *communicator, const Point2f &seed) 
 
 bool MetaGraph::makeFewestLineMap(Communicator *communicator, int replace) {
     int oldstate = m_state;
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool mapMade = true;
 
     try {
         // no all line map
-        if (m_all_line_map == -1) {
+        if (!hasAllLineMap()) {
             return false;
         }
 
         AllLineMap *alllinemap =
-            dynamic_cast<AllLineMap *>(m_shapeGraphs[size_t(m_all_line_map)].get());
+            dynamic_cast<AllLineMap *>(m_shapeGraphs[m_all_line_map.value()].get());
 
         if (alllinemap == nullptr) {
             throw depthmapX::RuntimeException("Failed to cast from ShapeGraph to AllLineMap");
@@ -1252,7 +1266,18 @@ bool MetaGraph::makeFewestLineMap(Communicator *communicator, int replace) {
             alllinemap->extractFewestLineMaps(communicator);
 
         if (replace != 0) {
-            int index = -1;
+            std::optional<size_t> index = std::nullopt;
+
+            for (size_t i = 0; i < m_shapeGraphs.size(); i++) {
+                if (m_shapeGraphs[i]->getName() == "Fewest-Line Map (Subsets)" ||
+                    m_shapeGraphs[i]->getName() == "Fewest Line Map (Subsets)") {
+                    index = i;
+                }
+            }
+
+            if (index.has_value()) {
+                removeShapeGraph(index.value());
+            }
 
             for (size_t i = 0; i < m_shapeGraphs.size(); i++) {
                 if (m_shapeGraphs[i]->getName() == "Fewest-Line Map (Subsets)" ||
@@ -1261,25 +1286,14 @@ bool MetaGraph::makeFewestLineMap(Communicator *communicator, int replace) {
                 }
             }
 
-            if (index != -1) {
-                removeShapeGraph(index);
-            }
-
-            for (size_t i = 0; i < m_shapeGraphs.size(); i++) {
-                if (m_shapeGraphs[i]->getName() == "Fewest-Line Map (Subsets)" ||
-                    m_shapeGraphs[i]->getName() == "Fewest Line Map (Subsets)") {
-                    index = int(i);
-                }
-            }
-
-            if (index != -1) {
-                removeShapeGraph(index);
+            if (index.has_value()) {
+                removeShapeGraph(index.value());
             }
         }
         addShapeGraph(fewestlinemap_subsets);
         addShapeGraph(fewestlinemap_minimal);
 
-        setDisplayedShapeGraphRef(int(m_shapeGraphs.size() - 2));
+        setDisplayedShapeGraphRef(m_shapeGraphs.size() - 2);
 
     } catch (Communicator::CancelledException) {
         mapMade = false;
@@ -1298,17 +1312,19 @@ bool MetaGraph::makeFewestLineMap(Communicator *communicator, int replace) {
 bool MetaGraph::analyseAxial(Communicator *communicator, Options options,
                              bool) // options copied to keep thread safe
 {
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool analysisCompleted = false;
 
     try {
         analysisCompleted = AxialIntegration(options.radius_set, options.weighted_measure_col,
                                              options.choice, options.fulloutput)
-                                .run(communicator, getDisplayedShapeGraph(), false).completed;
+                                .run(communicator, getDisplayedShapeGraph(), false)
+                                .completed;
         if (options.local)
-        analysisCompleted &= AxialLocal()
-                                .run(communicator, getDisplayedShapeGraph(), false).completed;
+            analysisCompleted &=
+                AxialLocal().run(communicator, getDisplayedShapeGraph(), false).completed;
     } catch (Communicator::CancelledException) {
         analysisCompleted = false;
     }
@@ -1321,7 +1337,8 @@ bool MetaGraph::analyseAxial(Communicator *communicator, Options options,
 bool MetaGraph::analyseSegmentsTulip(Communicator *communicator,
                                      Options options) // <- options copied to keep thread safe
 {
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool analysisCompleted = false;
 
@@ -1329,7 +1346,8 @@ bool MetaGraph::analyseSegmentsTulip(Communicator *communicator,
         analysisCompleted =
             SegmentTulip(options.radius_set, options.sel_only, options.tulip_bins,
                          options.weighted_measure_col, options.radius_type, options.choice)
-                .run(communicator, getDisplayedShapeGraph(), false).completed;
+                .run(communicator, getDisplayedShapeGraph(), false)
+                .completed;
     } catch (Communicator::CancelledException) {
         analysisCompleted = false;
     }
@@ -1342,13 +1360,15 @@ bool MetaGraph::analyseSegmentsTulip(Communicator *communicator,
 bool MetaGraph::analyseSegmentsAngular(Communicator *communicator,
                                        Options options) // <- options copied to keep thread safe
 {
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool analysisCompleted = false;
 
     try {
-        analysisCompleted =
-            SegmentAngular(options.radius_set).run(communicator, getDisplayedShapeGraph(), false).completed;
+        analysisCompleted = SegmentAngular(options.radius_set)
+                                .run(communicator, getDisplayedShapeGraph(), false)
+                                .completed;
     } catch (Communicator::CancelledException) {
         analysisCompleted = false;
     }
@@ -1362,20 +1382,24 @@ bool MetaGraph::analyseTopoMetMultipleRadii(
     Communicator *communicator,
     Options options) // <- options copied to keep thread safe
 {
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool analysisCompleted = true;
 
     try {
-        // note: "output_type" reused for analysis type (either 0 = topological or 1 = metric)
+        // note: "output_type" reused for analysis type (either 0 = topological or 1
+        // = metric)
         for (size_t r = 0; r < options.radius_set.size(); r++) {
             if (options.output_type == 0) {
                 if (!SegmentTopological(options.radius, options.sel_only)
-                         .run(communicator, getDisplayedShapeGraph(), false).completed)
+                         .run(communicator, getDisplayedShapeGraph(), false)
+                         .completed)
                     analysisCompleted = false;
             } else {
                 if (!SegmentMetric(options.radius, options.sel_only)
-                         .run(communicator, getDisplayedShapeGraph(), false).completed)
+                         .run(communicator, getDisplayedShapeGraph(), false)
+                         .completed)
                     analysisCompleted = false;
             }
         }
@@ -1391,18 +1415,22 @@ bool MetaGraph::analyseTopoMetMultipleRadii(
 bool MetaGraph::analyseTopoMet(Communicator *communicator,
                                Options options) // <- options copied to keep thread safe
 {
-    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw during reload)
+    m_state &= ~SHAPEGRAPHS; // Clear axial map data flag (stops accidental redraw
+                             // during reload)
 
     bool analysisCompleted = false;
 
     try {
-        // note: "output_type" reused for analysis type (either 0 = topological or 1 = metric)
+        // note: "output_type" reused for analysis type (either 0 = topological or 1
+        // = metric)
         if (options.output_type == 0) {
             analysisCompleted = SegmentTopological(options.radius, options.sel_only)
-                                    .run(communicator, getDisplayedShapeGraph(), false).completed;
+                                    .run(communicator, getDisplayedShapeGraph(), false)
+                                    .completed;
         } else {
             analysisCompleted = SegmentMetric(options.radius, options.sel_only)
-                                    .run(communicator, getDisplayedShapeGraph(), false).completed;
+                                    .run(communicator, getDisplayedShapeGraph(), false)
+                                    .completed;
         }
     } catch (Communicator::CancelledException) {
         analysisCompleted = false;
@@ -1478,8 +1506,8 @@ int MetaGraph::loadLineData(Communicator *communicator, int load_type) {
             m_drawingFiles.back().m_spacePixels.emplace_back(layer.getName());
             m_drawingFiles.back().m_spacePixels.back().init(layer.getLineCount(), map.getRegion());
 
-            for (auto geometry : layer.geometries) {
-                for (auto &line : geometry.lines) {
+            for (const auto &geometry : layer.geometries) {
+                for (const auto &line : geometry.lines) {
                     m_drawingFiles.back().m_spacePixels.back().makeLineShape(line);
                 }
             }
@@ -1506,7 +1534,7 @@ int MetaGraph::loadLineData(Communicator *communicator, int load_type) {
 
 void MetaGraph::writeMapShapesAsCat(ShapeMap &map, std::ostream &stream) {
     stream << "CAT" << std::endl;
-    for (auto refShape : map.getAllShapes()) {
+    for (auto &refShape : map.getAllShapes()) {
         SalaShape &shape = refShape.second;
         if (shape.isPolyLine() || shape.isPolygon()) {
             stream << "Begin " << (shape.isPolyLine() ? "Polyline" : "Polygon") << std::endl;
@@ -1526,15 +1554,15 @@ void MetaGraph::writeMapShapesAsCat(ShapeMap &map, std::ostream &stream) {
 int MetaGraph::loadCat(std::istream &stream, Communicator *communicator) {
     if (communicator) {
         long size = communicator->GetInfileSize();
-        communicator->CommPostMessage(Communicator::NUM_RECORDS, size);
+        communicator->CommPostMessage(Communicator::NUM_RECORDS, static_cast<size_t>(size));
     }
 
     time_t atime = 0;
 
     qtimer(atime, 0);
 
-    long size = 0;
-    int numlines = 0;
+    size_t size = 0;
+    size_t numlines = 0;
     int parsing = 0;
     bool first = true;
 
@@ -1584,7 +1612,8 @@ int MetaGraph::loadCat(std::istream &stream, Communicator *communicator) {
     m_drawingFiles.back().m_spacePixels.back().init(numlines, QtRegion(min_point, max_point));
 
     // in MSVC 6, ios::eof remains set and it needs to be cleared.
-    // in MSVC 8 it's even worse: it won't even seekg until eof flag has been cleared
+    // in MSVC 8 it's even worse: it won't even seekg until eof flag has been
+    // cleared
     stream.clear();
     stream.seekg(0, std::ios::beg);
 
@@ -1669,7 +1698,7 @@ int MetaGraph::loadRT1(const std::vector<std::string> &fileset, Communicator *co
     m_drawingFiles.back().m_region = QtRegion(map.getBottomLeft(), map.getTopRight());
 
     // for each category
-    for (auto val : map.m_categories) {
+    for (const auto &val : map.m_categories) {
         ShapeMap shapeMap = ShapeMap(val.first);
         shapeMap.init(val.second.chains.size(), map.getRegion());
 
@@ -1726,11 +1755,12 @@ void MetaGraph::deleteShapeMap(depthmapX::ImportType mapType, ShapeMap &shapeMap
                 break;
             }
         }
+        break;
     }
     case depthmapX::ImportType::DATAMAP: {
         for (size_t i = 0; i < m_dataMaps.size(); i++) {
             if (&m_dataMaps[i] == &shapeMap) {
-                m_dataMaps.erase(m_dataMaps.begin() + i);
+                m_dataMaps.erase(std::next(m_dataMaps.begin(), static_cast<int>(i)));
                 break;
             }
         }
@@ -1752,18 +1782,27 @@ void MetaGraph::updateParentRegions(ShapeMap &shapeMap) {
     }
 }
 
-// the tidy(ish) version: still needs to be at top level and switch between layers
+// the tidy(ish) version: still needs to be at top level and switch between
+// layers
 
-bool MetaGraph::pushValuesToLayer(int desttype, int destlayer, int push_func, bool count_col) {
-    int sourcetype = m_view_class;
-    int sourcelayer = getDisplayedMapRef();
-    int col_in = getDisplayedAttribute();
-    // no col_out specified
-    int col_out = -2;
+bool MetaGraph::pushValuesToLayer(int desttype, size_t destlayer, int push_func, bool count_col) {
+    auto sourcetype = m_view_class;
+    auto sourcelayer = getDisplayedMapRef().value();
+    size_t col_in = static_cast<size_t>(getDisplayedAttribute());
 
     // temporarily turn off everything to prevent redraw during sensitive time:
     int oldstate = m_state;
     m_state &= ~(DATAMAPS | AXIALLINES | POINTMAPS);
+
+    AttributeTable &table_in = getAttributeTable(sourcetype, sourcelayer);
+    AttributeTable &table_out = getAttributeTable(desttype, destlayer);
+    std::string name = table_in.getColumnName(col_in);
+    if ((table_out.hasColumn(name) &&
+         table_out.getColumn(table_out.getColumnIndex(name)).isLocked()) ||
+        name == "Object Count") {
+        name = std::string("Copied ") + name;
+    }
+    size_t col_out = table_out.insertOrResetColumn(name);
 
     bool valuesPushed = pushValuesToLayer(sourcetype, sourcelayer, desttype, destlayer, col_in,
                                           col_out, push_func, count_col);
@@ -1800,22 +1839,13 @@ void pushValue(double &val, int &count, double thisval, int push_func) {
 
 // the full ubercontrol version:
 
-bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype, int destlayer,
-                                  int col_in, int col_out, int push_func, bool count_col) {
+bool MetaGraph::pushValuesToLayer(int sourcetype, size_t sourcelayer, int desttype,
+                                  size_t destlayer, std::optional<size_t> col_in, size_t col_out,
+                                  int push_func, bool count_col) {
     AttributeTable &table_in = getAttributeTable(sourcetype, sourcelayer);
     AttributeTable &table_out = getAttributeTable(desttype, destlayer);
 
-    if (col_out == -2) {
-        std::string name = table_in.getColumnName(col_in);
-        if ((table_out.hasColumn(name) &&
-             table_out.getColumn(table_out.getColumnIndex(name)).isLocked()) ||
-            name == "Object Count") {
-            name = std::string("Copied ") + name;
-        }
-        col_out = table_out.insertOrResetColumn(name);
-    }
-
-    int col_count = -1;
+    size_t col_count = 0;
     if (count_col) {
         col_count = table_out.insertOrResetColumn("Object Count");
         if (col_count <= col_out) {
@@ -1823,13 +1853,14 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
         }
     }
 
-    if (desttype == VIEWVGA && ((sourcetype & VIEWDATA) || (sourcetype & VIEWAXIAL))) {
+    if (col_in.has_value() && desttype == VIEWVGA &&
+        ((sourcetype & VIEWDATA) || (sourcetype & VIEWAXIAL))) {
 
-        // pushing from a shapemap (data/axial/segment/convex) requires a combination of
-        // finding points (VGA) in polygons (convex and data maps with polygons) and points
-        // that are on lines (axial, segment and data maps with lines). Thus, in this case
-        // a composite approach is implemented, which takes both options from the other parts
-        // of this conditional.
+        // pushing from a shapemap (data/axial/segment/convex) requires a
+        // combination of finding points (VGA) in polygons (convex and data maps
+        // with polygons) and points that are on lines (axial, segment and data maps
+        // with lines). Thus, in this case a composite approach is implemented,
+        // which takes both options from the other parts of this conditional.
 
         struct ValueCountRow {
             double m_value = -1;
@@ -1842,8 +1873,9 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
         std::map<AttributeKey, ValueCountRow> valCounts;
 
         for (auto &row : table_out) {
-            valCounts.insert(std::make_pair(
-                row.getKey(), ValueCountRow(row.getRow()))); // count set to zero for all
+            valCounts.insert(
+                std::make_pair(row.getKey(),
+                               ValueCountRow(row.getRow()))); // count set to zero for all
         }
 
         ShapeMap &sourceMap =
@@ -1853,7 +1885,7 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
         // first collect the lines by pixelating them using the vga map
         std::map<int, SalaShape> &shapeMap = sourceMap.getAllShapes();
         for (auto &shape : shapeMap) {
-            float thisval = table_in.getRow(AttributeKey(shape.first)).getValue(col_in);
+            float thisval = table_in.getRow(AttributeKey(shape.first)).getValue(col_in.value());
             if (shape.second.isLine()) {
                 PixelRefVector linePixels = vgaMap.pixelateLine(shape.second.getLine());
                 for (const PixelRef &pix : linePixels) {
@@ -1890,16 +1922,15 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             double &val = valCount.second.m_value;
             int &count = valCount.second.m_count;
             AttributeRow &row = valCount.second.m_row;
-            std::vector<int> gatelist;
+            std::vector<size_t> gatelist;
             if (!isObjectVisible(vgaMap.m_layers, row)) {
                 continue;
             }
             gatelist = sourceMap.pointInPolyList(vgaMap.getPoint(key_out).m_location);
-            for (int gate : gatelist) {
+            for (auto gate : gatelist) {
                 AttributeRow &row_in = sourceMap.getAttributeRowFromShapeIndex(gate);
-
                 if (isObjectVisible(sourceMap.getLayers(), row_in)) {
-                    double thisval = row_in.getValue(col_in);
+                    double thisval = row_in.getValue(col_in.value());
                     pushValue(val, count, thisval, push_func);
                 }
             }
@@ -1915,7 +1946,7 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
 
         for (auto iter_out = table_out.begin(); iter_out != table_out.end(); iter_out++) {
             int key_out = iter_out->getKey().value;
-            std::vector<int> gatelist;
+            std::vector<size_t> gatelist;
             if (desttype == VIEWAXIAL) {
                 if (!isObjectVisible(m_shapeGraphs[destlayer]->getLayers(), iter_out->getRow())) {
                     continue;
@@ -1935,13 +1966,13 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             }
             double val = -1.0;
             int count = 0;
-            for (int gate : gatelist) {
+            for (auto gate : gatelist) {
                 AttributeRow &row_in = m_dataMaps[sourcelayer].getAttributeRowFromShapeIndex(gate);
 
                 if (isObjectVisible(m_dataMaps[sourcelayer].getLayers(), row_in)) {
-                    double thisval = gate;
-                    if (col_in != -1)
-                        thisval = row_in.getValue(col_in);
+                    double thisval = static_cast<double>(gate);
+                    if (col_in.has_value())
+                        thisval = row_in.getValue(col_in.value());
                     pushValue(val, count, thisval, push_func);
                 }
             }
@@ -1969,14 +2000,14 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                 if (!isObjectVisible(m_pointMaps[sourcelayer].getLayers(), iter_in->getRow())) {
                     continue;
                 }
-                std::vector<int> gatelist;
+                std::vector<size_t> gatelist;
                 if (desttype == VIEWDATA) {
-                    gatelist = m_dataMaps[size_t(destlayer)].pointInPolyList(
+                    gatelist = m_dataMaps[destlayer].pointInPolyList(
                         m_pointMaps[size_t(sourcelayer)].getPoint(pix_in).m_location);
                     double thisval = iter_in->getKey().value;
-                    if (col_in != -1)
-                        thisval = iter_in->getRow().getValue(col_in);
-                    for (int gate : gatelist) {
+                    if (col_in.has_value())
+                        thisval = iter_in->getRow().getValue(col_in.value());
+                    for (auto gate : gatelist) {
                         AttributeRow &row_out =
                             m_dataMaps[destlayer].getAttributeRowFromShapeIndex(gate);
                         if (isObjectVisible(m_dataMaps[destlayer].getLayers(), row_out)) {
@@ -1986,13 +2017,14 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                         }
                     }
                 } else if (desttype == VIEWAXIAL) {
-                    // note, "axial" could be convex map, and hence this would be a valid operation
+                    // note, "axial" could be convex map, and hence this would be a valid
+                    // operation
                     gatelist = m_shapeGraphs[size_t(destlayer)]->pointInPolyList(
                         m_pointMaps[size_t(sourcelayer)].getPoint(pix_in).m_location);
                     double thisval = iter_in->getKey().value;
-                    if (col_in != -1)
-                        thisval = iter_in->getRow().getValue(col_in);
-                    for (int gate : gatelist) {
+                    if (col_in.has_value())
+                        thisval = iter_in->getRow().getValue(col_in.value());
+                    for (auto gate : gatelist) {
                         int key_out = m_shapeGraphs[destlayer]->getShapeRefFromIndex(gate)->first;
                         AttributeRow &row_out = table_out.getRow(AttributeKey(key_out));
                         if (isObjectVisible(m_shapeGraphs[destlayer]->getLayers(), row_out)) {
@@ -2004,22 +2036,22 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                 }
             }
         } else if (sourcetype & VIEWAXIAL) {
-            // note, in the spirit of mapping fewer objects in the gate list, it is *usually* best
-            // to perform axial -> gate map in this direction
+            // note, in the spirit of mapping fewer objects in the gate list, it is
+            // *usually* best to perform axial -> gate map in this direction
             for (auto iter_in = table_in.begin(); iter_in != table_in.end(); iter_in++) {
                 int key_in = iter_in->getKey().value;
                 if (!isObjectVisible(m_shapeGraphs[size_t(sourcelayer)]->getLayers(),
                                      iter_in->getRow())) {
                     continue;
                 }
-                std::vector<int> gatelist;
+                std::vector<size_t> gatelist;
                 if (desttype == VIEWDATA) {
                     auto dataMap = m_shapeGraphs[size_t(sourcelayer)]->getAllShapes();
                     gatelist = m_dataMaps[size_t(destlayer)].shapeInPolyList(dataMap[key_in]);
                     double thisval = iter_in->getKey().value;
-                    if (col_in != -1)
-                        thisval = iter_in->getRow().getValue(col_in);
-                    for (int gate : gatelist) {
+                    if (col_in.has_value())
+                        thisval = iter_in->getRow().getValue(col_in.value());
+                    for (auto gate : gatelist) {
                         int key_out = m_dataMaps[destlayer].getShapeRefFromIndex(gate)->first;
                         AttributeRow &row_out = table_out.getRow(AttributeKey(key_out));
                         if (isObjectVisible(m_dataMaps[size_t(destlayer)].getLayers(), row_out)) {
@@ -2032,9 +2064,9 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                     auto shapeMap = m_shapeGraphs[size_t(sourcelayer)]->getAllShapes();
                     gatelist = m_shapeGraphs[size_t(destlayer)]->shapeInPolyList(shapeMap[key_in]);
                     double thisval = iter_in->getKey().value;
-                    if (col_in != -1)
-                        thisval = iter_in->getRow().getValue(col_in);
-                    for (int gate : gatelist) {
+                    if (col_in.has_value())
+                        thisval = iter_in->getRow().getValue(col_in.value());
+                    for (auto gate : gatelist) {
                         int key_out = m_shapeGraphs[destlayer]->getShapeRefFromIndex(gate)->first;
                         AttributeRow &row_out = table_out.getRow(AttributeKey(key_out));
                         if (isObjectVisible(m_shapeGraphs[destlayer]->getLayers(), row_out)) {
@@ -2046,11 +2078,11 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                 }
             }
         }
-        int i = -1;
+        size_t i = 0;
         for (auto iter = table_out.begin(); iter != table_out.end(); iter++) {
-            i++;
 
             if (!isObjectVisible(m_shapeGraphs[destlayer]->getLayers(), iter->getRow())) {
+                i++;
                 continue;
             }
             if (push_func == PUSH_FUNC_AVG && vals[i] != -1.0) {
@@ -2060,19 +2092,20 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             if (count_col) {
                 iter->getRow().setValue(col_count, float(counts[i]));
             }
+            i++;
         }
     }
 
     // display new data in the relevant layer
     if (desttype == VIEWVGA) {
         m_pointMaps[destlayer].overrideDisplayedAttribute(-2);
-        m_pointMaps[destlayer].setDisplayedAttribute(col_out);
+        m_pointMaps[destlayer].setDisplayedAttribute(static_cast<int>(col_out));
     } else if (desttype == VIEWAXIAL) {
         m_shapeGraphs[destlayer]->overrideDisplayedAttribute(-2);
-        m_shapeGraphs[destlayer]->setDisplayedAttribute(col_out);
+        m_shapeGraphs[destlayer]->setDisplayedAttribute(static_cast<int>(col_out));
     } else if (desttype == VIEWDATA) {
         m_dataMaps[destlayer].overrideDisplayedAttribute(-2);
-        m_dataMaps[destlayer].setDisplayedAttribute(col_out);
+        m_dataMaps[destlayer].setDisplayedAttribute(static_cast<int>(col_out));
     }
 
     return true;
@@ -2084,11 +2117,12 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
 void MetaGraph::runAgentEngine(Communicator *comm) {
     AttributeTable &table = getDisplayedPointMap().getAttributeTable();
 
-    if (m_agent_engine.m_gatelayer != -1) {
+    if (hasDisplayedPointMap() && m_agent_engine.m_gatelayer.has_value()) {
         // switch the reference numbers from the gates layer to the vga layer
-        int colgates = table.insertOrResetColumn(g_col_gate);
-        pushValuesToLayer(VIEWDATA, m_agent_engine.m_gatelayer, VIEWVGA, getDisplayedPointMapRef(),
-                          -1, colgates, PUSH_FUNC_TOT);
+        auto colgates = table.insertOrResetColumn(g_col_gate);
+        pushValuesToLayer(VIEWDATA, m_agent_engine.m_gatelayer.value(), //
+                          VIEWVGA, getDisplayedPointMapRef(),           //
+                          std::nullopt, colgates, PUSH_FUNC_TOT);
         table.insertOrResetColumn(g_col_gate_counts);
     }
 
@@ -2109,35 +2143,37 @@ void MetaGraph::runAgentEngine(Communicator *comm) {
         m_state |= DATAMAPS;
     }
 
-    if (m_agent_engine.m_gatelayer != -1) {
+    if (hasDisplayedPointMap() && m_agent_engine.m_gatelayer.has_value()) {
         // switch column counts from vga layer to gates layer...
-        int colcounts = table.getColumnIndex(g_col_gate_counts);
-        AttributeTable &tableout = m_dataMaps[m_agent_engine.m_gatelayer].getAttributeTable();
-        int targetcol = tableout.insertOrResetColumn("Agent Counts");
-        pushValuesToLayer(VIEWVGA, getDisplayedPointMapRef(), VIEWDATA, m_agent_engine.m_gatelayer,
+        auto colcounts = table.getColumnIndex(g_col_gate_counts);
+        AttributeTable &tableout =
+            m_dataMaps[m_agent_engine.m_gatelayer.value()].getAttributeTable();
+        auto targetcol = tableout.insertOrResetColumn("Agent Counts");
+        pushValuesToLayer(VIEWVGA, getDisplayedPointMapRef(),           //
+                          VIEWDATA, m_agent_engine.m_gatelayer.value(), //
                           colcounts, targetcol, PUSH_FUNC_TOT);
         // and delete the temporary columns:
         table.removeColumn(colcounts);
-        int colgates = table.getColumnIndex(g_col_gate);
+        auto colgates = table.getColumnIndex(g_col_gate);
         table.removeColumn(colgates);
     }
 }
 
 // Thru vision
 // TODO: Undocumented functionality
-bool MetaGraph::analyseThruVision(Communicator *comm, int gatelayer) {
+bool MetaGraph::analyseThruVision(Communicator *comm, std::optional<size_t> gatelayer) {
     bool analysisCompleted = false;
 
     AttributeTable &table = getDisplayedPointMap().getAttributeTable();
 
     // always have temporary gate counting layers -- makes it easier to code
-    int colgates = table.insertOrResetColumn(g_col_gate);
-    int colcounts = table.insertOrResetColumn(g_col_gate_counts);
+    auto colgates = table.insertOrResetColumn(g_col_gate);
+    auto colcounts = table.insertOrResetColumn(g_col_gate_counts);
 
-    if (gatelayer != -1) {
+    if (gatelayer.has_value()) {
         // switch the reference numbers from the gates layer to the vga layer
-        pushValuesToLayer(VIEWDATA, gatelayer, VIEWVGA, getDisplayedPointMapRef(), -1, colgates,
-                          PUSH_FUNC_TOT);
+        pushValuesToLayer(VIEWDATA, gatelayer.value(), VIEWVGA, getDisplayedPointMapRef(),
+                          std::nullopt, colgates, PUSH_FUNC_TOT);
     }
 
     try {
@@ -2150,11 +2186,11 @@ bool MetaGraph::analyseThruVision(Communicator *comm, int gatelayer) {
     colgates = table.getColumnIndex(g_col_gate);
     colcounts = table.getColumnIndex(g_col_gate_counts);
 
-    if (analysisCompleted && gatelayer != -1) {
-        AttributeTable &tableout = m_dataMaps[gatelayer].getAttributeTable();
-        int targetcol = tableout.insertOrResetColumn("Thru Vision Counts");
-        pushValuesToLayer(VIEWVGA, getDisplayedPointMapRef(), VIEWDATA, gatelayer, colcounts,
-                          targetcol, PUSH_FUNC_TOT);
+    if (analysisCompleted && gatelayer.has_value()) {
+        AttributeTable &tableout = m_dataMaps[gatelayer.value()].getAttributeTable();
+        auto targetcol = tableout.insertOrResetColumn("Thru Vision Counts");
+        pushValuesToLayer(VIEWVGA, getDisplayedPointMapRef(), VIEWDATA, gatelayer.value(),
+                          colcounts, targetcol, PUSH_FUNC_TOT);
     }
 
     // and always delete the temporary columns:
@@ -2166,24 +2202,30 @@ bool MetaGraph::analyseThruVision(Communicator *comm, int gatelayer) {
 
 ///////////////////////////////////////////////////////////////////////////////////
 
-int MetaGraph::getDisplayedMapRef() const {
-    int ref = -1;
+std::optional<size_t> MetaGraph::getDisplayedMapRef() const {
+    std::optional<size_t> ref = std::nullopt;
     switch (m_view_class & VIEWFRONT) {
     case VIEWVGA:
+        if (!hasDisplayedPointMap())
+            return std::nullopt;
         ref = getDisplayedPointMapRef();
         break;
     case VIEWAXIAL:
+        if (!hasDisplayedShapeGraph())
+            return std::nullopt;
         ref = getDisplayedShapeGraphRef();
         break;
     case VIEWDATA:
+        if (!hasDisplayedDataMap())
+            return std::nullopt;
         ref = getDisplayedDataMapRef();
         break;
     }
     return ref;
 }
 
-// I'd like to use this more often so that several classes other than data maps and shape graphs
-// can be used in the future
+// I'd like to use this more often so that several classes other than data maps
+// and shape graphs can be used in the future
 
 int MetaGraph::getDisplayedMapType() {
     switch (m_view_class & VIEWFRONT) {
@@ -2279,8 +2321,8 @@ void MetaGraph::undo() {
 
 // Moving to global ways of doing things:
 
-int MetaGraph::addAttribute(const std::string &name) {
-    int col;
+std::optional<size_t> MetaGraph::addAttribute(const std::string &name) {
+    std::optional<size_t> col = std::nullopt;
     switch (m_view_class & VIEWFRONT) {
     case VIEWVGA:
         col = getDisplayedPointMap().addAttribute(name);
@@ -2309,7 +2351,7 @@ void MetaGraph::removeAttribute(int col) {
     }
 }
 
-bool MetaGraph::isAttributeLocked(int col) {
+bool MetaGraph::isAttributeLocked(size_t col) {
     return getAttributeTable(m_view_class).getColumn(col).isLocked();
 }
 
@@ -2349,132 +2391,136 @@ void MetaGraph::setDisplayedAttribute(int col) {
 
 // const and non-const versions:
 
-AttributeTable &MetaGraph::getAttributeTable(int type, int layer) {
+AttributeTable &MetaGraph::getAttributeTable(std::optional<size_t> type,
+                                             std::optional<size_t> layer) {
     AttributeTable *tab = NULL;
-    if (type == -1) {
+    if (!type.has_value()) {
         type = m_view_class;
     }
-    switch (type & VIEWFRONT) {
+    switch (type.value() & VIEWFRONT) {
     case VIEWVGA:
-        tab = (layer == -1) ? &(getDisplayedPointMap().getAttributeTable())
-                            : &(m_pointMaps[layer].getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getAttributeTable())
+                                   : &(m_pointMaps[layer.value()].getAttributeTable());
         break;
     case VIEWAXIAL:
-        tab = (layer == -1) ? &(getDisplayedShapeGraph().getAttributeTable())
-                            : &(m_shapeGraphs[layer]->getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getAttributeTable())
+                                   : &(m_shapeGraphs[layer.value()]->getAttributeTable());
         break;
     case VIEWDATA:
-        tab = (layer == -1) ? &(getDisplayedDataMap().getAttributeTable())
-                            : &(m_dataMaps[layer].getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getAttributeTable())
+                                   : &(m_dataMaps[layer.value()].getAttributeTable());
         break;
     }
     return *tab;
 }
 
-const AttributeTable &MetaGraph::getAttributeTable(int type, int layer) const {
+const AttributeTable &MetaGraph::getAttributeTable(std::optional<size_t> type,
+                                                   std::optional<size_t> layer) const {
     const AttributeTable *tab = NULL;
-    if (type == -1) {
+    if (!type.has_value()) {
         type = m_view_class & VIEWFRONT;
     }
-    switch (type) {
+    switch (type.value()) {
     case VIEWVGA:
-        tab = layer == -1 ? &(getDisplayedPointMap().getAttributeTable())
-                          : &(m_pointMaps[layer].getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getAttributeTable())
+                                   : &(m_pointMaps[layer.value()].getAttributeTable());
         break;
     case VIEWAXIAL:
-        tab = layer == -1 ? &(getDisplayedShapeGraph().getAttributeTable())
-                          : &(m_shapeGraphs[layer]->getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getAttributeTable())
+                                   : &(m_shapeGraphs[layer.value()]->getAttributeTable());
         break;
     case VIEWDATA:
-        tab = layer == -1 ? &(getDisplayedDataMap().getAttributeTable())
-                          : &(m_dataMaps[layer].getAttributeTable());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getAttributeTable())
+                                   : &(m_dataMaps[layer.value()].getAttributeTable());
         break;
     }
     return *tab;
 }
 
-LayerManagerImpl &MetaGraph::getLayers(int type, int layer) {
+LayerManagerImpl &MetaGraph::getLayers(int type, std::optional<size_t> layer) {
     LayerManagerImpl *tab = NULL;
     if (type == -1) {
         type = m_view_class;
     }
     switch (type & VIEWFRONT) {
     case VIEWVGA:
-        tab = (layer == -1) ? &(getDisplayedPointMap().getLayers())
-                            : &(m_pointMaps[layer].getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getLayers()) //
+                                   : &(m_pointMaps[layer.value()].getLayers());
         break;
     case VIEWAXIAL:
-        tab = (layer == -1) ? &(getDisplayedShapeGraph().getLayers())
-                            : &(m_shapeGraphs[layer]->getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getLayers())
+                                   : &(m_shapeGraphs[layer.value()]->getLayers());
         break;
     case VIEWDATA:
-        tab =
-            (layer == -1) ? &(getDisplayedDataMap().getLayers()) : &(m_dataMaps[layer].getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getLayers()) //
+                                   : &(m_dataMaps[layer.value()].getLayers());
         break;
     }
     return *tab;
 }
 
-const LayerManagerImpl &MetaGraph::getLayers(int type, int layer) const {
+const LayerManagerImpl &MetaGraph::getLayers(int type, std::optional<size_t> layer) const {
     const LayerManagerImpl *tab = NULL;
     if (type == -1) {
         type = m_view_class & VIEWFRONT;
     }
     switch (type) {
     case VIEWVGA:
-        tab =
-            layer == -1 ? &(getDisplayedPointMap().getLayers()) : &(m_pointMaps[layer].getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getLayers()) //
+                                   : &(m_pointMaps[layer.value()].getLayers());
         break;
     case VIEWAXIAL:
-        tab = layer == -1 ? &(getDisplayedShapeGraph().getLayers())
-                          : &(m_shapeGraphs[layer]->getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getLayers())
+                                   : &(m_shapeGraphs[layer.value()]->getLayers());
         break;
     case VIEWDATA:
-        tab = layer == -1 ? &(getDisplayedDataMap().getLayers()) : &(m_dataMaps[layer].getLayers());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getLayers()) //
+                                   : &(m_dataMaps[layer.value()].getLayers());
         break;
     }
     return *tab;
 }
 
-AttributeTableHandle &MetaGraph::getAttributeTableHandle(int type, int layer) {
+AttributeTableHandle &MetaGraph::getAttributeTableHandle(int type, std::optional<size_t> layer) {
     AttributeTableHandle *tab = NULL;
     if (type == -1) {
         type = m_view_class;
     }
     switch (type & VIEWFRONT) {
     case VIEWVGA:
-        tab = (layer == -1) ? &(getDisplayedPointMap().getAttributeTableHandle())
-                            : &(m_pointMaps[layer].getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getAttributeTableHandle())
+                                   : &(m_pointMaps[layer.value()].getAttributeTableHandle());
         break;
     case VIEWAXIAL:
-        tab = (layer == -1) ? &(getDisplayedShapeGraph().getAttributeTableHandle())
-                            : &(m_shapeGraphs[layer]->getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getAttributeTableHandle())
+                                   : &(m_shapeGraphs[layer.value()]->getAttributeTableHandle());
         break;
     case VIEWDATA:
-        tab = (layer == -1) ? &(getDisplayedDataMap().getAttributeTableHandle())
-                            : &(m_dataMaps[layer].getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getAttributeTableHandle())
+                                   : &(m_dataMaps[layer.value()].getAttributeTableHandle());
         break;
     }
     return *tab;
 }
 
-const AttributeTableHandle &MetaGraph::getAttributeTableHandle(int type, int layer) const {
+const AttributeTableHandle &MetaGraph::getAttributeTableHandle(int type,
+                                                               std::optional<size_t> layer) const {
     const AttributeTableHandle *tab = NULL;
     if (type == -1) {
         type = m_view_class & VIEWFRONT;
     }
     switch (type) {
     case VIEWVGA:
-        tab = layer == -1 ? &(getDisplayedPointMap().getAttributeTableHandle())
-                          : &(m_pointMaps[layer].getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedPointMap().getAttributeTableHandle())
+                                   : &(m_pointMaps[layer.value()].getAttributeTableHandle());
         break;
     case VIEWAXIAL:
-        tab = layer == -1 ? &(getDisplayedShapeGraph().getAttributeTableHandle())
-                          : &(m_shapeGraphs[layer]->getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedShapeGraph().getAttributeTableHandle())
+                                   : &(m_shapeGraphs[layer.value()]->getAttributeTableHandle());
         break;
     case VIEWDATA:
-        tab = layer == -1 ? &(getDisplayedDataMap().getAttributeTableHandle())
-                          : &(m_dataMaps[layer].getAttributeTableHandle());
+        tab = (!layer.has_value()) ? &(getDisplayedDataMap().getAttributeTableHandle())
+                                   : &(m_dataMaps[layer.value()].getAttributeTableHandle());
         break;
     }
     return *tab;
@@ -2496,7 +2542,7 @@ int MetaGraph::readFromFile(const std::string &filename) {
     return result;
 }
 
-int MetaGraph::readFromStream(std::istream &stream, const std::string &filename) {
+int MetaGraph::readFromStream(std::istream &stream, const std::string &) {
     m_state = 0; // <- clear the state out
 
     // clear BSP tree if it exists:
@@ -2518,7 +2564,9 @@ int MetaGraph::readFromStream(std::istream &stream, const std::string &filename)
         return NEWER_VERSION;
     }
     if (version < METAGRAPH_VERSION) {
-        throw depthmapX::RuntimeException("This file is too old, please use an older version of depthmapX to convert it");
+        throw depthmapX::RuntimeException(
+            "This file is too old, please use an older version of depthmapX to "
+            "convert it");
     }
 
     // have to use temporary state here as redraw attempt may come too early:
@@ -2541,8 +2589,10 @@ int MetaGraph::readFromStream(std::istream &stream, const std::string &filename)
     if (type == 'd') {
         // contains deprecated datalayers. depthmapX should be able to
         // convert them into shapemaps
-        
-        throw depthmapX::RuntimeException("This file is too old, please use an older version of depthmapX to convert it");
+
+        throw depthmapX::RuntimeException(
+            "This file is too old, please use an older version of depthmapX to "
+            "convert it");
     }
     if (type == 'x') {
         FileProperties::read(stream);
@@ -2643,7 +2693,8 @@ int MetaGraph::write(const std::string &filename, int version, bool currentlayer
     std::ofstream stream;
 
     int oldstate = m_state;
-    m_state = 0; // <- temporarily clear out state, avoids any potential read / write errors
+    m_state = 0; // <- temporarily clear out state, avoids any potential read /
+                 // write errors
 
     char type;
 
@@ -2706,7 +2757,7 @@ int MetaGraph::write(const std::string &filename, int version, bool currentlayer
             stream.write((char *)&m_region, sizeof(m_region));
 
             // Quick mod - TV
-            int count = m_drawingFiles.size();
+            int count = static_cast<int>(m_drawingFiles.size());
             stream.write((char *)&count, sizeof(count));
             for (auto &spacePixel : m_drawingFiles) {
                 spacePixel.write(stream);
@@ -2765,7 +2816,7 @@ std::vector<SimpleLine> MetaGraph::getVisibleDrawingLines() {
     return lines;
 }
 
-int MetaGraph::addNewPointMap(const std::string &name) {
+size_t MetaGraph::addNewPointMap(const std::string &name) {
     std::string myname = name;
     int counter = 1;
     bool duplicate = true;
@@ -2780,12 +2831,14 @@ int MetaGraph::addNewPointMap(const std::string &name) {
         }
     }
     m_pointMaps.push_back(PointMap(m_region, myname));
-    m_displayed_pointmap = m_pointMaps.size() - 1;
+    setDisplayedPointMapRef(m_pointMaps.size() - 1);
     return m_pointMaps.size() - 1;
 }
 
 bool MetaGraph::readPointMaps(std::istream &stream) {
-    stream.read((char *)&m_displayed_pointmap, sizeof(m_displayed_pointmap));
+    unsigned int displayed_pointmap;
+    stream.read((char *)&displayed_pointmap, sizeof(displayed_pointmap));
+    setDisplayedPointMapRef(displayed_pointmap);
     int count;
     stream.read((char *)&count, sizeof(count));
     for (int i = 0; i < count; i++) {
@@ -2797,9 +2850,10 @@ bool MetaGraph::readPointMaps(std::istream &stream) {
 
 bool MetaGraph::writePointMaps(std::ofstream &stream, bool displayedmaponly) {
     if (!displayedmaponly) {
-        stream.write((char *)&m_displayed_pointmap, sizeof(m_displayed_pointmap));
-        int count = m_pointMaps.size();
-        stream.write((char *)&count, sizeof(count));
+        unsigned int displayed_pointmap = static_cast<unsigned int>(getDisplayedPointMapRef());
+        stream.write((char *)&displayed_pointmap, sizeof(displayed_pointmap));
+        auto count = m_pointMaps.size();
+        stream.write((char *)&count, sizeof(static_cast<int>(count)));
         for (auto &pointmap : m_pointMaps) {
             pointmap.write(stream);
         }
@@ -2812,19 +2866,21 @@ bool MetaGraph::writePointMaps(std::ofstream &stream, bool displayedmaponly) {
         dummy = 1;
         stream.write((char *)&dummy, sizeof(dummy));
         //
-        m_pointMaps[m_displayed_pointmap].write(stream);
+        getDisplayedPointMap().write(stream);
     }
     return true;
 }
 
 bool MetaGraph::readDataMaps(std::istream &stream) {
     m_dataMaps.clear(); // empty existing data
-    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+    // problems
     unsigned int displayed_map;
     stream.read((char *)&displayed_map, sizeof(displayed_map));
     m_displayed_datamap = size_t(displayed_map);
     // read maps
-    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+    // problems
     unsigned int count = 0;
     stream.read((char *)&count, sizeof(count));
 
@@ -2837,11 +2893,13 @@ bool MetaGraph::readDataMaps(std::istream &stream) {
 
 bool MetaGraph::writeDataMaps(std::ofstream &stream, bool displayedmaponly) {
     if (!displayedmaponly) {
-        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
-        unsigned int displayed_map = (unsigned int)(m_displayed_datamap);
+        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+        // problems
+        unsigned int displayed_map = static_cast<unsigned int>(getDisplayedDataMapRef());
         stream.write((char *)&displayed_map, sizeof(displayed_map));
         // write maps
-        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+        // problems
         unsigned int count = (unsigned int)m_dataMaps.size();
         stream.write((char *)&count, sizeof(count));
         for (size_t j = 0; j < count; j++) {
@@ -2856,29 +2914,31 @@ bool MetaGraph::writeDataMaps(std::ofstream &stream, bool displayedmaponly) {
         dummy = 1;
         stream.write((char *)&dummy, sizeof(dummy));
         // write map:
-        m_dataMaps[m_displayed_datamap].write(stream);
+        getDisplayedDataMap().write(stream);
     }
     return true;
 }
 
 bool MetaGraph::readShapeGraphs(std::istream &stream) {
     m_shapeGraphs.clear(); // empty existing data
-    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+    // problems
     unsigned int displayed_map;
     stream.read((char *)&displayed_map, sizeof(displayed_map));
-    setDisplayedShapeGraphRef(int(displayed_map));
+    setDisplayedShapeGraphRef(displayed_map);
     // read maps
-    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+    // problems
     unsigned int count = 0;
     stream.read((char *)&count, sizeof(count));
 
     for (size_t j = 0; j < size_t(count); j++) {
         m_shapeGraphs.push_back(std::unique_ptr<ShapeGraph>(new ShapeGraph()));
 
-        // P.K. Hairy solution given that we don't know the type/name of the shapegraph
-        // before we actually read it: mark the beginning of the shapegraph in the stream
-        // and if it's found to be an AllLineMap then just roll the stream back and read
-        // from the mark again
+        // P.K. Hairy solution given that we don't know the type/name of the
+        // shapegraph before we actually read it: mark the beginning of the
+        // shapegraph in the stream and if it's found to be an AllLineMap then just
+        // roll the stream back and read from the mark again
 
         long mark = stream.tellg();
         m_shapeGraphs.back()->read(stream);
@@ -2913,21 +2973,22 @@ bool MetaGraph::readShapeGraphs(std::istream &stream) {
             alllinemap->m_radial_lines.clear();
             dXreadwrite::readIntoVector(stream, alllinemap->m_radial_lines);
 
-            // this is an index to look up the all line map, used by UI to determine if can make
-            // fewest line map note: it is not saved for historical reasons will get confused by
-            // more than one all line map
-            m_all_line_map = int(i);
+            // this is an index to look up the all line map, used by UI to determine
+            // if can make fewest line map note: it is not saved for historical
+            // reasons will get confused by more than one all line map
+            m_all_line_map = i;
 
             // there is currently only one:
             break;
         }
     }
     if (!foundAllLineMap) {
-        // P.K. This is just a dummy read to cover cases where there is no All-Line Map
-        // The below is taken from pmemvec<T>::read
+        // P.K. This is just a dummy read to cover cases where there is no All-Line
+        // Map The below is taken from pmemvec<T>::read
 
         // READ / WRITE USES 32-bit LENGTHS (number of elements)
-        // n.b., do not change this to size_t as it will cause 32-bit to 64-bit conversion problems
+        // n.b., do not change this to size_t as it will cause 32-bit to 64-bit
+        // conversion problems
         unsigned int length;
         stream.read((char *)&length, sizeof(unsigned int));
         stream.read((char *)&length, sizeof(unsigned int));
@@ -2937,11 +2998,13 @@ bool MetaGraph::readShapeGraphs(std::istream &stream) {
 
 bool MetaGraph::writeShapeGraphs(std::ofstream &stream, bool displayedmaponly) {
     if (!displayedmaponly) {
-        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+        // problems
         unsigned int displayed_map = (unsigned int)(getDisplayedShapeGraphRef());
         stream.write((char *)&displayed_map, sizeof(displayed_map));
         // write maps
-        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+        // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
+        // problems
         unsigned int count = (unsigned int)m_shapeGraphs.size();
         stream.write((char *)&count, sizeof(count));
         for (size_t j = 0; j < count; j++) {
@@ -2959,7 +3022,7 @@ bool MetaGraph::writeShapeGraphs(std::ofstream &stream, bool displayedmaponly) {
         m_shapeGraphs[getDisplayedShapeGraphRef()]->write(stream);
     }
 
-    if (m_all_line_map == -1) {
+    if (!hasAllLineMap()) {
         std::vector<PolyConnector> temp_poly_connections;
         std::vector<RadialLine> temp_radial_lines;
 
@@ -2967,7 +3030,7 @@ bool MetaGraph::writeShapeGraphs(std::ofstream &stream, bool displayedmaponly) {
         dXreadwrite::writeVector(stream, temp_radial_lines);
     } else {
         AllLineMap *alllinemap =
-            dynamic_cast<AllLineMap *>(m_shapeGraphs[size_t(m_all_line_map)].get());
+            dynamic_cast<AllLineMap *>(m_shapeGraphs[m_all_line_map.value()].get());
 
         if (alllinemap == nullptr) {
             throw depthmapX::RuntimeException("Failed to cast from ShapeGraph to AllLineMap");

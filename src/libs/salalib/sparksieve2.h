@@ -1,28 +1,17 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // This is my code to make a set of axial lines from a set of boundary lines
 
-#ifndef __SPARKSIEVE2_H__
-#define __SPARKSIEVE2_H__
+#pragma once
 
 #include "genlib/p2dpoly.h"
+
 #include <float.h>
 #include <list>
 #include <map>
+#include <vector>
 
 class sparkSieve2 {
   public:
@@ -74,5 +63,3 @@ inline bool operator<(const sparkSieve2::sparkZone2 &a, const sparkSieve2::spark
 inline bool operator>(const sparkSieve2::sparkZone2 &a, const sparkSieve2::sparkZone2 &b) {
     return (a.start == b.start) ? (a.end < b.end) : (a.start > b.start);
 }
-
-#endif

@@ -1,5 +1,11 @@
-#include "salalib/tidylines.h"
-#include "salalib/tolerances.h"
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "tidylines.h"
+
+#include "tolerances.h"
 
 // helper -- a little class to tidy up a set of lines
 
@@ -22,8 +28,8 @@ void TidyLines::tidy(std::vector<Line> &lines, const QtRegion &region) {
 
     std::vector<int> removelist;
     for (size_t i = 0; i < lines.size(); i++) {
-        // n.b., as m_lines have just been made, note that what's in m_lines matches whats in lines
-        // we will use this later!
+        // n.b., as m_lines have just been made, note that what's in m_lines matches
+        // whats in lines we will use this later!
         m_test++;
         m_lines[i].test = m_test;
         PixelRefVector list = pixelateLine(m_lines[i].line);
@@ -55,8 +61,8 @@ void TidyLines::tidy(std::vector<Line> &lines, const QtRegion &region) {
                             lines[j].bx() = lines[end].bx();
                             lines[j].by() = lines[end].by();
                             removelist.push_back(i);
-                            continue; // <- don't do this any more, we've zapped it and replaced it
-                                      // with the later line
+                            continue; // <- don't do this any more, we've zapped it and
+                                      // replaced it with the later line
                         }
                         if ((lines[j].start()[axis_j] * parity + TOLERANCE_B * maxdim) >
                                 (lines[i].start()[axis_i] * parity) &&
@@ -71,8 +77,8 @@ void TidyLines::tidy(std::vector<Line> &lines, const QtRegion &region) {
                             lines[j].bx() = lines[end].bx();
                             lines[j].by() = lines[end].by();
                             removelist.push_back(i);
-                            continue; // <- don't do this any more, we've zapped it and replaced it
-                                      // with the later line
+                            continue; // <- don't do this any more, we've zapped it and
+                                      // replaced it with the later line
                         }
                     }
                 }
@@ -93,7 +99,7 @@ void TidyLines::quicktidy(std::map<int, std::pair<Line, int>> &lines, const QtRe
 
     double avglen = 0.0;
 
-    for (auto line : lines) {
+    for (const auto &line : lines) {
         avglen += line.second.first.length();
     }
     avglen /= lines.size();
@@ -111,7 +117,7 @@ void TidyLines::quicktidy(std::map<int, std::pair<Line, int>> &lines, const QtRe
 
     // now load up m_lines...
     initLines(lines.size(), m_region.bottom_left, m_region.top_right);
-    for (auto line : lines) {
+    for (const auto &line : lines) {
         addLine(line.second.first);
     }
     sortPixelLines();
@@ -119,7 +125,7 @@ void TidyLines::quicktidy(std::map<int, std::pair<Line, int>> &lines, const QtRe
     // and chop duplicate lines:
     std::vector<int> removelist;
     int i = -1;
-    for (auto line : lines) {
+    for (const auto &line : lines) {
         i++;
         PixelRef start = pixelate(line.second.first.start());
         auto &pixel_lines =

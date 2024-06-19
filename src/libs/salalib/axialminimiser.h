@@ -1,6 +1,11 @@
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #pragma once
 
-#include "salalib/alllinemap.h"
+#include "alllinemap.h"
 
 struct ValueTriplet {
     int value1;

@@ -1,28 +1,14 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/segmmodules/segmtulip.h"
+#include "segmtulip.h"
 
 #include "genlib/stringutils.h"
 
-AnalysisResult SegmentTulip::run(Communicator *comm,
-                                 ShapeGraph &map,
-                                 bool) {
+AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
 
     AnalysisResult result;
     if (map.getMapType() != ShapeMap::SEGMENTMAP) {
@@ -245,7 +231,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
             }
         }
     }
-    std::vector<int> choice_col, w_choice_col, w_choice_col2, count_col, integ_col, w_integ_col,
+    std::vector<size_t> choice_col, w_choice_col, w_choice_col2, count_col, integ_col, w_integ_col,
         td_col, w_td_col, total_weight_col;
     // then look them up! eek....
     for (r = 0; r < radius_unconverted.size(); r++) {
@@ -390,9 +376,9 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
         }
     }
 
-    int radiussize = radius.size();
+    auto radiussize = radius.size();
     int radiusmask = 0;
-    for (int i = 0; i < radiussize; i++) {
+    for (size_t i = 0; i < radiussize; i++) {
         radiusmask |= (1 << i);
     }
 
@@ -413,7 +399,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
         }
         for (size_t j = 0; j < map.getConnections().size(); j++) {
             for (int dir = 0; dir < 2; dir++) {
-                for (int k = 0; k < radiussize; k++) {
+                for (size_t k = 0; k < radiussize; k++) {
                     audittrail[j][k][dir].clearLine();
                 }
                 uncovered[j][dir] = radiusmask;
@@ -460,7 +446,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
                     while (((coverage >> rbin) & 0x1) == 0)
                         rbin++;
                     rbinbase = rbin;
-                    while (rbin < radiussize) {
+                    while (rbin < static_cast<int>(radiussize)) {
                         if (((coverage >> rbin) & 0x1) == 1) {
                             audittrail[ref][rbin][dir].depth = depthlevel;
                             audittrail[ref][rbin][dir].previous = lineindex.previous;
@@ -500,19 +486,19 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
                             seglength = lengths[conn.ref];
                             switch (m_radius_type) {
                             case Options::RADIUS_ANGULAR:
-                                while (rbin != radiussize && radius[rbin] != -1 &&
+                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                        depthlevel + extradepth > (int)radius[rbin]) {
                                     rbin++;
                                 }
                                 break;
                             case Options::RADIUS_METRIC:
-                                while (rbin != radiussize && radius[rbin] != -1 &&
+                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                        lineindex.metricdepth + seglength * 0.5 > radius[rbin]) {
                                     rbin++;
                                 }
                                 break;
                             case Options::RADIUS_STEPS:
-                                if (rbin != radiussize && radius[rbin] != -1 &&
+                                if (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                     lineindex.segdepth >= (int)radius[rbin]) {
                                     rbin++;
                                 }
@@ -551,19 +537,19 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
                             seglength = lengths[conn.ref];
                             switch (m_radius_type) {
                             case Options::RADIUS_ANGULAR:
-                                while (rbin != radiussize && radius[rbin] != -1 &&
+                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                        depthlevel + extradepth > (int)radius[rbin]) {
                                     rbin++;
                                 }
                                 break;
                             case Options::RADIUS_METRIC:
-                                while (rbin != radiussize && radius[rbin] != -1 &&
+                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                        lineindex.metricdepth + seglength * 0.5 > radius[rbin]) {
                                     rbin++;
                                 }
                                 break;
                             case Options::RADIUS_STEPS:
-                                if (rbin != radiussize && radius[rbin] != -1 &&
+                                if (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
                                     lineindex.segdepth >= (int)radius[rbin]) {
                                     rbin++;
                                 }
@@ -583,7 +569,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
             }
         }
         // set the attributes for this node:
-        for (int k = 0; k < radiussize; k++) {
+        for (size_t k = 0; k < radiussize; k++) {
             // note, curs_total_depth must use double as mantissa can get too long for int in large
             // systems
             double curs_node_count = 0.0, curs_total_depth = 0.0;
@@ -780,7 +766,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm,
         }
     }
     for (size_t i = 0; i < map.getConnections().size(); i++) {
-        for (int j = 0; j < radiussize; j++) {
+        for (size_t j = 0; j < radiussize; j++) {
             delete[] audittrail[i][j];
         }
         delete[] audittrail[i];

@@ -1,23 +1,13 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "mapinfodata.h"
-#include "salalib/mgraph.h"
-#include "salalib/shapegraph.h"
+
+#include "salalib/pointdata.h"
 #include "salalib/shapemap.h"
+
+#include "genlib/stringutils.h"
 
 #include <numeric>
 
@@ -55,7 +45,7 @@ int MapInfoData::import(std::istream &miffile, std::istream &midfile, ShapeMap &
         }
     }
 
-    for (std::string colname : colnames) {
+    for (const std::string &colname : colnames) {
         colindexes.push_back(attributes.getColumnIndex(colname));
     }
 
@@ -134,13 +124,13 @@ int MapInfoData::import(std::istream &miffile, std::istream &midfile, ShapeMap &
         }
     }
     // TODO: Use the proper exception
-    catch (std::exception&) {
+    catch (std::exception &) {
         // unhandled parsing exceptions return read error:
         return MINFO_MIFPARSE;
     }
 
     size_t nextduplicate = 0;
-    AttributeRow *lastrow;
+    AttributeRow *lastrow = nullptr;
 
     QtRegion region(pointsets[0][0], pointsets[0][0]);
     for (size_t i = 0; i < pointsets.size(); i++) {
@@ -163,8 +153,10 @@ int MapInfoData::import(std::istream &miffile, std::istream &midfile, ShapeMap &
             // table data entries:
             if (nextduplicate < duplicates.size() && duplicates[nextduplicate] == i) {
                 // duplicate last row:
-                for (int colindex : colindexes) {
-                    row.setValue(colindex, lastrow->getValue(colindex));
+                if (lastrow) {
+                    for (auto colindex : colindexes) {
+                        row.setValue(colindex, lastrow->getValue(colindex));
+                    }
                 }
                 nextduplicate++;
             } else {
@@ -208,7 +200,7 @@ int MapInfoData::import(std::istream &miffile, std::istream &midfile, ShapeMap &
         }
     }
     // TODO: use a proper exception
-    catch (std::exception&) {
+    catch (std::exception &) {
         // unhandled parsing exceptions return read error:
         return MINFO_TABLE;
     }
@@ -252,8 +244,8 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
     if (m_bounds.empty()) {
         char bounds[256];
         snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", points.m_region.bottom_left.x,
-                points.m_region.bottom_left.y, points.m_region.top_right.x,
-                points.m_region.top_right.y);
+                 points.m_region.bottom_left.y, points.m_region.top_right.x,
+                 points.m_region.top_right.y);
         m_bounds = bounds;
     }
 
@@ -281,8 +273,8 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
     if (m_bounds.empty()) {
         char bounds[256];
         snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", map.getRegion().bottom_left.x,
-                map.getRegion().bottom_left.y, map.getRegion().top_right.x,
-                map.getRegion().top_right.y);
+                 map.getRegion().bottom_left.y, map.getRegion().top_right.x,
+                 map.getRegion().top_right.y);
         m_bounds = bounds;
     }
 
@@ -298,7 +290,7 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
     miffile.precision(16);
     midfile.precision(16);
 
-    for (auto shape : map.m_shapes) {
+    for (const auto &shape : map.m_shapes) {
         // note, attributes must align for this:
         if (isObjectVisible(map.m_layers,
                             map.getAttributeTable().getRow(AttributeKey(shape.first)))) {
@@ -343,7 +335,7 @@ bool MapInfoData::exportPolygons(std::ostream &miffile, std::ostream &midfile,
     if (m_bounds.empty()) {
         char bounds[256];
         snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", region.bottom_left.x,
-                region.bottom_left.y, region.top_right.x, region.top_right.y);
+                 region.bottom_left.y, region.top_right.x, region.top_right.y);
         m_bounds = bounds;
     }
 
@@ -499,7 +491,7 @@ void MapInfoData::writetable(std::ostream &miffile, std::ostream &midfile,
         return attributes.getColumnName(a) < attributes.getColumnName(b);
     });
 
-    for (int idx : indices) {
+    for (auto idx : indices) {
         std::string colname = attributes.getColumnName(idx);
         miffile << "  ";
         bool lastalpha = false;
@@ -527,7 +519,7 @@ void MapInfoData::writetable(std::ostream &miffile, std::ostream &midfile,
         */
         if (isObjectVisible(layers, iter->getRow())) {
             midfile << rowKey;
-            for (int idx : indices) {
+            for (auto idx : indices) {
                 midfile << m_delimiter << iter->getRow().getValue(idx);
             }
             midfile << std::endl;

@@ -1,29 +1,15 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/axialmodules/axialintegration.h"
+#include "axialintegration.h"
 
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
 
-AnalysisResult AxialIntegration::run(Communicator *comm,
-                                     ShapeGraph &map,
-                                     bool simple_version) {
+AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_version) {
     // note, from 10.0, Depthmap no longer includes *self* connections on axial lines
     // self connections are stripped out on loading graph files, as well as no longer made
 
@@ -160,7 +146,7 @@ AnalysisResult AxialIntegration::run(Communicator *comm,
         //
     }
     // then look up all the columns... eek:
-    std::vector<int> choice_col, n_choice_col, w_choice_col, nw_choice_col, entropy_col,
+    std::vector<size_t> choice_col, n_choice_col, w_choice_col, nw_choice_col, entropy_col,
         integ_dv_col, integ_pv_col, integ_tk_col, intensity_col, depth_col, count_col,
         rel_entropy_col, penn_norm_col, w_depth_col, total_weight_col, ra_col, rra_col, td_col,
         harmonic_col;
@@ -237,7 +223,7 @@ AnalysisResult AxialIntegration::run(Communicator *comm,
     }
 
     // for choice
-    AnalysisInfo **audittrail;
+    AnalysisInfo **audittrail = nullptr;
     if (m_choice) {
         audittrail = new AnalysisInfo *[map.getShapeCount()];
         for (size_t i = 0; i < map.getShapeCount(); i++) {
@@ -251,9 +237,8 @@ AnalysisResult AxialIntegration::run(Communicator *comm,
 
     bool *covered = new bool[map.getShapeCount()];
 
-    size_t i = -1;
+    size_t i = 0;
     for (auto &iter : attributes) {
-        i++;
         AttributeRow &row = iter.getRow();
         for (size_t j = 0; j < map.getShapeCount(); j++) {
             covered[j] = false;
@@ -470,12 +455,12 @@ AnalysisResult AxialIntegration::run(Communicator *comm,
                 comm->CommPostMessage(Communicator::CURRENT_RECORD, i);
             }
         }
+        i++;
     }
     delete[] covered;
     if (m_choice) {
-        i = -1;
+        i = 0;
         for (auto &iter : attributes) {
-            i++;
             AttributeRow &row = iter.getRow();
             double total_choice = 0.0, w_total_choice = 0.0;
             for (size_t r = 0; r < radii.size(); r++) {
@@ -506,8 +491,11 @@ AnalysisResult AxialIntegration::run(Communicator *comm,
                     }
                 }
             }
+            i++;
         }
         for (size_t i = 0; i < map.getShapeCount(); i++) {
+            // TODO: At this moment, GCC triggers a warning here. Find
+            // a better solution rather than disabling the warnind
             delete[] audittrail[i];
         }
         delete[] audittrail;

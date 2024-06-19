@@ -1,20 +1,8 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2019, Petros Koutsolampros
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2019 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
@@ -40,16 +28,16 @@ class Agent {
     PointMap *m_pointmap;
     //
     PixelRef m_node;
-    int m_step;
-    int m_frame;
-    int m_gate;
-    bool m_stuck;
-    bool m_stopped;
-    bool m_target_lock;
-    bool m_gate_encountered;
-    bool m_at_target;
-    bool m_at_destination;
-    int m_output_mode;
+    int m_step = 0;
+    int m_frame = 0;
+    int m_gate = -1;
+    bool m_stuck = false;
+    bool m_stopped = false;
+    bool m_target_lock = false;
+    bool m_gate_encountered = false;
+    bool m_at_target = false;
+    bool m_at_destination = false;
+    int m_output_mode = OUTPUT_NOTHING;
     Point2f m_loc;
     Point2f m_target;
     Point2f m_vector;
@@ -58,7 +46,7 @@ class Agent {
     Point2f m_destination;
     //
     // for recording trails:
-    int m_trail_num;
+    int m_trail_num = -1;
     //
     // for occlusion memory
     pflipper<PixelRefVector> m_occ_memory;
@@ -135,9 +123,9 @@ struct wpair {
 // convert an x / y difference to it's corresponding connection direction
 inline char connectValue(PixelRef dir) {
     if (dir.y > 0) {
-        return (Point::CONNECT_NE << (1 - dir.x));
+        return static_cast<char>(Point::CONNECT_NE << (1 - dir.x));
     } else if (dir.y < 0) {
-        return (Point::CONNECT_SW << (dir.x + 1));
+        return static_cast<char>(Point::CONNECT_SW << (dir.x + 1));
     } else if (dir.x == 1) {
         return (char)Point::CONNECT_E;
     } else {

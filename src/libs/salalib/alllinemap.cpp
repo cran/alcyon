@@ -1,12 +1,20 @@
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "alllinemap.h"
+
+#include "axialminimiser.h"
+#include "tolerances.h"
+
 #include "genlib/exceptions.h"
-#include "salalib/axialminimiser.h"
-#include "salalib/tolerances.h"
+
 #include <iomanip>
 #include <time.h>
 
-void AllLineMap::generate(Communicator *comm,
-                          std::vector<SpacePixelFile> &drawingLayers,
+void AllLineMap::generate(Communicator *comm, std::vector<SpacePixelFile> &drawingLayers,
                           const Point2f &seed) {
 
     std::vector<Line> lines;
@@ -31,9 +39,7 @@ void AllLineMap::generate(Communicator *comm,
     generate(comm, lines, region, seed);
 }
 
-void AllLineMap::generate(Communicator *comm,
-                          std::vector<Line> &lines,
-                          QtRegion &region,
+void AllLineMap::generate(Communicator *comm, std::vector<Line> &lines, QtRegion &region,
                           const Point2f &seed) {
     if (comm) {
         comm->CommPostMessage(Communicator::NUM_STEPS, 3);
@@ -46,7 +52,8 @@ void AllLineMap::generate(Communicator *comm,
     m_radial_lines.clear();
 
     // starting off... finding a polygon...
-    // for ease, I'm just going to make a construction line set from all the visible lines...
+    // for ease, I'm just going to make a construction line set from all the
+    // visible lines...
 
     region.grow(1.30);
     m_polygons.init(lines, region);
@@ -123,7 +130,8 @@ void AllLineMap::generate(Communicator *comm,
     }
 
     region.grow(0.99); // <- this paired with crop code below to prevent error
-    init(axiallines.size(), m_polygons.getRegion()); // used to be double density here
+    init(axiallines.size(),
+         m_polygons.getRegion()); // used to be double density here
     initialiseAttributesAxial();
     for (size_t k = 0; k < axiallines.size(); k++) {
         axiallines[k].crop(region); // <- should be cropped anyway, but causing an error
@@ -157,7 +165,7 @@ AllLineMap::extractFewestLineMaps(Communicator *comm) {
     // also, a list of radial lines cut by each axial line
     std::map<int, std::set<int>> ax_radial_cuts;
     std::map<int, std::set<int>> ax_seg_cuts;
-    for (auto shape : getAllShapes()) {
+    for (const auto &shape : getAllShapes()) {
         ax_radial_cuts.insert(std::make_pair(shape.first, std::set<int>()));
         ax_seg_cuts.insert(std::make_pair(shape.first, std::set<int>()));
     }
@@ -165,7 +173,8 @@ AllLineMap::extractFewestLineMaps(Communicator *comm) {
     // make divisions -- this is the slow part and the comm updates
     makeDivisions(m_poly_connections, m_radial_lines, radialdivisions, ax_radial_cuts, comm);
 
-    // the slow part is over, we're into the final straight... reset the current record flag:
+    // the slow part is over, we're into the final straight... reset the current
+    // record flag:
     if (comm) {
         comm->CommPostMessage(Communicator::CURRENT_STEP, 2);
         comm->CommPostMessage(Communicator::CURRENT_RECORD, 0);
@@ -189,7 +198,8 @@ AllLineMap::extractFewestLineMaps(Communicator *comm) {
     }
 
     // and segment divisors from the axial lines...
-    // TODO: (CS) Restructure this to get rid of all those brittle parallel data structure
+    // TODO: (CS) Restructure this to get rid of all those brittle parallel data
+    // structure
     auto axIter = ax_radial_cuts.begin();
     auto axSeg = ax_seg_cuts.begin();
     for (i = 0; i < getAllShapes().size(); i++) {
@@ -220,8 +230,8 @@ AllLineMap::extractFewestLineMaps(Communicator *comm) {
     // and a little more setting up: key vertex relationships
     std::vector<std::vector<int>> keyvertexconns;
     std::vector<int> keyvertexcounts(static_cast<size_t>(m_keyvertexcount), 0);
-    // this sets up a two step relationship: looks for the key vertices for all lines connected to
-    // you
+    // this sets up a two step relationship: looks for the key vertices for all
+    // lines connected to you
     for (size_t y = 0; y < m_connectors.size(); y++) {
         keyvertexconns.push_back(std::vector<int>());
         auto &conn = keyvertexconns.back();
@@ -282,7 +292,8 @@ AllLineMap::extractFewestLineMaps(Communicator *comm) {
         new ShapeGraph("Fewest-Line Map (Minimal)", ShapeMap::AXIALMAP));
     fewestlinemap_minimal->clearAll();
     fewestlinemap_minimal->init(
-        int(lines_m.size()), m_polygons.getRegion()); // used to have a '2' for double pixel density
+        int(lines_m.size()),
+        m_polygons.getRegion()); // used to have a '2' for double pixel density
 
     fewestlinemap_minimal->initialiseAttributesAxial();
     for (size_t k = 0; k < lines_m.size(); k++) {
@@ -341,8 +352,8 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector> &polyconnections
                             throw 1; // for the code to work later this can't be true!
                         }
                         //
-                        // this makes sure actually crosses between the line and the openspace
-                        // properly
+                        // this makes sure actually crosses between the line and the
+                        // openspace properly
                         if (radiallines[connindex].cuts(line)) {
                             axialdividers[index].insert(connindex);
                             connIter->second.insert(shape.m_shape_ref);

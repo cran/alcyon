@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #pragma once
 
 #include "salalib/connector.h"
@@ -79,6 +84,7 @@ struct RadialKey {
         ang = rk.ang;
         segend = rk.segend;
     }
+    RadialKey &operator=(const RadialKey &) = default;
 };
 inline bool operator<(const RadialKey &a, const RadialKey &b) {
     return a.vertex < b.vertex ||
@@ -112,6 +118,7 @@ struct RadialLine : public RadialKey {
         nextvertex = rl.nextvertex;
     }
     bool cuts(const Line &l) const;
+    RadialLine &operator=(const RadialLine &) = default;
 };
 
 struct RadialSegment {

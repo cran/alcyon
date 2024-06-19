@@ -1,25 +1,12 @@
-// genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
-//#include <io.h>
+#include <chrono>
 #include <fstream>
 #include <string>
-#include <chrono>
 #include <sys/types.h>
 #include <vector>
 
@@ -107,7 +94,9 @@ class Communicator {
         m_infilename = fp.m_name;
     }
     void SetInfile2(const char *filename) { m_infile2 = new std::ifstream(filename); }
-    std::string GetInfileName() { return m_fileset.size() ? std::string(g_default_file_set) : m_infilename; }
+    std::string GetInfileName() {
+        return m_fileset.size() ? std::string(g_default_file_set) : m_infilename;
+    }
     std::string GetMBInfileName() {
         std::string ret;
         if (m_fileset.size()) {
@@ -117,14 +106,14 @@ class Communicator {
         }
         return ret;
     }
-    size_t GetInfileSize() {
+    long GetInfileSize() {
         if (m_infile) {
             m_infile->seekg(0, std::ios::beg);
-            size_t begin_pos = m_infile->tellg();
+            long begin_pos = m_infile->tellg();
             m_infile->seekg(0, std::ios::end);
-            size_t end_pos = m_infile->tellg();
+            long end_pos = m_infile->tellg();
             m_infile->seekg(0, std::ios::beg);
-            return size_t(end_pos - begin_pos);
+            return end_pos - begin_pos;
         }
         return 0;
     }
@@ -138,7 +127,8 @@ class Communicator {
     //
     const std::vector<std::string> &GetFileSet() const { return m_fileset; }
     //
-    virtual void CommPostMessage(int m, int x) const = 0; // Override for specific operating system
+    virtual void CommPostMessage(size_t m,
+                                 size_t x) const = 0; // Override for specific operating system
 };
 
 // this is a simple version of the Communicator which can be used for
@@ -148,18 +138,20 @@ class ICommunicator : public Communicator {
     friend class IComm; // IComm is found in idepthmap.h
                         //
   protected:
-    mutable int num_steps;
-    mutable int num_records;
-    mutable int step;
-    mutable int record;
+    mutable size_t num_steps;
+    mutable size_t num_records;
+    mutable size_t step;
+    mutable size_t record;
     //
   public:
-    ICommunicator() { m_delete_flag = true; } // note: an ICommunicator lets IComm know that it should delete it
+    ICommunicator() {
+        m_delete_flag = true;
+    } // note: an ICommunicator lets IComm know that it should delete it
     virtual ~ICommunicator() { ; }
-    virtual void CommPostMessage(int m, int x) const;
+    virtual void CommPostMessage(size_t m, size_t x) const;
 };
 
-inline void ICommunicator::CommPostMessage(int m, int x) const {
+inline void ICommunicator::CommPostMessage(size_t m, size_t x) const {
     switch (m) {
     case Communicator::NUM_STEPS:
         num_steps = x;
@@ -179,15 +171,16 @@ inline void ICommunicator::CommPostMessage(int m, int x) const {
 }
 
 // a helpful little function...
-// This function is used exclusively to update the communicators at specific intervals (set in milliseconds
-// by the timeout argument). Typical usage: Create a time_t t1 and pass to this function with timeout = 0,
-// setting thus t1 to the current time in milliseconds. Then continuously pass the same t1 to this function
-// along with an interval timeout (in most cases 500ms). The function only synchronises t1 to the current
-// time if its difference to the current time is longer than the interval (i.e. more than 500 milliseconds
-// have passed since the last synchronisation). If a synchronisation occurs then the communicator is
-// updated along with the equivalent user interface element.
-// TODO: All time handling in the application uses time_t and stores milliseconds in it, though time_t
-// is supposed to only store seconds. Replace with std::chrono::time_point everywhere
+// This function is used exclusively to update the communicators at specific intervals (set in
+// milliseconds by the timeout argument). Typical usage: Create a time_t t1 and pass to this
+// function with timeout = 0, setting thus t1 to the current time in milliseconds. Then continuously
+// pass the same t1 to this function along with an interval timeout (in most cases 500ms). The
+// function only synchronises t1 to the current time if its difference to the current time is longer
+// than the interval (i.e. more than 500 milliseconds have passed since the last synchronisation).
+// If a synchronisation occurs then the communicator is updated along with the equivalent user
+// interface element.
+// TODO: All time handling in the application uses time_t and stores milliseconds in it, though
+// time_t is supposed to only store seconds. Replace with std::chrono::time_point everywhere
 inline bool qtimer(time_t &t1, time_t timeout) {
     auto time2 = std::chrono::system_clock::now().time_since_epoch();
     time_t t2 = std::chrono::duration_cast<std::chrono::milliseconds>(time2).count();

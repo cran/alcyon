@@ -1,19 +1,8 @@
-// Copyright (C) 2018 Christian Sailer
+// SPDX-FileCopyrightText: 2018 Christian Sailer
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/attributetableindex.h"
+#include "attributetableindex.h"
 
 std::vector<ConstAttributeIndexItem> makeAttributeIndex(const AttributeTable &table, int colIndex) {
     std::vector<ConstAttributeIndexItem> index;
@@ -22,7 +11,8 @@ std::vector<ConstAttributeIndexItem> makeAttributeIndex(const AttributeTable &ta
         return index;
     }
     index.reserve(numRows);
-    // perturb the values to be sorted by so same values will be in order of appearence in the map
+    // perturb the values to be sorted by so same values will be in order of
+    // appearence in the map
     size_t idx = 0;
     if (colIndex == -1) {
         double perturbationFactor = 1e-9 / numRows;
@@ -56,7 +46,8 @@ std::vector<AttributeIndexItem> makeAttributeIndex(AttributeTable &table, int co
         return index;
     }
     index.reserve(numRows);
-    // perturb the values to be sorted by so same values will be in order of appearence in the map
+    // perturb the values to be sorted by so same values will be in order of
+    // appearence in the map
     size_t idx = 0;
     if (colIndex == -1) {
         double perturbationFactor = 1e-9 / numRows;

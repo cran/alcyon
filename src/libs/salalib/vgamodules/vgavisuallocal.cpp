@@ -1,26 +1,12 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
-// Copyright (C) 2017-2024, Petros Koutsolampros
+// SPDX-FileCopyrightText: 2000-2010 University College London, Alasdair Turner
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+// SPDX-FileCopyrightText: 2017-2024 Petros Koutsolampros
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+#include "vgavisuallocal.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#include "salalib/vgamodules/vgavisuallocal.h"
-
-AnalysisResult VGAVisualLocal::run(Communicator *comm,
-                                   PointMap &map,
-                                   bool simple_version) {
+AnalysisResult VGAVisualLocal::run(Communicator *comm, PointMap &map, bool simple_version) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -30,7 +16,8 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm,
     AnalysisResult result;
 
     std::string colText = "";
-    int cluster_col = -1, control_col = -1, controllability_col = -1;
+    std::optional<size_t> cluster_col = std::nullopt, control_col = std::nullopt,
+                          controllability_col = std::nullopt;
     if (!simple_version) {
         colText = "Visual Clustering Coefficient";
         cluster_col = map.getAttributeTable().insertOrResetColumn(colText);
@@ -43,7 +30,7 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm,
         result.addAttribute(colText);
     }
 
-    int count = 0;
+    size_t count = 0;
 
     for (size_t i = 0; i < map.getCols(); i++) {
         for (size_t j = 0; j < map.getRows(); j++) {
@@ -93,16 +80,17 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm,
 #ifndef _COMPILE_dX_SIMPLE_VERSION
                 if (!simple_version) {
                     if (neighbourhood.size() > 1) {
-                        row.setValue(cluster_col,
+                        row.setValue(cluster_col.value(),
                                      float(cluster / double(neighbourhood.size() *
                                                             (neighbourhood.size() - 1.0))));
-                        row.setValue(control_col, float(control));
-                        row.setValue(controllability_col, float(double(neighbourhood.size()) /
-                                                                double(totalneighbourhood.size())));
+                        row.setValue(control_col.value(), float(control));
+                        row.setValue(controllability_col.value(),
+                                     float(double(neighbourhood.size()) /
+                                           double(totalneighbourhood.size())));
                     } else {
-                        row.setValue(cluster_col, -1);
-                        row.setValue(control_col, -1);
-                        row.setValue(controllability_col, -1);
+                        row.setValue(cluster_col.value(), -1);
+                        row.setValue(control_col.value(), -1);
+                        row.setValue(controllability_col.value(), -1);
                     }
                 }
 #endif
@@ -121,7 +109,7 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm,
 
 #ifndef _COMPILE_dX_SIMPLE_VERSION
     if (!simple_version)
-        map.setDisplayedAttribute(cluster_col);
+        map.setDisplayedAttribute(cluster_col.value());
 #endif
 
     result.completed = true;

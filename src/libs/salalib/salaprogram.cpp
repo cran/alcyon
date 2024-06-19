@@ -1,21 +1,9 @@
-// sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// SPDX-FileCopyrightText: 2011-2012 Tasos Varoudis
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-// salaprogram.cpp - a component of the depthmapX - spatial network analysis platform
-// SalaScripting language
+// salaprogram.cpp - a component of the depthmapX - spatial network analysis
+// platform SalaScripting language
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -26,11 +14,11 @@
 
 // The class implementation is very much hardcoded for built-in classes,
 // so user defined classes will be difficult to implement
-// (but would you really want classes in an inbuilt scripting language?! -- I guess some people
-// would)
+// (but would you really want classes in an inbuilt scripting language?! -- I
+// guess some people would)
 
-// User defined functions are not included yet, but should be fairly easy using a global function
-// stack alongside the global variable stack
+// User defined functions are not included yet, but should be fairly easy using
+// a global function stack alongside the global variable stack
 
 #include "salalib/salaprogram.h"
 #include "salalib/connector.h"
@@ -67,9 +55,9 @@ void loadSalaProgram() {
     g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MODULO, "%", "modulo"));
     g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_POWER, "^", "power"));
     g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_ASSIGN, "=", "assignment"));
-    g_sala_math_ops.push_back(SalaFuncLabel(
-        SalaObj::S_LIST_ACCESS, "[]",
-        "list access")); // list access included even though not parsed directly like this
+    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_LIST_ACCESS, "[]",
+                                            "list access")); // list access included even though not
+                                                             // parsed directly like this
 
     // comp ops
     g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_GT, ">", "greater than"));
@@ -291,8 +279,8 @@ SalaObj SalaProgram::evaluate() {
 bool SalaProgram::runupdate(int col, const std::set<int> &selset) {
     AttributeTable *table = m_thisobj.getTable();
     //
-    // note: reference, will change object directly, which is important for commands running the
-    // program
+    // note: reference, will change object directly, which is important for
+    // commands running the program
     int &row = m_thisobj.data.graph.node;
     m_col = col;
     if (selset.size()) {
@@ -300,8 +288,8 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset) {
             row = sel;
             try {
                 SalaObj val = evaluate();
-                float v = (float)val.toDouble(); // note, toDouble will type check and throw if
-                                                 // there's a problem
+                float v = (float)val.toDouble(); // note, toDouble will type check and
+                                                 // throw if there's a problem
                 if (!std::isfinite(v)) {
                     v = -1.0f;
                 }
@@ -317,8 +305,8 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset) {
             row = iter->getKey().value;
             try {
                 SalaObj val = evaluate();
-                float v = (float)val.toDouble(); // note, toDouble will type check and throw if
-                                                 // there's a problem
+                float v = (float)val.toDouble(); // note, toDouble will type check and
+                                                 // throw if there's a problem
                 if (!std::isfinite(v)) {
                     v = -1.0f;
                 }
@@ -343,8 +331,8 @@ bool SalaProgram::runselect(std::vector<int> &selsetout, const std::set<int> &se
         for (auto &key : selsetin) {
             try {
                 SalaObj val = evaluate();
-                bool v =
-                    val.toBool(); // note, toBool will type check and throw if there's a problem
+                bool v = val.toBool(); // note, toBool will type check and throw if
+                                       // there's a problem
                 if (v) {
                     selsetout.push_back(key);
                 }
@@ -359,8 +347,8 @@ bool SalaProgram::runselect(std::vector<int> &selsetout, const std::set<int> &se
             int key = iter->getKey().value;
             try {
                 SalaObj val = evaluate();
-                bool v =
-                    val.toBool(); // note, toBool will type check and throw if there's a problem
+                bool v = val.toBool(); // note, toBool will type check and throw if
+                                       // there's a problem
                 if (v) {
                     selsetout.push_back(key);
                 }
@@ -484,7 +472,8 @@ int SalaCommand::parse(std::istream &program, int line) {
                 buffer.clear();
             }
             // note: this looks a little odd, simply adding to the buffer, but these
-            // are handled by the default function next step if still hanging on the buffer
+            // are handled by the default function next step if still hanging on the
+            // buffer
             buffer.add(alpha);
             break;
         case '/':
@@ -504,15 +493,16 @@ int SalaCommand::parse(std::istream &program, int line) {
                 buffer.clear();
             }
             if (last == SP_DATA) {
-                // whatever that just went onto the eval stack, the user thought it was a
-                // function... alert them:
+                // whatever that just went onto the eval stack, the user thought it was
+                // a function... alert them:
                 throw SalaError(m_last_string + " is not a known function name", m_line);
-                // (in the future, we may well want to transfer an object hashed function name to
-                // the func stack instead)
+                // (in the future, we may well want to transfer an object hashed
+                // function name to the func stack instead)
             } else if (last == SP_NUMBER) {
                 throw SalaError("Cannot treat a number as if it were a function", m_line);
             }
-            // check for pair of open / close brackets: () or (  ) -- this is a null value
+            // check for pair of open / close brackets: () or (  ) -- this is a null
+            // value
             {
                 char beta = program.peek();
                 while (beta != EOF && beta == ' ') {
@@ -543,8 +533,8 @@ int SalaCommand::parse(std::istream &program, int line) {
                 last = decode(buffer);
                 buffer.clear();
             }
-            // check for pair of open / close brackets: [] or [  ] -- this is a null value or empty
-            // list depending on context
+            // check for pair of open / close brackets: [] or [  ] -- this is a null
+            // value or empty list depending on context
             {
                 char beta = program.peek();
                 while (beta != EOF && beta == ' ') {
@@ -606,8 +596,8 @@ int SalaCommand::parse(std::istream &program, int line) {
                         if (alpha == '#') {
                             commentfound = true;
                         } else if (alpha != ' ' &&
-                                   alpha != 13) { // 13 ignored, as it appears \n is 10 in this
-                                                  // stream... (so 13,10 can be found)
+                                   alpha != 13) { // 13 ignored, as it appears \n is 10 in
+                                                  // this stream... (so 13,10 can be found)
                             throw SalaError("'For', 'if', 'else', etc cannot have execution part "
                                             "on same line; insert a new line after ':'",
                                             m_line);
@@ -631,8 +621,8 @@ int SalaCommand::parse(std::istream &program, int line) {
             while (!program.eof() && program.get() != '\n')
                 ;
             // note, end loop is not set, this is a continuation character
-            line++; // line is incremented, although it this command will still start on the
-                    // original line
+            line++; // line is incremented, although it this command will still start
+                    // on the original line
             break;
         case '#':
             // loop through until hit \n or end
@@ -642,7 +632,8 @@ int SalaCommand::parse(std::istream &program, int line) {
             }
             while (!program.eof() && program.get() != '\n')
                 ;
-            line++; // should have hit a line end (or if it's end of file, it doesn't matter)
+            line++; // should have hit a line end (or if it's end of file, it doesn't
+                    // matter)
             endloop = true;
             break;
         case '\n':
@@ -662,8 +653,8 @@ int SalaCommand::parse(std::istream &program, int line) {
             }
             break;
         case '.':
-            // currently handled inelegantly through decode for either number (1.002) or member
-            // access (blah.x())
+            // currently handled inelegantly through decode for either number (1.002)
+            // or member access (blah.x())
             buffer.add('.');
             break;
         case '\t':
@@ -782,7 +773,8 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
     // numeric constant
     if (isdigit(string[0]) || (string.length() > 1 && string[0] == '.' && isdigit(string[1]))) {
         if (string[string.length() - 1] == 'e') {
-            // handle later... at the moment we have hit + or - in 9.999e+99 or 9.999e-99
+            // handle later... at the moment we have hit + or - in 9.999e+99
+            // or 9.999e-99
             m_last_string = string; // make a copy for debugging purposes
             return SP_NUMBER;
         }
@@ -893,8 +885,8 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
                 } else {
                     m_program->m_var_stack.push_back(SalaObj());
                     x = m_program->m_var_stack.size() - 1;
-                    // note: attach simply to your m_parent, not parent variable, which has walked
-                    // up the stack
+                    // note: attach simply to your m_parent, not parent variable, which
+                    // has walked up the stack
                     m_parent->m_var_names.insert(std::make_pair(string, x));
                     m_eval_stack.push_back(SalaObj(SalaObj::S_VAR, x));
                     retvar = SP_DATA;
@@ -928,8 +920,8 @@ int SalaCommand::decode_member(const std::string &string, bool apply_to_this) {
     // note, all hardcoded for built in classes:
     // string classes:
     for (size_t i = 0; i < g_sala_member_funcs.size(); i++) {
-        // note '&' in the type -- essentially allows for inheritance between objects (tuple is type
-        // of list, etc)
+        // note '&' in the type -- essentially allows for inheritance between
+        // objects (tuple is type of list, etc)
         if (!apply_to_this || (m_program->m_thisobj.type & g_sala_member_funcs[i].type) != 0) {
             if (string == g_sala_member_funcs[i].name) {
                 pushFunc(g_sala_member_funcs[i].func);
@@ -953,7 +945,8 @@ void SalaCommand::pushFunc(const SalaObj &func) {
                 m_func_stack.pop_back();
             }
             if (m_func_stack.size()) {
-                // don't necessarily pop it... if it's a group marker, we want to hang onto it:
+                // don't necessarily pop it... if it's a group marker, we want to hang
+                // onto it:
                 if (m_func_stack.back().data.count > 1) {
                     m_func_stack.back().type = SalaObj::S_CONST_TUPLE;
                     m_eval_stack.push_back(m_func_stack.back());
@@ -967,8 +960,8 @@ void SalaCommand::pushFunc(const SalaObj &func) {
                 m_func_stack.pop_back();
             }
             if (m_func_stack.size()) {
-                // don't pop it, always make a list from a make list command, even if it's only one
-                // item long:
+                // don't pop it, always make a list from a make list command, even if
+                // it's only one item long:
                 if (m_func_stack.back().type == SalaObj::S_OPEN_SQR_BRACKET_LIST ||
                     m_func_stack.back().data.count > 1) {
                     m_func_stack.back().type = SalaObj::S_CONST_LIST;
@@ -1056,15 +1049,15 @@ void SalaCommand::evaluate(SalaObj &obj, bool &ret, bool &ifhandled) {
         }
         break;
     case SC_FOR: {
-        // eventually I'd like to do this with generators / iterators rather than constructing a
-        // list each time
+        // eventually I'd like to do this with generators / iterators rather than
+        // constructing a list each time
         SalaObj list = evaluate(begin, p_obj);
         if (list.type == SalaObj::S_LIST) {
             int len = list.data.list.list->size();
             if (len != 0) {
                 for (int i = 0; i < len; i++) {
                     // reset all my stack (actually, all parent functions should do this!)
-                    for (auto varName : m_var_names) {
+                    for (const auto &varName : m_var_names) {
                         m_program->m_var_stack[varName.second].uninit();
                     }
                     m_program->m_var_stack[m_for_iter.data.var] = list.data.list.list->at(i);
@@ -1246,11 +1239,11 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&p_obj) {
             try {
                 switch (func) {
                 case SalaObj::S_OR:
-                    // note: you cannot simply say evaluate(x) || evaluate(y) because if evaluate(x)
-                    // is true, the in-built || operator will not evaluate(y) but... it's on the
-                    // eval stack... it would be nice simply to pop the eval stack at this point if
-                    // the first half evaluates to true, thus emulating C... but it's in reverse
-                    // order too!
+                    // note: you cannot simply say evaluate(x) || evaluate(y) because if
+                    // evaluate(x) is true, the in-built || operator will not evaluate(y)
+                    // but... it's on the eval stack... it would be nice simply to pop the
+                    // eval stack at this point if the first half evaluates to true, thus
+                    // emulating C... but it's in reverse order too!
                     data = evaluate(pointer, p_obj);
                     data = evaluate(pointer, p_obj).toBool() || data.toBool();
                     break;
@@ -1541,9 +1534,9 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&p_obj) {
                     } break;
                     case SalaObj::S_FSETMARK: {
                         m_program->marks[obj.data.graph.node] = param;
-                        m_program->m_marked =
-                            true; // <- this tells the program to tidy up marks between executions
-                        data = SalaObj(); // returns none
+                        m_program->m_marked = true; // <- this tells the program to tidy up
+                                                    // marks between executions
+                        data = SalaObj();           // returns none
                     } break;
                     default:
                         throw SalaError("Not a member function of " + obj.getTypeStr(), m_line);
@@ -1570,8 +1563,8 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&p_obj) {
         p_obj = &(m_program->m_thisobj);
         return *p_obj;
     } else if (data.type & SalaObj::S_VAR) {
-        // retrieve value from variable stack (keeping in a variable stack means it can be
-        // reassigned dynamically)
+        // retrieve value from variable stack (keeping in a variable stack means it
+        // can be reassigned dynamically)
         p_obj = &(m_program->m_var_stack[data.data.var]);
         return *p_obj;
     } else if (data.type & SalaObj::S_CONST_LIST) {
@@ -1593,8 +1586,9 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&p_obj) {
 SalaObj SalaCommand::connections(SalaObj graphobj, SalaObj param) {
     // now, depending on type of object, it may or may not be allowed parameters:
     // for point maps it can be none (all connections) or a bin number (0-32)
-    // for segment maps it can be 'all' or 'forward' or 'back' (a string -- no parameters is
-    // excluded due to potential for errors) for axial maps it must be none
+    // for segment maps it can be 'all' or 'forward' or 'back' (a string -- no
+    // parameters is excluded due to potential for errors) for axial maps it must
+    // be none
     SalaObj list;
     if ((graphobj.type & SalaObj::S_MAP) == SalaObj::S_POINTMAP) {
         // point map version
@@ -1672,8 +1666,8 @@ AttributeTable *SalaObj::getTable() {
 
 int SalaObj::precedence() const {
     int prec = 0;
-    if ((type & S_BRACKET) == 0) { // preserve bracket on func stack until after close bracket,
-                                   // remember to strip any at end
+    if ((type & S_BRACKET) == 0) { // preserve bracket on func stack until after
+                                   // close bracket, remember to strip any at end
         switch (func()) {
         case S_ASSIGN:
             prec = 1; // do absolutely last!
@@ -1708,7 +1702,8 @@ int SalaObj::precedence() const {
         case S_POWER:
             prec = 8;
             break;
-        default: // function -- place straight on eval stack when you meet next operator
+        default: // function -- place straight on eval stack when you meet next
+                 // operator
             prec = 9;
             break;
         }
