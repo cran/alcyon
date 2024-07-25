@@ -58,10 +58,10 @@ AxialVertex AxialPolygons::makeVertex(const AxialVertexKey &vertexkey, const Poi
         return av;
     }
 
-    if (sgn(oa) == sgn(ob)) {
+    if (pafmath::sgn(oa) == pafmath::sgn(ob)) {
         // headon collision
-        if (sgn(oa) == 1) {
-            if (sgn(ab) == 1) {
+        if (pafmath::sgn(oa) == 1) {
+            if (pafmath::sgn(ab) == 1) {
                 // convex clockwise
                 av.m_convex = true;
                 av.m_clockwise = true;
@@ -467,7 +467,6 @@ void AxialPolygons::makePolygons(std::vector<std::vector<Point2f>> &polygons) {
             polygon.push_back(key);
             Point2f curr = vertPoss.second.at(j);
             Point2f last = key;
-            bool good = true;
             while (curr != key) {
                 auto vertPossIter = m_vertex_possibles.find(curr);
                 polygon.push_back(curr);
@@ -500,10 +499,7 @@ void AxialPolygons::makePolygons(std::vector<std::vector<Point2f>> &polygons) {
                 last = curr;
                 curr = vertPossIter->second.at(winner);
             }
-            if (good) {
-                polygons.push_back(polygon);
-            }
-            good = true;
+            polygons.push_back(polygon);
         }
     }
 }
@@ -520,7 +516,7 @@ bool RadialLine::cuts(const Line &l) const {
         x.normalise();
         y.normalise();
         z.normalise();
-        if (sgn(det(x, y)) == sgn(det(x, z)) && fabs(det(x, z)) > TOLERANCE_A) {
+        if (pafmath::sgn(det(x, y)) == pafmath::sgn(det(x, z)) && fabs(det(x, z)) > TOLERANCE_A) {
             return false;
         }
     }

@@ -329,7 +329,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // makeAllLineMap
-Rcpp::XPtr<AllLineMap> makeAllLineMap(Rcpp::XPtr<ShapeMap> boundsMap, double seedX, double seedY);
+Rcpp::List makeAllLineMap(Rcpp::XPtr<ShapeMap> boundsMap, double seedX, double seedY);
 RcppExport SEXP _alcyon_makeAllLineMap(SEXP boundsMapSEXP, SEXP seedXSEXP, SEXP seedYSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -342,13 +342,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // extractFewestLineMaps
-Rcpp::List extractFewestLineMaps(Rcpp::XPtr<AllLineMap> allLineMap);
-RcppExport SEXP _alcyon_extractFewestLineMaps(SEXP allLineMapSEXP) {
+Rcpp::List extractFewestLineMaps(Rcpp::XPtr<ShapeGraph> allLineMap, Rcpp::XPtr<AllLine::MapData> mapData);
+RcppExport SEXP _alcyon_extractFewestLineMaps(SEXP allLineMapSEXP, SEXP mapDataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::XPtr<AllLineMap> >::type allLineMap(allLineMapSEXP);
-    rcpp_result_gen = Rcpp::wrap(extractFewestLineMaps(allLineMap));
+    Rcpp::traits::input_parameter< Rcpp::XPtr<ShapeGraph> >::type allLineMap(allLineMapSEXP);
+    Rcpp::traits::input_parameter< Rcpp::XPtr<AllLine::MapData> >::type mapData(mapDataSEXP);
+    rcpp_result_gen = Rcpp::wrap(extractFewestLineMaps(allLineMap, mapData));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -661,6 +662,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// segmentShortestPath
+Rcpp::List segmentShortestPath(Rcpp::XPtr<ShapeGraph> shapeGraph, const int stepType, Rcpp::NumericMatrix origPoints, Rcpp::NumericMatrix destPoints, const Rcpp::Nullable<int> tulipBinsNV, const Rcpp::Nullable<bool> copyMapNV, const Rcpp::Nullable<bool> verboseNV, const Rcpp::Nullable<bool> progressNV);
+RcppExport SEXP _alcyon_segmentShortestPath(SEXP shapeGraphSEXP, SEXP stepTypeSEXP, SEXP origPointsSEXP, SEXP destPointsSEXP, SEXP tulipBinsNVSEXP, SEXP copyMapNVSEXP, SEXP verboseNVSEXP, SEXP progressNVSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<ShapeGraph> >::type shapeGraph(shapeGraphSEXP);
+    Rcpp::traits::input_parameter< const int >::type stepType(stepTypeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type origPoints(origPointsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type destPoints(destPointsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<int> >::type tulipBinsNV(tulipBinsNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type copyMapNV(copyMapNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type verboseNV(verboseNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type progressNV(progressNVSEXP);
+    rcpp_result_gen = Rcpp::wrap(segmentShortestPath(shapeGraph, stepType, origPoints, destPoints, tulipBinsNV, copyMapNV, verboseNV, progressNV));
+    return rcpp_result_gen;
+END_RCPP
+}
 // vgaThroughVision
 Rcpp::List vgaThroughVision(Rcpp::XPtr<PointMap> pointMapPtr, const Rcpp::Nullable<bool> copyMapNV);
 RcppExport SEXP _alcyon_vgaThroughVision(SEXP pointMapPtrSEXP, SEXP copyMapNVSEXP) {
@@ -780,6 +799,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// vgaVisualShortestPath
+Rcpp::List vgaVisualShortestPath(Rcpp::XPtr<PointMap> pointMapPtr, Rcpp::NumericMatrix origPoints, Rcpp::NumericMatrix destPoints, const Rcpp::Nullable<bool> copyMapNV, const Rcpp::Nullable<bool> verboseNV, const Rcpp::Nullable<bool> progressNV);
+RcppExport SEXP _alcyon_vgaVisualShortestPath(SEXP pointMapPtrSEXP, SEXP origPointsSEXP, SEXP destPointsSEXP, SEXP copyMapNVSEXP, SEXP verboseNVSEXP, SEXP progressNVSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<PointMap> >::type pointMapPtr(pointMapPtrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type origPoints(origPointsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type destPoints(destPointsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type copyMapNV(copyMapNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type verboseNV(verboseNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type progressNV(progressNVSEXP);
+    rcpp_result_gen = Rcpp::wrap(vgaVisualShortestPath(pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV));
+    return rcpp_result_gen;
+END_RCPP
+}
+// vgaMetricShortestPath
+Rcpp::List vgaMetricShortestPath(Rcpp::XPtr<PointMap> pointMapPtr, Rcpp::NumericMatrix origPoints, Rcpp::NumericMatrix destPoints, const Rcpp::Nullable<bool> copyMapNV, const Rcpp::Nullable<bool> verboseNV, const Rcpp::Nullable<bool> progressNV);
+RcppExport SEXP _alcyon_vgaMetricShortestPath(SEXP pointMapPtrSEXP, SEXP origPointsSEXP, SEXP destPointsSEXP, SEXP copyMapNVSEXP, SEXP verboseNVSEXP, SEXP progressNVSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<PointMap> >::type pointMapPtr(pointMapPtrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type origPoints(origPointsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type destPoints(destPointsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type copyMapNV(copyMapNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type verboseNV(verboseNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type progressNV(progressNVSEXP);
+    rcpp_result_gen = Rcpp::wrap(vgaMetricShortestPath(pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV));
+    return rcpp_result_gen;
+END_RCPP
+}
+// vgaAngularShortestPath
+Rcpp::List vgaAngularShortestPath(Rcpp::XPtr<PointMap> pointMapPtr, Rcpp::NumericMatrix origPoints, Rcpp::NumericMatrix destPoints, const Rcpp::Nullable<bool> copyMapNV, const Rcpp::Nullable<bool> verboseNV, const Rcpp::Nullable<bool> progressNV);
+RcppExport SEXP _alcyon_vgaAngularShortestPath(SEXP pointMapPtrSEXP, SEXP origPointsSEXP, SEXP destPointsSEXP, SEXP copyMapNVSEXP, SEXP verboseNVSEXP, SEXP progressNVSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::XPtr<PointMap> >::type pointMapPtr(pointMapPtrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type origPoints(origPointsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type destPoints(destPointsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type copyMapNV(copyMapNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type verboseNV(verboseNVSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type progressNV(progressNVSEXP);
+    rcpp_result_gen = Rcpp::wrap(vgaAngularShortestPath(pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_alcyon_createFromGrid", (DL_FUNC) &_alcyon_createFromGrid, 5},
@@ -809,7 +876,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_alcyon_getShapeAttributes", (DL_FUNC) &_alcyon_getShapeAttributes, 2},
     {"_alcyon_agentAnalysis", (DL_FUNC) &_alcyon_agentAnalysis, 14},
     {"_alcyon_makeAllLineMap", (DL_FUNC) &_alcyon_makeAllLineMap, 3},
-    {"_alcyon_extractFewestLineMaps", (DL_FUNC) &_alcyon_extractFewestLineMaps, 1},
+    {"_alcyon_extractFewestLineMaps", (DL_FUNC) &_alcyon_extractFewestLineMaps, 2},
     {"_alcyon_runAxialAnalysis", (DL_FUNC) &_alcyon_runAxialAnalysis, 8},
     {"_alcyon_runAxialLocalAnalysis", (DL_FUNC) &_alcyon_runAxialLocalAnalysis, 4},
     {"_alcyon_axialStepDepth", (DL_FUNC) &_alcyon_axialStepDepth, 7},
@@ -832,6 +899,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_alcyon_readMetaGraph", (DL_FUNC) &_alcyon_readMetaGraph, 2},
     {"_alcyon_runSegmentAnalysis", (DL_FUNC) &_alcyon_runSegmentAnalysis, 11},
     {"_alcyon_segmentStepDepth", (DL_FUNC) &_alcyon_segmentStepDepth, 8},
+    {"_alcyon_segmentShortestPath", (DL_FUNC) &_alcyon_segmentShortestPath, 8},
     {"_alcyon_vgaThroughVision", (DL_FUNC) &_alcyon_vgaThroughVision, 2},
     {"_alcyon_vgaAngular", (DL_FUNC) &_alcyon_vgaAngular, 4},
     {"_alcyon_vgaMetric", (DL_FUNC) &_alcyon_vgaMetric, 4},
@@ -841,6 +909,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_alcyon_vgaVisualDepth", (DL_FUNC) &_alcyon_vgaVisualDepth, 3},
     {"_alcyon_vgaMetricDepth", (DL_FUNC) &_alcyon_vgaMetricDepth, 3},
     {"_alcyon_vgaAngularDepth", (DL_FUNC) &_alcyon_vgaAngularDepth, 3},
+    {"_alcyon_vgaVisualShortestPath", (DL_FUNC) &_alcyon_vgaVisualShortestPath, 6},
+    {"_alcyon_vgaMetricShortestPath", (DL_FUNC) &_alcyon_vgaMetricShortestPath, 6},
+    {"_alcyon_vgaAngularShortestPath", (DL_FUNC) &_alcyon_vgaAngularShortestPath, 6},
     {NULL, NULL, 0}
 };
 

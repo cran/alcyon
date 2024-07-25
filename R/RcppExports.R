@@ -109,8 +109,8 @@ Rcpp_makeAllLineMap <- function(boundsMap, seedX, seedY) {
     .Call('_alcyon_makeAllLineMap', PACKAGE = 'alcyon', boundsMap, seedX, seedY)
 }
 
-Rcpp_extractFewestLineMaps <- function(allLineMap) {
-    .Call('_alcyon_extractFewestLineMaps', PACKAGE = 'alcyon', allLineMap)
+Rcpp_extractFewestLineMaps <- function(allLineMap, mapData) {
+    .Call('_alcyon_extractFewestLineMaps', PACKAGE = 'alcyon', allLineMap, mapData)
 }
 
 Rcpp_runAxialAnalysis <- function(shapeGraph, radii, weightedMeasureColNameNV = NULL, includeChoiceNV = NULL, includeIntermediateMetricsNV = NULL, copyMapNV = NULL, verboseNV = NULL, progressNV = NULL) {
@@ -201,6 +201,10 @@ Rcpp_segmentStepDepth <- function(shapeGraph, stepType, stepDepthPointsX, stepDe
     .Call('_alcyon_segmentStepDepth', PACKAGE = 'alcyon', shapeGraph, stepType, stepDepthPointsX, stepDepthPointsY, tulipBinsNV, copyMapNV, verboseNV, progressNV)
 }
 
+Rcpp_segmentShortestPath <- function(shapeGraph, stepType, origPoints, destPoints, tulipBinsNV = NULL, copyMapNV = NULL, verboseNV = NULL, progressNV = NULL) {
+    .Call('_alcyon_segmentShortestPath', PACKAGE = 'alcyon', shapeGraph, stepType, origPoints, destPoints, tulipBinsNV, copyMapNV, verboseNV, progressNV)
+}
+
 Rcpp_VGA_throughVision <- function(pointMapPtr, copyMapNV = NULL) {
     .Call('_alcyon_vgaThroughVision', PACKAGE = 'alcyon', pointMapPtr, copyMapNV)
 }
@@ -235,5 +239,17 @@ Rcpp_VGA_metricDepth <- function(pointMapPtr, stepDepthPoints, copyMapNV = NULL)
 
 Rcpp_VGA_angularDepth <- function(pointMapPtr, stepDepthPoints, copyMapNV = NULL) {
     .Call('_alcyon_vgaAngularDepth', PACKAGE = 'alcyon', pointMapPtr, stepDepthPoints, copyMapNV)
+}
+
+Rcpp_VGA_visualShortestPath <- function(pointMapPtr, origPoints, destPoints, copyMapNV = NULL, verboseNV = NULL, progressNV = NULL) {
+    .Call('_alcyon_vgaVisualShortestPath', PACKAGE = 'alcyon', pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV)
+}
+
+Rcpp_VGA_metricShortestPath <- function(pointMapPtr, origPoints, destPoints, copyMapNV = NULL, verboseNV = NULL, progressNV = NULL) {
+    .Call('_alcyon_vgaMetricShortestPath', PACKAGE = 'alcyon', pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV)
+}
+
+Rcpp_VGA_angularShortestPath <- function(pointMapPtr, origPoints, destPoints, copyMapNV = NULL, verboseNV = NULL, progressNV = NULL) {
+    .Call('_alcyon_vgaAngularShortestPath', PACKAGE = 'alcyon', pointMapPtr, origPoints, destPoints, copyMapNV, verboseNV, progressNV)
 }
 

@@ -12,8 +12,8 @@
 #include "genlib/containerutils.h"
 #include "genlib/readwritehelpers.h"
 
+#include <cmath>
 #include <float.h>
-#include <math.h>
 #include <time.h>
 
 #ifndef _WIN32
@@ -32,8 +32,8 @@ ShapeGraph::ShapeGraph(const std::string &name, int type) : ShapeMap(name, type)
 void ShapeGraph::initialiseAttributesAxial() {
     m_attributes->clear();
     // note, expects these to be numbered 0, 1...
-    m_attributes->insertOrResetLockedColumn("Connectivity");
-    m_attributes->insertOrResetLockedColumn("Line Length");
+    m_attributes->insertOrResetLockedColumn(ShapeGraph::Column::CONNECTIVITY);
+    m_attributes->insertOrResetLockedColumn(ShapeGraph::Column::LINE_LENGTH);
 }
 
 void ShapeGraph::makeConnections(const KeyVertices &keyvertices) {
@@ -43,8 +43,8 @@ void ShapeGraph::makeConnections(const KeyVertices &keyvertices) {
     m_keyvertices.clear();
 
     // note, expects these to be numbered 0, 1...
-    auto conn_col = m_attributes->getColumnIndex("Connectivity");
-    auto leng_col = m_attributes->getColumnIndex("Line Length");
+    auto conn_col = m_attributes->getColumnIndex(ShapeGraph::Column::CONNECTIVITY);
+    auto leng_col = m_attributes->getColumnIndex(ShapeGraph::Column::LINE_LENGTH);
 
     size_t i = 0;
     for (const auto &shape : m_shapes) {
@@ -62,9 +62,6 @@ void ShapeGraph::makeConnections(const KeyVertices &keyvertices) {
         }
         i++;
     }
-
-    m_displayed_attribute = -1; // <- override if it's already showing
-    setDisplayedAttribute(static_cast<int>(conn_col));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +152,8 @@ void ShapeGraph::outputNet(std::ostream &netfile) const {
     }
 }
 
-bool ShapeGraph::read(std::istream &stream) {
+bool ShapeGraph::readShapeGraphData(std::istream &stream) {
+
     m_attributes->clear();
     m_connectors.clear();
     m_map_type = ShapeMap::EMPTYMAP;
@@ -170,81 +168,19 @@ bool ShapeGraph::read(std::istream &stream) {
         dXreadwrite::readIntoVector(stream, tempVec);
         m_keyvertices.push_back(std::set<int>(tempVec.begin(), tempVec.end()));
     }
+    return true;
+}
+
+std::tuple<bool, bool, bool, int> ShapeGraph::read(std::istream &stream) {
+    bool read = readShapeGraphData(stream);
     // now base class read:
-    ShapeMap::read(stream);
+    auto shapeMapReadResult = ShapeMap::read(stream);
+    std::get<0>(shapeMapReadResult) = read && std::get<0>(shapeMapReadResult);
 
-    return true;
+    return shapeMapReadResult;
 }
 
-bool ShapeGraph::readold(std::istream &stream) {
-    // read in from old base class
-    SpacePixel linemap;
-    linemap.read(stream);
-    const std::map<int, LineTest> &lines = linemap.getAllLines();
-
-    m_name = linemap.getName();
-
-    // now copy to new base class:
-    init(lines.size(), linemap.getRegion());
-    for (const auto &line : lines) {
-        makeLineShape(line.second.line);
-    }
-    // n.b., we now have to reclear attributes!
-    m_attributes->clear();
-
-    // continue old read:
-    int pushmap = -1;
-
-    char segmentmapc;
-    stream.get(segmentmapc);
-    if (segmentmapc == '1') {
-        m_map_type = ShapeMap::SEGMENTMAP;
-    } else {
-        m_map_type = ShapeMap::AXIALMAP;
-    }
-
-    char gatemapc;
-    stream.get(gatemapc);
-    if (gatemapc == '1') {
-        m_map_type = ShapeMap::DATAMAP;
-    }
-    stream.read((char *)&pushmap, sizeof(pushmap));
-
-    int displayed_attribute; // n.b., temp variable necessary to force recalc below
-    stream.read((char *)&displayed_attribute, sizeof(displayed_attribute));
-
-    m_attributes->read(stream, m_layers);
-    int size;
-    stream.read((char *)&size, sizeof(size));
-    for (int j = 0; j < size; j++) {
-        m_keyvertices.push_back(std::set<int>()); // <- these were stored with the connector
-        int key;
-        stream.read((char *)&key, sizeof(key)); // <- key deprecated
-        m_connectors.push_back(Connector());
-        m_connectors[size_t(j)].read(stream);
-    }
-    stream.read((char *)&m_keyvertexcount, sizeof(m_keyvertexcount));
-
-    dXreadwrite::readIntoVector(stream, m_links);
-    dXreadwrite::readIntoVector(stream, m_unlinks);
-
-    char x;
-    stream.get(x);
-    if (x == 'm') {
-        m_mapinfodata = MapInfoData();
-        m_mapinfodata.read(stream);
-        m_hasMapInfoData = true;
-    }
-
-    // now, as soon as loaded, must recalculate our screen display:
-    // note m_displayed_attribute should be -2 in order to force recalc...
-    m_displayed_attribute = -2;
-    setDisplayedAttribute(displayed_attribute);
-
-    return true;
-}
-
-bool ShapeGraph::write(std::ofstream &stream) {
+bool ShapeGraph::writeShapeGraphData(std::ostream &stream) const {
     // note keyvertexcount and keyvertices are different things!  (length keyvertices not the same
     // as keyvertexcount!)
     stream.write((char *)&m_keyvertexcount, sizeof(m_keyvertexcount));
@@ -254,11 +190,15 @@ bool ShapeGraph::write(std::ofstream &stream) {
         dXreadwrite::writeVector(
             stream, std::vector<int>(m_keyvertices[i].begin(), m_keyvertices[i].end()));
     }
-
-    // now simply run base class write:
-    ShapeMap::write(stream);
-
     return true;
+}
+
+bool ShapeGraph::write(std::ostream &stream, const std::tuple<bool, bool, int> &displayData) const {
+    bool written = writeShapeGraphData(stream);
+    // now simply run base class write:
+    written = written & ShapeMap::write(stream, displayData);
+
+    return written;
 }
 
 void ShapeGraph::writeAxialConnectionsAsDotGraph(std::ostream &stream) {
@@ -374,7 +314,7 @@ void ShapeGraph::unlinkAtPoint(const Point2f &unlinkPoint) {
     }
     if (minpair != -1) {
         auto &intersection = intersections[size_t(minpair)];
-        unlinkShapes(intersection.first, intersection.second, false);
+        unlinkShapes(intersection.first, intersection.second);
     } else {
         std::cerr << "eek!";
     }
@@ -396,14 +336,6 @@ void ShapeGraph::unlinkFromShapeMap(const ShapeMap &shapemap) {
         if (polygon.second.isPoint()) {
             unlinkAtPoint(polygon.second.getPoint());
         }
-    }
-
-    // reset displayed attribute if it happens to be "Connectivity":
-    auto conn_col = m_attributes->getColumnIndex("Connectivity");
-    if (getDisplayedAttribute() == static_cast<int>(conn_col)) {
-        invalidateDisplayedAttribute();
-        setDisplayedAttribute(
-            static_cast<int>(conn_col)); // <- reflect changes to connectivity counts
     }
 }
 
@@ -747,8 +679,8 @@ void ShapeGraph::initialiseAttributesSegment() {
     m_attributes->clear();
 
     // note, expects these in alphabetical order to preserve numbering:
-    m_attributes->insertOrResetLockedColumn("Axial Line Ref");
-    m_attributes->insertOrResetLockedColumn("Segment Length");
+    m_attributes->insertOrResetLockedColumn(Column::AXIAL_LINE_REF);
+    m_attributes->insertOrResetLockedColumn(Column::SEGMENT_LENGTH);
 }
 
 // now segments and connections are listed separately...
@@ -758,11 +690,11 @@ void ShapeGraph::makeSegmentConnections(std::vector<Connector> &connectionset) {
     m_connectors.clear();
 
     // note, expects these in alphabetical order to preserve numbering:
-    auto w_conn_col = m_attributes->getOrInsertColumn("Angular Connectivity");
-    auto uw_conn_col = m_attributes->getOrInsertLockedColumn("Connectivity");
+    auto w_conn_col = m_attributes->getOrInsertColumn(Column::ANGULAR_CONNECTIVITY);
+    auto uw_conn_col = m_attributes->getOrInsertLockedColumn(Column::CONNECTIVITY);
 
-    auto ref_col = m_attributes->getColumnIndex("Axial Line Ref");
-    auto leng_col = m_attributes->getColumnIndex("Segment Length");
+    auto ref_col = m_attributes->getColumnIndex(Column::AXIAL_LINE_REF);
+    auto leng_col = m_attributes->getColumnIndex(Column::SEGMENT_LENGTH);
 
     int i = -1;
     for (const auto &shape : m_shapes) {
@@ -791,16 +723,13 @@ void ShapeGraph::makeSegmentConnections(std::vector<Connector> &connectionset) {
         // free up connectionset as we go along:
         connectionset[size_t(i)] = Connector();
     }
-
-    m_displayed_attribute = -2; // <- override if it's already showing
-    setDisplayedAttribute(static_cast<int>(uw_conn_col));
 }
 
 // this pushes axial map values to a segment map
 // the segment map is 'this', the axial map is passed:
 
 void ShapeGraph::pushAxialValues(ShapeGraph &axialmap) {
-    if (!m_attributes->hasColumn("Axial Line Ref")) {
+    if (!m_attributes->hasColumn(Column::AXIAL_LINE_REF)) {
         // this should never happen
         // AT: I am converting this to throw an error
         throw depthmapX::RuntimeException("Axial line ref does not exist");
@@ -812,7 +741,7 @@ void ShapeGraph::pushAxialValues(ShapeGraph &axialmap) {
         colindices.push_back(m_attributes->getOrInsertColumn(colname));
     }
     for (auto iter = m_attributes->begin(); iter != m_attributes->end(); iter++) {
-        int axialref = (int)iter->getRow().getValue("Axial Line Ref");
+        int axialref = (int)iter->getRow().getValue(Column::AXIAL_LINE_REF);
         // P.K: The original code here got the index of the row, but the column
         // "Axial Line Ref" should actually contain keys, not indices
         AttributeRow &row = axialmap.m_attributes->getRow(AttributeKey(axialref));

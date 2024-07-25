@@ -2,17 +2,13 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 
-#include "salalib/pointdata.h"
+#include "salalib/pointmap.h"
 #include "salalib/vgamodules/vgametric.h"
 #include "salalib/vgamodules/vgavisualglobal.h"
 #include "salalib/vgamodules/vgavisuallocal.h"
 #include "salalib/vgamodules/vgathroughvision.h"
 #include "salalib/vgamodules/vgaangular.h"
 #include "salalib/vgamodules/vgaisovist.h"
-
-#include "salalib/vgamodules/vgavisualglobaldepth.h"
-#include "salalib/vgamodules/vgametricdepth.h"
-#include "salalib/vgamodules/vgaangulardepth.h"
 
 #include "communicator.h"
 
@@ -190,108 +186,6 @@ Rcpp::List vgaIsovist(Rcpp::XPtr<PointMap> pointMapPtr,
 
   auto analysisResult = VGAIsovist(shapes)
     .run(getCommunicator(true).get(), *pointMapPtr, false);
-  result["completed"] = analysisResult.completed;
-  result["newAttributes"] = analysisResult.getAttributes();
-  result["mapPtr"] = pointMapPtr;
-  return result;
-}
-
-// [[Rcpp::export("Rcpp_VGA_visualDepth")]]
-Rcpp::List vgaVisualDepth(Rcpp::XPtr<PointMap> pointMapPtr,
-                          Rcpp::NumericMatrix stepDepthPoints,
-                          const Rcpp::Nullable<bool> copyMapNV = R_NilValue) {
-  bool copyMap = true;
-  if (copyMapNV.isNotNull()) {
-    copyMap = Rcpp::as<bool>(copyMapNV);
-  }
-  if (copyMap) {
-    auto prevPointMap = pointMapPtr;
-    const auto &prevRegion = prevPointMap->getRegion();
-    pointMapPtr = Rcpp::XPtr(new PointMap(prevRegion));
-    pointMapPtr->copy(*prevPointMap, true, true);
-  }
-  Rcpp::List result = Rcpp::List::create(
-    Rcpp::Named("completed") = false
-  );
-
-  pointMapPtr->clearSel();
-  for (int r = 0; r < stepDepthPoints.rows(); ++r) {
-    auto coordRow = stepDepthPoints.row(r);
-    Point2f p(coordRow[0], coordRow[1]);
-    QtRegion region(p, p);
-    pointMapPtr->setCurSel(region, true);
-  }
-  auto analysisResult = VGAVisualGlobalDepth()
-    .run(getCommunicator(true).get(), *pointMapPtr, false);
-  pointMapPtr->clearSel();
-  result["completed"] = analysisResult.completed;
-  result["newAttributes"] = analysisResult.getAttributes();
-  result["mapPtr"] = pointMapPtr;
-  return result;
-}
-
-// [[Rcpp::export("Rcpp_VGA_metricDepth")]]
-Rcpp::List vgaMetricDepth(Rcpp::XPtr<PointMap> pointMapPtr,
-                          Rcpp::NumericMatrix stepDepthPoints,
-                          const Rcpp::Nullable<bool> copyMapNV = R_NilValue) {
-  bool copyMap = true;
-  if (copyMapNV.isNotNull()) {
-    copyMap = Rcpp::as<bool>(copyMapNV);
-  }
-  if (copyMap) {
-    auto prevPointMap = pointMapPtr;
-    const auto &prevRegion = prevPointMap->getRegion();
-    pointMapPtr = Rcpp::XPtr(new PointMap(prevRegion));
-    pointMapPtr->copy(*prevPointMap, true, true);
-  }
-  Rcpp::List result = Rcpp::List::create(
-    Rcpp::Named("completed") = false
-  );
-
-  pointMapPtr->clearSel();
-  for (int r = 0; r < stepDepthPoints.rows(); ++r) {
-    auto coordRow = stepDepthPoints.row(r);
-    Point2f p(coordRow[0], coordRow[1]);
-    QtRegion region(p, p);
-    pointMapPtr->setCurSel(region, true);
-  }
-  auto analysisResult = VGAMetricDepth()
-    .run(getCommunicator(true).get(), *pointMapPtr, false);
-  pointMapPtr->clearSel();
-  result["completed"] = analysisResult.completed;
-  result["newAttributes"] = analysisResult.getAttributes();
-  result["mapPtr"] = pointMapPtr;
-  return result;
-}
-
-// [[Rcpp::export("Rcpp_VGA_angularDepth")]]
-Rcpp::List vgaAngularDepth(Rcpp::XPtr<PointMap> pointMapPtr,
-                           Rcpp::NumericMatrix stepDepthPoints,
-                           const Rcpp::Nullable<bool> copyMapNV = R_NilValue) {
-  bool copyMap = true;
-  if (copyMapNV.isNotNull()) {
-    copyMap = Rcpp::as<bool>(copyMapNV);
-  }
-  if (copyMap) {
-    auto prevPointMap = pointMapPtr;
-    const auto &prevRegion = prevPointMap->getRegion();
-    pointMapPtr = Rcpp::XPtr(new PointMap(prevRegion));
-    pointMapPtr->copy(*prevPointMap, true, true);
-  }
-  Rcpp::List result = Rcpp::List::create(
-    Rcpp::Named("completed") = false
-  );
-
-  pointMapPtr->clearSel();
-  for (int r = 0; r < stepDepthPoints.rows(); ++r) {
-    auto coordRow = stepDepthPoints.row(r);
-    Point2f p(coordRow[0], coordRow[1]);
-    QtRegion region(p, p);
-    pointMapPtr->setCurSel(region, true);
-  }
-  auto analysisResult = VGAAngularDepth()
-    .run(getCommunicator(true).get(), *pointMapPtr, false);
-  pointMapPtr->clearSel();
   result["completed"] = analysisResult.completed;
   result["newAttributes"] = analysisResult.getAttributes();
   result["mapPtr"] = pointMapPtr;

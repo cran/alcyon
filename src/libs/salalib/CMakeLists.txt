@@ -28,19 +28,19 @@ set(salalib_HDRS
     isovistdef.h
     mapconverter.h
     pixelref.h
-    spacepixfile.h
     attributetable.h
     connector.h
     ianalysis.h
     isovist.h
     mgraph_consts.h
-    pointdata.h
+    pointmap.h
     spacepix.h
     attributetablehelpers.h
     displayparams.h
     iaxial.h
     ivga.h
-    mgraph.h
+    metagraph.h
+    metagraphreadwrite.h
     point.h
     sparksieve2.h
     attributetableindex.h
@@ -54,18 +54,30 @@ set(salalib_HDRS
     fileproperties.h
     importutils.h
     layermanagerimpl.h
-    options.h
+    radiustype.h
+    analysistype.h
     shapegraph.h
+    shapemapgroupdata.h
     tolerances.h
+    ianalysis.h
+    salashape.h
+    salaedgeu.h
+    shaperef.h
+    salaevent.h
+    pushvalues.h
+    attributemap.h
+    exportutils.h
+    bspnodetree.h
+    isovistutils.h
 )
 
 set(salalib_SRCS
     shapegraph.cpp
     connector.cpp
     isovist.cpp
-    mgraph.cpp
+    metagraphreadwrite.cpp
     ngraph.cpp
-    pointdata.cpp
+    pointmap.cpp
     salaprogram.cpp
     shapemap.cpp
     spacepix.cpp
@@ -79,7 +91,6 @@ set(salalib_SRCS
     geometrygenerators.cpp
     point.cpp
     pafcolor.cpp
-    spacepixfile.cpp
     alllinemap.cpp
     axialminimiser.cpp
     axialpolygons.cpp
@@ -87,9 +98,16 @@ set(salalib_SRCS
     mapconverter.cpp
     importutils.cpp
     attributetableindex.cpp
-    ianalysis.h)
+    salashape.cpp
+    shapemapgroupdata.cpp
+    pushvalues.cpp
+    exportutils.cpp
+)
 
 add_compile_definitions(_DEPTHMAP SALALIB_LIBRARY)
+
+# Allows enabling M_PI for MSVC
+add_compile_definitions(_USE_MATH_DEFINES)
 
 # The headers are added to the library primarily so that they appear as part
 # of this particular project to IDEs that open it
@@ -97,6 +115,11 @@ add_library(${salalib} STATIC ${salalib_HDRS} ${salalib_SRCS}
     ${vgamodules_SRCS} ${axialmodules_SRCS} ${segmmodules_SRCS} ${parsers_SRCS})
 
 target_compile_options(${salalib} PRIVATE ${COMPILE_WARNINGS})
+
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(${salalib} PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 add_subdirectory(vgamodules)
 add_subdirectory(axialmodules)

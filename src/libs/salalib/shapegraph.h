@@ -55,16 +55,25 @@ class ShapeGraph : public ShapeMap {
     KeyVertices m_keyvertices; // but still need to return keyvertices here
     int m_keyvertexcount;
 
-  protected:
-  public:
-    bool outputMifPolygons(std::ostream &miffile, std::ostream &midfile) const;
-    void outputNet(std::ostream &netfile) const;
+  public: // known columns
+    struct Column {
+        inline static const std::string                    //
+            CONNECTIVITY = "Connectivity",                 //
+            LINE_LENGTH = "Line Length",                   //
+            AXIAL_LINE_REF = "Axial Line Ref",             //
+            SEGMENT_LENGTH = "Segment Length",             //
+            ANGULAR_CONNECTIVITY = "Angular Connectivity"; //
+    };
 
   public:
     ShapeGraph(const std::string &name = "<axial map>", int type = ShapeMap::AXIALMAP);
 
     ShapeGraph(ShapeGraph &&) = default;
     ShapeGraph &operator=(ShapeGraph &&) = default;
+
+  public:
+    bool outputMifPolygons(std::ostream &miffile, std::ostream &midfile) const;
+    void outputNet(std::ostream &netfile) const;
 
     void initialiseAttributesAxial();
     void makeConnections(const KeyVertices &keyvertices = KeyVertices());
@@ -76,14 +85,22 @@ class ShapeGraph : public ShapeMap {
     void initialiseAttributesSegment();
     void makeSegmentConnections(std::vector<Connector> &connectionset);
     void pushAxialValues(ShapeGraph &axialmap);
-    //
-    virtual bool read(std::istream &stream);
-    bool readold(std::istream &stream);
-    virtual bool write(std::ofstream &stream);
+
+    bool readShapeGraphData(std::istream &stream);
+    virtual std::tuple<bool, bool, bool, int> read(std::istream &stream) override;
+    bool writeShapeGraphData(std::ostream &stream) const;
+    virtual bool write(std::ostream &stream, const std::tuple<bool, bool, int> &displayData =
+                                                 std::make_tuple(true, false, -1)) const override;
     void writeAxialConnectionsAsDotGraph(std::ostream &stream);
     void writeAxialConnectionsAsPairsCSV(std::ostream &stream);
     void writeSegmentConnectionsAsPairsCSV(std::ostream &stream);
     void writeLinksUnlinksAsPairsCSV(std::ostream &stream, char delimiter = ',');
     void unlinkAtPoint(const Point2f &unlinkPoint);
     void unlinkFromShapeMap(const ShapeMap &shapemap);
+    void setKeyVertexCount(int keyvertexcount) { m_keyvertexcount = keyvertexcount; }
+    auto getKeyVertexCount() { return m_keyvertexcount; }
+    auto &getKeyVertices() { return m_keyvertices; }
+    auto getShapesAtPixel(PixelRef ref) {
+        return m_pixel_shapes(static_cast<size_t>(ref.y), static_cast<size_t>(ref.x));
+    }
 };

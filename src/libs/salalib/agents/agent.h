@@ -9,7 +9,7 @@
 #include "agentprogram.h"
 
 #include "salalib/pixelref.h"
-#include "salalib/pointdata.h"
+#include "salalib/pointmap.h"
 
 #include "genlib/p2dpoly.h"
 #include "genlib/pflipper.h"
@@ -99,7 +99,7 @@ inline int binfromvec(const Point2f &p) { return int(32.0 * (0.5 * p.angle() / M
 
 // a random angle based on a bin direction
 inline double anglefrombin2(int here) {
-    return (2.0 * M_PI) * ((double(here) - 0.5) / 32.0 + prandom() / 32.0);
+    return (2.0 * M_PI) * ((double(here) - 0.5) / 32.0 + pafmath::prandom() / 32.0);
 }
 
 inline int binsbetween(int bin1, int bin2) {

@@ -23,13 +23,12 @@
 #include "salalib/salaprogram.h"
 #include "salalib/connector.h"
 #include "salalib/ngraph.h"
-#include "salalib/pointdata.h"
+#include "salalib/pointmap.h"
 #include "salalib/shapemap.h"
 
 #include <cmath>
 #include <cstring>
 #include <float.h>
-#include <math.h>
 #include <time.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +480,7 @@ int SalaCommand::parse(std::istream &program, int line) {
         case '%':
         case '^':
             if (!buffer.empty()) {
-                last = decode(buffer);
+                decode(buffer);
                 buffer.clear();
             }
             last = decode(std::string(1, alpha));
@@ -522,7 +521,7 @@ int SalaCommand::parse(std::istream &program, int line) {
         case ')':
             // note: the closing bracket forms a data packet:
             if (!buffer.empty()) {
-                last = decode(buffer);
+                decode(buffer);
                 buffer.clear();
             }
             pushFunc(SalaObj::S_CLOSE_BRACKET);
@@ -566,7 +565,7 @@ int SalaCommand::parse(std::istream &program, int line) {
         case ']':
             // note: the closing bracket forms a data packet:
             if (!buffer.empty()) {
-                last = decode(buffer);
+                decode(buffer);
                 buffer.clear();
             }
             pushFunc(SalaObj::S_CLOSE_SQR_BRACKET);
@@ -574,7 +573,7 @@ int SalaCommand::parse(std::istream &program, int line) {
             break;
         case ',':
             if (!buffer.empty()) {
-                last = decode(buffer);
+                decode(buffer);
                 buffer.clear();
             }
             pushFunc(SalaObj::S_COMMA);
@@ -719,7 +718,6 @@ int SalaCommand::parse(std::istream &program, int line) {
     if (!buffer.empty()) {
         decode(buffer);
         buffer.clear();
-        last = SP_DATA;
     }
     // push remaining functions onto eval stack:
     while (m_func_stack.size()) {
@@ -1398,12 +1396,12 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&p_obj) {
                     data = log10(evaluate(pointer, p_obj).toDouble());
                     break;
                 case SalaObj::S_LN:
-                    data = ln(evaluate(pointer, p_obj).toDouble());
+                    data = pafmath_ln(evaluate(pointer, p_obj).toDouble());
                     break;
                 case SalaObj::S_RAND:
                     data = evaluate(pointer, p_obj);
                     data.ensureNone();
-                    data = SalaObj(prandom());
+                    data = SalaObj(pafmath::prandom());
                     break;
                 case SalaObj::S_SIN:
                     data = sin(evaluate(pointer, p_obj).toDouble());

@@ -12,23 +12,19 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
 
     AnalysisResult result;
 
-    auto &selected = m_map.getSelSet();
-    if (selected.size() != 2) {
-        return result;
-    }
-
     AttributeTable &attributes = m_map.getAttributeTable();
 
-    std::string colText = "Angular Shortest Path Angle";
+    std::string colText = Column::ANGULAR_SHORTEST_PATH_ANGLE;
     size_t angle_col = attributes.insertOrResetColumn(colText);
     result.addAttribute(colText);
-    colText = "Angular Shortest Path Order";
+    colText = Column::ANGULAR_SHORTEST_PATH_ORDER;
     size_t path_col = attributes.insertOrResetColumn(colText);
     result.addAttribute(colText);
 
-    // The original code set tulip_bins to 1024, divided by two and added one
-    // in order to duplicate previous code (using a semicircle of tulip bins)
-    size_t tulip_bins = 513;
+    size_t tulip_bins = m_tulipBins;
+
+    tulip_bins /= 2; // <- actually use semicircle of tulip bins
+    tulip_bins += 1;
 
     std::vector<bool> covered(m_map.getConnections().size());
     for (size_t i = 0; i < m_map.getConnections().size(); i++) {
@@ -36,24 +32,20 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
     }
     std::vector<std::vector<SegmentData>> bins(tulip_bins);
 
-    int refFrom = *selected.begin();
-    int refTo = *selected.rbegin();
-
     int opencount = 0;
 
-    int row = std::distance(m_map.getAllShapes().begin(), m_map.getAllShapes().find(refFrom));
+    int row = std::distance(m_map.getAllShapes().begin(), m_map.getAllShapes().find(m_refFrom));
     if (row != -1) {
         bins[0].push_back(SegmentData(0, row, SegmentRef(), 0, 0.0, 0));
         opencount++;
     }
 
     std::map<unsigned int, unsigned int> parents;
-    bool refFound = false;
 
     int depthlevel = 0;
     auto binIter = bins.begin();
     int currentbin = 0;
-    while (opencount && !refFound) {
+    while (opencount) {
         while (binIter->empty()) {
             depthlevel++;
             binIter++;
@@ -67,7 +59,7 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
             // it is slightly slower to delete from an arbitrary place in the bin,
             // but it is necessary to use random paths to even out the number of times through equal
             // paths
-            int curr = pafrand() % binIter->size();
+            int curr = pafmath::pafrand() % binIter->size();
             auto currIter = binIter->begin() + curr;
             lineindex = *currIter;
             binIter->erase(currIter);
@@ -113,14 +105,13 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
                     }
                 }
             }
-            if (lineindex.ref == refTo) {
-                refFound = true;
+            if (lineindex.ref == m_refTo) {
                 break;
             }
         }
     }
 
-    auto refToParent = parents.find(refTo);
+    auto refToParent = parents.find(m_refTo);
     int counter = 0;
     while (refToParent != parents.end()) {
         AttributeRow &row = m_map.getAttributeRowFromShapeIndex(refToParent->first);
@@ -128,7 +119,7 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
         counter++;
         refToParent = parents.find(refToParent->second);
     }
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(path_col, counter);
+    m_map.getAttributeRowFromShapeIndex(m_refFrom).setValue(path_col, counter);
 
     for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
         AttributeRow &row = iter->getRow();
@@ -138,9 +129,6 @@ AnalysisResult SegmentTulipShortestPath::run(Communicator *) {
             row.setValue(path_col, counter - row.getValue(path_col));
         }
     }
-
-    m_map.overrideDisplayedAttribute(-2); // <- override if it's already showing
-    m_map.setDisplayedAttribute(static_cast<int>(angle_col));
 
     result.completed = true;
 

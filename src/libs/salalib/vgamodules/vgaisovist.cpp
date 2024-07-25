@@ -89,38 +89,30 @@ std::vector<std::pair<std::string, int>> VGAIsovist::createAttributes(AttributeT
                                                                       bool simple_version) {
     std::vector<std::pair<std::string, int>> cols;
 
-    std::string colText = "Isovist Area";
-    int col = table.getOrInsertColumn(colText);
-    cols.emplace_back(colText, col);
+    int col = table.getOrInsertColumn(Column::ISOVIST_AREA);
+    cols.emplace_back(Column::ISOVIST_AREA, col);
 
     if (!simple_version) {
-        colText = "Isovist Compactness";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_COMPACTNESS);
+        cols.emplace_back(Column::ISOVIST_COMPACTNESS, col);
 
-        colText = "Isovist Drift Angle";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_DRIFT_ANGLE);
+        cols.emplace_back(Column::ISOVIST_DRIFT_ANGLE, col);
 
-        colText = "Isovist Drift Magnitude";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_DRIFT_MAGNITUDE);
+        cols.emplace_back(Column::ISOVIST_DRIFT_MAGNITUDE, col);
 
-        colText = "Isovist Min Radial";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_MIN_RADIAL);
+        cols.emplace_back(Column::ISOVIST_MIN_RADIAL, col);
 
-        colText = "Isovist Max Radial";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_MAX_RADIAL);
+        cols.emplace_back(Column::ISOVIST_MAX_RADIAL, col);
 
-        colText = "Isovist Occlusivity";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_OCCLUSIVITY);
+        cols.emplace_back(Column::ISOVIST_OCCLUSIVITY, col);
 
-        colText = "Isovist Perimeter";
-        col = table.getOrInsertColumn(colText);
-        cols.emplace_back(colText, col);
+        col = table.getOrInsertColumn(Column::ISOVIST_PERIMETER);
+        cols.emplace_back(Column::ISOVIST_PERIMETER, col);
     }
     return cols;
 }
@@ -163,17 +155,12 @@ std::set<std::string> VGAIsovist::setData(Isovist &isovist, AttributeRow &row,
 
 BSPNode VGAIsovist::makeBSPtree(Communicator *communicator,
                                 const std::vector<SalaShape> &boundaryShapes) {
-    std::vector<TaggedLine> partitionlines;
-    int k = -1;
+    std::vector<Line> partitionlines;
     for (const auto &shape : boundaryShapes) {
-        k++;
         std::vector<Line> newLines = shape.getAsLines();
-        // I'm not sure what the tagging was meant for any more,
-        // tagging at the moment tags the *polygon* it was original attached to
-        // must check it is not a zero length line:
         for (const Line &line : newLines) {
             if (line.length() > 0.0) {
-                partitionlines.push_back(TaggedLine(line, k));
+                partitionlines.push_back(line);
             }
         }
     }
