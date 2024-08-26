@@ -5,6 +5,8 @@
 
 set(salalib salalib)
 
+#set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+
 if (NOT FORCE_GLOBAL_COMPILE_WARNINGS)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
         "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -38,7 +40,6 @@ set(salalib_HDRS
     attributetablehelpers.h
     displayparams.h
     iaxial.h
-    ivga.h
     metagraph.h
     metagraphreadwrite.h
     point.h
@@ -116,9 +117,11 @@ add_library(${salalib} STATIC ${salalib_HDRS} ${salalib_SRCS}
 
 target_compile_options(${salalib} PRIVATE ${COMPILE_WARNINGS})
 
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(${salalib} PUBLIC OpenMP::OpenMP_CXX)
+if (NOT DISABLE_OPENMP)
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(${salalib} PUBLIC OpenMP::OpenMP_CXX)
+    endif()
 endif()
 
 add_subdirectory(vgamodules)

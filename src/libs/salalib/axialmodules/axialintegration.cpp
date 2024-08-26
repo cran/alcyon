@@ -10,7 +10,7 @@
 
 std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> radii,
                                                               std::string weightingColName,
-                                                              bool simple_version) {
+                                                              bool simpleVersion) {
     std::vector<std::string> newColumns;
     for (int radius : radii) {
         if (!m_forceLegacyColumnOrder) {
@@ -22,14 +22,14 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
             newColumns.push_back(getFormattedColumn( //
                 Column::INTEGRATION, radius, std::nullopt, Normalisation::HH));
 
-            if (m_weighted_measure_col != -1) {
+            if (m_weightedMeasureCol != -1) {
                 newColumns.push_back(getFormattedColumn( //
                     Column::MEAN_DEPTH, radius, weightingColName));
                 newColumns.push_back(getFormattedColumn( //
                     Column::TOTAL, radius, weightingColName));
             }
 
-            if (!simple_version) {
+            if (!simpleVersion) {
                 // columns only when simple-version is not selected
                 newColumns.push_back(getFormattedColumn( //
                     Column::ENTROPY, radius));
@@ -51,7 +51,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                     Column::CHOICE, radius));
                 newColumns.push_back(getFormattedColumn( //
                     Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-                if (m_weighted_measure_col != -1) {
+                if (m_weightedMeasureCol != -1) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::CHOICE, radius, weightingColName));
                     newColumns.push_back(getFormattedColumn( //
@@ -65,7 +65,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                 newColumns.push_back(getFormattedColumn( //
                     Column::TOTAL_DEPTH, radius));
 
-                if (!simple_version) {
+                if (!simpleVersion) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::RA, radius, std::nullopt, Normalisation::PENN));
                     newColumns.push_back(getFormattedColumn( //
@@ -82,7 +82,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                     Column::CHOICE, radius));
                 newColumns.push_back(getFormattedColumn( //
                     Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-                if (m_weighted_measure_col != -1) {
+                if (m_weightedMeasureCol != -1) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::CHOICE, radius, weightingColName));
                     newColumns.push_back(getFormattedColumn( //
@@ -90,7 +90,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                 }
             }
 
-            if (!simple_version) {
+            if (!simpleVersion) {
                 // columns only when simple-version is not selected
                 auto formattedCol = getFormattedColumn( //
                     Column::ENTROPY, radius);
@@ -102,7 +102,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
             newColumns.push_back(getFormattedColumn( //
                 Column::INTEGRATION, radius, std::nullopt, Normalisation::HH));
 
-            if (!simple_version) {
+            if (!simpleVersion) {
                 // columns only when simple-version is not selected
                 newColumns.push_back(getFormattedColumn( //
                     Column::INTEGRATION, radius, std::nullopt, Normalisation::PV));
@@ -120,13 +120,13 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
             newColumns.push_back(getFormattedColumn( //
                 Column::NODE_COUNT, radius));
 
-            if (!simple_version) {
+            if (!simpleVersion) {
                 // columns only when simple-version is not selected
                 newColumns.push_back(getFormattedColumn( //
                     Column::RELATIVISED_ENTROPY, radius));
             }
 
-            if (m_weighted_measure_col != -1) {
+            if (m_weightedMeasureCol != -1) {
                 newColumns.push_back(getFormattedColumn( //
                     Column::MEAN_DEPTH, radius, weightingColName));
                 newColumns.push_back(getFormattedColumn( //
@@ -134,14 +134,14 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
             }
 
             if (m_fulloutput) {
-                if (!simple_version) {
+                if (!simpleVersion) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::RA, radius, std::nullopt, Normalisation::PENN));
                 }
                 newColumns.push_back(getFormattedColumn( //
                     Column::RA, radius));
 
-                if (!simple_version) {
+                if (!simpleVersion) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::RRA, radius));
                 }
@@ -158,22 +158,22 @@ std::vector<int> AxialIntegration::getFormattedRadii(std::set<double> radiusSet)
     // note: radius must be sorted lowest to highest, but if -1 occurs ("radius n") it needs to be
     // last...
     // ...to ensure no mess ups, we'll re-sort here:
-    bool radius_n = false;
+    bool radiusN = false;
     std::vector<int> radii;
     for (double radius : radiusSet) {
         if (radius < 0) {
-            radius_n = true;
+            radiusN = true;
         } else {
             radii.push_back(static_cast<int>(radius));
         }
     }
-    if (radius_n) {
+    if (radiusN) {
         radii.push_back(-1);
     }
     return radii;
 }
 
-AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_version) {
+AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simpleVersion) {
     // note, from 10.0, Depthmap no longer includes *self* connections on axial lines
     // self connections are stripped out on loading graph files, as well as no longer made
 
@@ -187,92 +187,90 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
 
     AttributeTable &attributes = map.getAttributeTable();
 
-    std::vector<int> radii = getFormattedRadii(m_radius_set);
+    std::vector<int> radii = getFormattedRadii(m_radiusSet);
 
     // retrieve weighted col data, as this may well be overwritten in the new analysis:
     std::vector<double> weights;
-    std::string weighting_col_text;
-    if (m_weighted_measure_col != -1) {
-        weighting_col_text = attributes.getColumnName(m_weighted_measure_col);
+    std::string weightingColText;
+    if (m_weightedMeasureCol != -1) {
+        weightingColText = attributes.getColumnName(m_weightedMeasureCol);
         for (size_t i = 0; i < map.getShapeCount(); i++) {
-            weights.push_back(
-                map.getAttributeRowFromShapeIndex(i).getValue(m_weighted_measure_col));
+            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(m_weightedMeasureCol));
         }
     }
 
     // first enter the required attribute columns:
-    auto newColumns = getRequiredColumns(radii, weighting_col_text, simple_version);
+    auto newColumns = getRequiredColumns(radii, weightingColText, simpleVersion);
     for (auto &col : newColumns) {
         attributes.insertOrResetColumn(col);
         result.addAttribute(col);
     }
 
     // then look up all the columns... eek:
-    std::vector<size_t> choice_col, n_choice_col, w_choice_col, nw_choice_col, entropy_col,
-        integ_dv_col, integ_pv_col, integ_tk_col, intensity_col, depth_col, count_col,
-        rel_entropy_col, penn_norm_col, w_depth_col, total_weight_col, ra_col, rra_col, td_col,
-        harmonic_col;
+    std::vector<size_t> choiceCol, nChoiceCol, wChoiceCol, nwChoiceCol, entropyCol, integDvCol,
+        integPvCol, integTkCol, intensityCol, depthCol, countCol, relEntropyCol, pennNormCol,
+        wDepthCol, totalWeightCol, raCol, rraCol, tdCol, harmonicCol;
     for (int radius : radii) {
-        std::string radius_text;
+        std::string radiusText;
 
         if (m_choice) {
-            choice_col.push_back(getFormattedColumnIdx( //
+            choiceCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::CHOICE, radius));
-            n_choice_col.push_back(getFormattedColumnIdx( //
+            nChoiceCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-            if (m_weighted_measure_col != -1) {
-                w_choice_col.push_back(getFormattedColumnIdx( //
-                    attributes, Column::CHOICE, radius, weighting_col_text));
-                nw_choice_col.push_back(getFormattedColumnIdx( //
-                    attributes, Column::CHOICE, radius, weighting_col_text, Normalisation::NORM));
+            if (m_weightedMeasureCol != -1) {
+                wChoiceCol.push_back(getFormattedColumnIdx( //
+                    attributes, Column::CHOICE, radius, weightingColText));
+                nwChoiceCol.push_back(getFormattedColumnIdx( //
+                    attributes, Column::CHOICE, radius, weightingColText, Normalisation::NORM));
             }
         }
-        if (!simple_version) {
-            entropy_col.push_back(getFormattedColumnIdx( //
+        if (!simpleVersion) {
+            entropyCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::ENTROPY, radius));
         }
 
-        integ_dv_col.push_back(getFormattedColumnIdx( //
+        integDvCol.push_back(getFormattedColumnIdx( //
             attributes, Column::INTEGRATION, radius, std::nullopt, Normalisation::HH));
 
-        if (!simple_version) {
-            integ_pv_col.push_back(getFormattedColumnIdx( //
+        if (!simpleVersion) {
+            integPvCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::INTEGRATION, radius, std::nullopt, Normalisation::PV));
-            integ_tk_col.push_back(getFormattedColumnIdx( //
+            integTkCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::INTEGRATION, radius, std::nullopt, Normalisation::TK));
-            intensity_col.push_back(getFormattedColumnIdx( //
+            intensityCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::INTENSITY, radius));
-            harmonic_col.push_back(getFormattedColumnIdx( //
+            harmonicCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::HARMONIC_MEAN_DEPTH, radius));
         }
 
-        depth_col.push_back(getFormattedColumnIdx( //
+        depthCol.push_back(getFormattedColumnIdx( //
             attributes, Column::MEAN_DEPTH, radius));
-        count_col.push_back(getFormattedColumnIdx( //
+        countCol.push_back(getFormattedColumnIdx( //
             attributes, Column::NODE_COUNT, radius));
 
-        if (!simple_version) {
-            rel_entropy_col.push_back(getFormattedColumnIdx( //
+        if (!simpleVersion) {
+            relEntropyCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::RELATIVISED_ENTROPY, radius));
         }
 
-        if (m_weighted_measure_col != -1) {
-            w_depth_col.push_back(getFormattedColumnIdx( //
-                attributes, Column::MEAN_DEPTH, radius, weighting_col_text, std::nullopt));
-            total_weight_col.push_back(getFormattedColumnIdx( //
-                attributes, Column::TOTAL, radius, weighting_col_text, std::nullopt));
+        if (m_weightedMeasureCol != -1) {
+            wDepthCol.push_back(getFormattedColumnIdx( //
+                attributes, Column::MEAN_DEPTH, radius, weightingColText, std::nullopt));
+            totalWeightCol.push_back(getFormattedColumnIdx( //
+                attributes, Column::TOTAL, radius, weightingColText, std::nullopt));
         }
         if (m_fulloutput) {
-            ra_col.push_back(getFormattedColumnIdx( //
+            raCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::RA, radius, std::nullopt, std::nullopt));
 
-            if (!simple_version) {
-                penn_norm_col.push_back(getFormattedColumnIdx( //
+            if (!simpleVersion) {
+                pennNormCol.push_back(getFormattedColumnIdx( //
                     attributes, Column::RA, radius, std::nullopt, Normalisation::PENN));
-                rra_col.push_back(getFormattedColumnIdx( //
+                rraCol.push_back(getFormattedColumnIdx( //
                     attributes, Column::RRA, radius, std::nullopt, std::nullopt));
             }
-            td_col.push_back(getFormattedColumnIdx( //
+            tdCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::TOTAL_DEPTH, radius, std::nullopt, std::nullopt));
         }
     }
@@ -313,13 +311,13 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
         pflipper<std::vector<std::pair<int, int>>> foundlist;
         foundlist.a().push_back(std::pair<int, int>(i, -1));
         covered[i] = true;
-        int total_depth = 0, depth = 1, node_count = 1, pos = -1,
+        int totalDepth = 0, depth = 1, nodeCount = 1, pos = -1,
             previous = -1; // node_count includes this 1
-        double weight = 0.0, rootweight = 0.0, total_weight = 0.0, w_total_depth = 0.0;
-        if (m_weighted_measure_col != -1) {
+        double weight = 0.0, rootweight = 0.0, totalWeight = 0.0, wTotalDepth = 0.0;
+        if (m_weightedMeasureCol != -1) {
             rootweight = weights[i];
             // include this line in total weights (as per nodecount)
-            total_weight += rootweight;
+            totalWeight += rootweight;
         }
         int index = -1;
         int r = 0;
@@ -336,15 +334,15 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                                   // radius previous
                 }
                 Connector &line = map.getConnections()[index];
-                for (size_t k = 0; k < line.m_connections.size(); k++) {
-                    if (!covered[line.m_connections[k]]) {
-                        covered[line.m_connections[k]] = true;
-                        foundlist.b().push_back(std::pair<int, int>(line.m_connections[k], index));
-                        if (m_weighted_measure_col != -1) {
+                for (size_t k = 0; k < line.connections.size(); k++) {
+                    if (!covered[line.connections[k]]) {
+                        covered[line.connections[k]] = true;
+                        foundlist.b().push_back(std::pair<int, int>(line.connections[k], index));
+                        if (m_weightedMeasureCol != -1) {
                             // the weight is taken from the discovered node:
-                            weight = weights[line.m_connections[k]];
-                            total_weight += weight;
-                            w_total_depth += depth * weight;
+                            weight = weights[line.connections[k]];
+                            totalWeight += weight;
+                            wTotalDepth += depth * weight;
                         }
                         if (m_choice && previous != -1) {
                             // both directional paths are now recorded for choice
@@ -353,21 +351,21 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                                                  // looking ahead here
                             while (here != i) {  // not i means not the current root for the path
                                 audittrail[here][r].choice += 1;
-                                audittrail[here][r].weighted_choice += weight * rootweight;
+                                audittrail[here][r].weightedChoice += weight * rootweight;
                                 here = audittrail[here][0]
                                            .previous
                                            .ref; // <- note, just using 0th position: radius for
                                                  // the previous doesn't matter in this analysis
                             }
-                            if (m_weighted_measure_col != -1) {
+                            if (m_weightedMeasureCol != -1) {
                                 // in weighted choice, root node and current node receive values:
-                                audittrail[i][r].weighted_choice += (weight * rootweight) * 0.5;
-                                audittrail[line.m_connections[k]][r].weighted_choice +=
+                                audittrail[i][r].weightedChoice += (weight * rootweight) * 0.5;
+                                audittrail[line.connections[k]][r].weightedChoice +=
                                     (weight * rootweight) * 0.5;
                             }
                         }
-                        total_depth += depth;
-                        node_count++;
+                        totalDepth += depth;
+                        nodeCount++;
                         depthcounts.back() += 1;
                     }
                 }
@@ -385,117 +383,117 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                 }
             }
             // set the attributes for this node:
-            row.setValue(count_col[r], float(node_count));
-            if (m_weighted_measure_col != -1) {
-                row.setValue(total_weight_col[r], float(total_weight));
+            row.setValue(countCol[r], float(nodeCount));
+            if (m_weightedMeasureCol != -1) {
+                row.setValue(totalWeightCol[r], float(totalWeight));
             }
             // node count > 1 to avoid divide by zero (was > 2)
-            if (node_count > 1) {
+            if (nodeCount > 1) {
                 // note -- node_count includes this one -- mean depth as per p.108 Social Logic of
                 // Space
-                double mean_depth = double(total_depth) / double(node_count - 1);
-                row.setValue(depth_col[r], float(mean_depth));
-                if (m_weighted_measure_col != -1) {
+                double meanDepth = double(totalDepth) / double(nodeCount - 1);
+                row.setValue(depthCol[r], float(meanDepth));
+                if (m_weightedMeasureCol != -1) {
                     // weighted mean depth:
-                    row.setValue(w_depth_col[r], float(w_total_depth / total_weight));
+                    row.setValue(wDepthCol[r], float(wTotalDepth / totalWeight));
                 }
                 // total nodes > 2 to avoid divide by 0 (was > 3)
-                if (node_count > 2 && mean_depth > 1.0) {
-                    double ra = 2.0 * (mean_depth - 1.0) / double(node_count - 2);
+                if (nodeCount > 2 && meanDepth > 1.0) {
+                    double ra = 2.0 * (meanDepth - 1.0) / double(nodeCount - 2);
                     // d-value / p-value from Depthmap 4 manual, note: node_count includes this one
-                    double rra_d = ra / pafmath::dvalue(node_count);
-                    double rra_p = ra / pafmath::dvalue(node_count);
-                    double integ_tk = pafmath::teklinteg(node_count, total_depth);
-                    row.setValue(integ_dv_col[r], float(1.0 / rra_d));
+                    double rraD = ra / pafmath::dvalue(nodeCount);
+                    double rraP = ra / pafmath::dvalue(nodeCount);
+                    double integTk = pafmath::teklinteg(nodeCount, totalDepth);
+                    row.setValue(integDvCol[r], float(1.0 / rraD));
 
-                    if (!simple_version) {
-                        row.setValue(integ_pv_col[r], float(1.0 / rra_p));
-                        if (total_depth - node_count + 1 > 1) {
-                            row.setValue(integ_tk_col[r], float(integ_tk));
+                    if (!simpleVersion) {
+                        row.setValue(integPvCol[r], float(1.0 / rraP));
+                        if (totalDepth - nodeCount + 1 > 1) {
+                            row.setValue(integTkCol[r], float(integTk));
                         } else {
-                            row.setValue(integ_tk_col[r], -1.0f);
+                            row.setValue(integTkCol[r], -1.0f);
                         }
                     }
 
                     if (m_fulloutput) {
-                        row.setValue(ra_col[r], float(ra));
+                        row.setValue(raCol[r], float(ra));
 
-                        if (!simple_version) {
-                            row.setValue(rra_col[r], float(rra_d));
+                        if (!simpleVersion) {
+                            row.setValue(rraCol[r], float(rraD));
                         }
-                        row.setValue(td_col[r], float(total_depth));
+                        row.setValue(tdCol[r], float(totalDepth));
 
-                        if (!simple_version) {
+                        if (!simpleVersion) {
                             // alan's palm-tree normalisation: palmtree
-                            double dmin = node_count - 1;
-                            double dmax = pafmath::palmtree(node_count, depth - 1);
+                            double dmin = nodeCount - 1;
+                            double dmax = pafmath::palmtree(nodeCount, depth - 1);
                             if (dmax != dmin) {
-                                row.setValue(penn_norm_col[r],
-                                             float((dmax - total_depth) / (dmax - dmin)));
+                                row.setValue(pennNormCol[r],
+                                             float((dmax - totalDepth) / (dmax - dmin)));
                             }
                         }
                     }
                 } else {
-                    row.setValue(integ_dv_col[r], -1.0f);
+                    row.setValue(integDvCol[r], -1.0f);
 
-                    if (!simple_version) {
-                        row.setValue(integ_pv_col[r], -1.0f);
-                        row.setValue(integ_tk_col[r], -1.0f);
+                    if (!simpleVersion) {
+                        row.setValue(integPvCol[r], -1.0f);
+                        row.setValue(integTkCol[r], -1.0f);
                     }
                     if (m_fulloutput) {
-                        row.setValue(ra_col[r], -1.0f);
+                        row.setValue(raCol[r], -1.0f);
 
-                        if (!simple_version) {
-                            row.setValue(rra_col[r], -1.0f);
+                        if (!simpleVersion) {
+                            row.setValue(rraCol[r], -1.0f);
                         }
 
-                        row.setValue(td_col[r], -1.0f);
+                        row.setValue(tdCol[r], -1.0f);
 
-                        if (!simple_version) {
-                            row.setValue(penn_norm_col[r], -1.0f);
+                        if (!simpleVersion) {
+                            row.setValue(pennNormCol[r], -1.0f);
                         }
                     }
                 }
 
-                if (!simple_version) {
-                    double entropy = 0.0, intensity = 0.0, rel_entropy = 0.0, factorial = 1.0,
+                if (!simpleVersion) {
+                    double entropy = 0.0, intensity = 0.0, relEntropy = 0.0, factorial = 1.0,
                            harmonic = 0.0;
                     for (size_t k = 0; k < depthcounts.size(); k++) {
                         if (depthcounts[k] != 0) {
                             // some debate over whether or not this should be node count - 1
                             // (i.e., including or not including the node itself)
-                            double prob = double(depthcounts[k]) / double(node_count);
+                            double prob = double(depthcounts[k]) / double(nodeCount);
                             entropy -= prob * pafmath::log2(prob);
                             // Formula from Turner 2001, "Depthmap"
                             factorial *= double(k + 1);
                             double q =
-                                (pow(mean_depth, double(k)) / double(factorial)) * exp(-mean_depth);
-                            rel_entropy += (double)prob * pafmath::log2(prob / q);
+                                (pow(meanDepth, double(k)) / double(factorial)) * exp(-meanDepth);
+                            relEntropy += (double)prob * pafmath::log2(prob / q);
                             //
                             harmonic += 1.0 / double(depthcounts[k]);
                         }
                     }
                     harmonic = double(depthcounts.size()) / harmonic;
-                    if (total_depth > node_count) {
-                        intensity = node_count * entropy / (total_depth - node_count);
+                    if (totalDepth > nodeCount) {
+                        intensity = nodeCount * entropy / (totalDepth - nodeCount);
                     } else {
                         intensity = -1;
                     }
-                    row.setValue(entropy_col[r], float(entropy));
-                    row.setValue(rel_entropy_col[r], float(rel_entropy));
-                    row.setValue(intensity_col[r], float(intensity));
-                    row.setValue(harmonic_col[r], float(harmonic));
+                    row.setValue(entropyCol[r], float(entropy));
+                    row.setValue(relEntropyCol[r], float(relEntropy));
+                    row.setValue(intensityCol[r], float(intensity));
+                    row.setValue(harmonicCol[r], float(harmonic));
                 }
             } else {
-                row.setValue(depth_col[r], -1.0f);
-                row.setValue(integ_dv_col[r], -1.0f);
+                row.setValue(depthCol[r], -1.0f);
+                row.setValue(integDvCol[r], -1.0f);
 
-                if (!simple_version) {
-                    row.setValue(integ_pv_col[r], -1.0f);
-                    row.setValue(integ_tk_col[r], -1.0f);
-                    row.setValue(entropy_col[r], -1.0f);
-                    row.setValue(rel_entropy_col[r], -1.0f);
-                    row.setValue(harmonic_col[r], -1.0f);
+                if (!simpleVersion) {
+                    row.setValue(integPvCol[r], -1.0f);
+                    row.setValue(integTkCol[r], -1.0f);
+                    row.setValue(entropyCol[r], -1.0f);
+                    row.setValue(relEntropyCol[r], -1.0f);
+                    row.setValue(harmonicCol[r], -1.0f);
                 }
             }
             ++r;
@@ -517,32 +515,32 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
         i = 0;
         for (auto &iter : attributes) {
             AttributeRow &row = iter.getRow();
-            double total_choice = 0.0, w_total_choice = 0.0;
+            double totalChoice = 0.0, wTotalChoice = 0.0;
             for (size_t r = 0; r < radii.size(); r++) {
-                total_choice += audittrail[i][r].choice;
-                w_total_choice += audittrail[i][r].weighted_choice;
+                totalChoice += audittrail[i][r].choice;
+                wTotalChoice += audittrail[i][r].weightedChoice;
                 // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through
                 // routes)
-                double node_count = row.getValue(count_col[r]);
-                double total_weight = 0;
-                if (m_weighted_measure_col != -1) {
-                    total_weight = row.getValue(total_weight_col[r]);
+                double nodeCount = row.getValue(countCol[r]);
+                double totalWeight = 0;
+                if (m_weightedMeasureCol != -1) {
+                    totalWeight = row.getValue(totalWeightCol[r]);
                 }
-                if (node_count > 2) {
-                    row.setValue(choice_col[r], float(total_choice));
-                    row.setValue(n_choice_col[r],
-                                 float(2.0 * total_choice / ((node_count - 1) * (node_count - 2))));
-                    if (m_weighted_measure_col != -1) {
-                        row.setValue(w_choice_col[r], float(w_total_choice));
-                        row.setValue(nw_choice_col[r],
-                                     float(2.0 * w_total_choice / (total_weight * total_weight)));
+                if (nodeCount > 2) {
+                    row.setValue(choiceCol[r], float(totalChoice));
+                    row.setValue(nChoiceCol[r],
+                                 float(2.0 * totalChoice / ((nodeCount - 1) * (nodeCount - 2))));
+                    if (m_weightedMeasureCol != -1) {
+                        row.setValue(wChoiceCol[r], float(wTotalChoice));
+                        row.setValue(nwChoiceCol[r],
+                                     float(2.0 * wTotalChoice / (totalWeight * totalWeight)));
                     }
                 } else {
-                    row.setValue(choice_col[r], -1);
-                    row.setValue(n_choice_col[r], -1);
-                    if (m_weighted_measure_col != -1) {
-                        row.setValue(w_choice_col[r], -1);
-                        row.setValue(nw_choice_col[r], -1);
+                    row.setValue(choiceCol[r], -1);
+                    row.setValue(nChoiceCol[r], -1);
+                    if (m_weightedMeasureCol != -1) {
+                        row.setValue(wChoiceCol[r], -1);
+                        row.setValue(nwChoiceCol[r], -1);
                     }
                 }
             }

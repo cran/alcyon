@@ -6,25 +6,29 @@
 
 #pragma once
 
+#include "ivgavisual.h"
+
 #include "genlib/stringutils.h"
-#include "salalib/ianalysis.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointmap.h"
 
 #include "genlib/simplematrix.h"
 
-class VGAVisualGlobalOpenMP : public IAnalysis {
+class VGAVisualGlobalOpenMP : public IVGAVisual {
   private:
-    PointMap &m_map;
     double m_radius;
     bool m_gatesOnly;
+    std::optional<int> m_limitToThreads;
+    bool m_forceCommUpdatesMasterThread = false;
+
+    // To maintain binary compatibility with older .graph versions
+    // write the last "misc" values back to the points
+    bool m_legacyWriteMiscs = false;
 
     struct DataPoint {
-        float count, depth, integ_dv, integ_pv;
-        float integ_tk, entropy, rel_entropy;
+        float count, depth, integDv, integPv;
+        float integTk, entropy, relEntropy;
     };
-    void extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
-                       depthmapX::RowMatrix<PixelRef> &extents);
 
   public:
     struct Column {
@@ -45,8 +49,15 @@ class VGAVisualGlobalOpenMP : public IAnalysis {
     }
 
   public:
-    VGAVisualGlobalOpenMP(PointMap &map, double radius, bool gatesOnly)
-        : m_map(map), m_radius(radius), m_gatesOnly(gatesOnly) {}
+    VGAVisualGlobalOpenMP(PointMap &map, double radius, bool gatesOnly,
+                          std::optional<int> limitToThreads = std::nullopt,
+                          bool forceCommUpdatesMasterThread = false)
+        : IVGAVisual(map), m_radius(radius), m_gatesOnly(gatesOnly),
+          m_limitToThreads(limitToThreads),
+          m_forceCommUpdatesMasterThread(forceCommUpdatesMasterThread) {}
     std::string getAnalysisName() const override { return "Global Visibility Analysis (OpenMP)"; }
     AnalysisResult run(Communicator *) override;
+
+  public:
+    void setLegacyWriteMiscs(bool legacyWriteMiscs) { m_legacyWriteMiscs = legacyWriteMiscs; }
 };

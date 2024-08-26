@@ -19,11 +19,7 @@ class sparkSieve2 {
         double start;
         double end;
         bool remove;
-        sparkZone2(double s = 0.0, double e = 0.0) {
-            start = s;
-            end = e;
-            remove = false;
-        }
+        sparkZone2(double s = 0.0, double e = 0.0) : start(s), end(e), remove(false) {}
         // to allow ordered lists:
         friend bool operator==(const sparkZone2 &a, const sparkZone2 &b);
         friend bool operator!=(const sparkZone2 &a, const sparkZone2 &b);
@@ -38,7 +34,7 @@ class sparkSieve2 {
     std::vector<sparkZone2> m_blocks;
 
   public:
-    std::list<sparkZone2> m_gaps;
+    std::list<sparkZone2> gaps;
 
   public:
     sparkSieve2(const Point2f &centre, double maxdist = -1.0);
@@ -48,7 +44,7 @@ class sparkSieve2 {
     void collectgarbage();
     double tanify(const Point2f &point, int q);
     //
-    bool hasGaps() const { return (!m_gaps.empty()); }
+    bool hasGaps() const { return (!gaps.empty()); }
 };
 
 inline bool operator==(const sparkSieve2::sparkZone2 &a, const sparkSieve2::sparkZone2 &b) {

@@ -25,7 +25,7 @@ static int rankselect(int popsize) {
 
 // note: this is tested and right: higher fitness, lower rank (so population[0] is best)
 int progcompare(const void *a, const void *b) {
-    double test = (((AgentProgram *)a)->m_fitness - ((AgentProgram *)b)->m_fitness);
+    double test = (((AgentProgram *)a)->fitness - ((AgentProgram *)b)->fitness);
     if (test < 0.0) {
         return 1;
     } else if (test > 0.0) {
@@ -39,11 +39,11 @@ AgentProgram *ProgramPopulation::makeChild() {
     int b = rankselect(POPSIZE);
     while (a == b)
         b = rankselect(POPSIZE);
-    m_population[POPSIZE - 1] = crossover(m_population[a], m_population[b]);
-    m_population[POPSIZE - 1].mutate();
+    population[POPSIZE - 1] = crossover(population[a], population[b]);
+    population[POPSIZE - 1].mutate();
 
-    return &(m_population[POPSIZE - 1]);
+    return &(population[POPSIZE - 1]);
 }
 
 // note: this is correct -- do not use &m_population!
-void ProgramPopulation::sort() { qsort(m_population, POPSIZE, sizeof(AgentProgram), progcompare); }
+void ProgramPopulation::sort() { qsort(population, POPSIZE, sizeof(AgentProgram), progcompare); }

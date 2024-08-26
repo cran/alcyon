@@ -6,31 +6,28 @@
 
 #pragma once
 
-#include "salalib/ianalysis.h"
+#include "ivgavisual.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointmap.h"
 
-#include "genlib/simplematrix.h"
-
-class VGAVisualShortestPath : public IAnalysis {
+class VGAVisualShortestPath : public IVGAVisual {
   private:
-    PointMap &m_map;
     PixelRef m_pixelFrom, m_pixelTo;
-    void extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
-                       depthmapX::RowMatrix<PixelRef> &extents);
 
   public:
     struct Column {
-        inline static const std::string                                  //
-            VISUAL_SHORTEST_PATH = "Visual Shortest Path",               //
-            VISUAL_SHORTEST_PATH_LINKED = "Visual Shortest Path Linked", //
-            VISUAL_SHORTEST_PATH_ORDER = "Visual Shortest Path Order",   //
-            VISUAL_SHORTEST_PATH_ZONE = "Visual Shortest Path Zone";     //
+        inline static const std::string                                                    //
+            VISUAL_SHORTEST_PATH = "Visual Shortest Path",                                 //
+            VISUAL_SHORTEST_PATH_LINKED = "Visual Shortest Path Linked",                   //
+            VISUAL_SHORTEST_PATH_ORDER = "Visual Shortest Path Order",                     //
+            VISUAL_SHORTEST_PATH_VISUAL_ZONE = "Visual Shortest Path Visual Zone",         //
+            VISUAL_SHORTEST_PATH_METRIC_ZONE = "Visual Shortest Path Metric Zone",         //
+            VISUAL_SHORTEST_PATH_INV_METRIC_ZONE = "Visual Shortest Path Inv Metric Zone"; //
     };
 
   public:
     std::string getAnalysisName() const override { return "Visibility Shortest Path"; }
     AnalysisResult run(Communicator *) override;
-    VGAVisualShortestPath(PointMap &map, PixelRef pixelFrom, PixelRef pixelTo)
-        : m_map(map), m_pixelFrom(pixelFrom), m_pixelTo(pixelTo) {}
+    VGAVisualShortestPath(const PointMap &map, PixelRef pixelFrom, PixelRef pixelTo)
+        : IVGAVisual(map), m_pixelFrom(pixelFrom), m_pixelTo(pixelTo) {}
 };

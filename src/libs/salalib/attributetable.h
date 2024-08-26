@@ -37,7 +37,7 @@ class AttributeRow : public LayerAware {
     virtual AttributeRow &incrValue(size_t index, float value = 1.0f) = 0;
     virtual AttributeRow &incrValue(const std::string &colName, float value = 1.0f) = 0;
 
-    virtual ~AttributeRow() {}
+    ~AttributeRow() override {}
 };
 
 ///
@@ -80,6 +80,7 @@ class AttributeColumn {
     // stats are mutable - we need to be able to update them all the time,
     // even when not allowed to modify the column settings
     virtual void updateStats(float val, float oldVal = 0.0f) const = 0;
+    virtual void setStats(const AttributeColumnStats &stats) const = 0;
 
     virtual ~AttributeColumn() {}
 };
@@ -93,8 +94,10 @@ class AttributeColumnManager {
   public:
     virtual size_t getNumColumns() const = 0;
     virtual size_t getColumnIndex(const std::string &name) const = 0;
+    virtual std::optional<size_t> getColumnIndexOptional(const std::string &name) const = 0;
     virtual const AttributeColumn &getColumn(size_t index) const = 0;
     virtual const std::string &getColumnName(size_t index) const = 0;
+    virtual bool hasColumn(const std::string &name) const = 0;
 };
 
 // Implementation of AttributeColumn
@@ -106,23 +109,24 @@ class AttributeColumnImpl : public AttributeColumn, AttributeColumnStats {
         : m_name(name), m_locked(false), m_hidden(false), m_formula(formula) {}
 
     AttributeColumnImpl() : m_locked(false), m_hidden(false) {}
-    virtual const std::string &getName() const;
-    virtual bool isLocked() const;
-    virtual void setLock(bool lock);
-    virtual bool isHidden() const;
-    virtual void setHidden(bool hidden);
-    virtual const std::string &getFormula() const;
-    virtual void setFormula(std::string newFormula);
-    virtual const AttributeColumnStats &getStats() const;
-    virtual void setDisplayParams(const DisplayParams &params) { m_displayParams = params; }
-    virtual const DisplayParams &getDisplayParams() const { return m_displayParams; }
+    const std::string &getName() const override;
+    bool isLocked() const override;
+    void setLock(bool lock) override;
+    bool isHidden() const override;
+    void setHidden(bool hidden) override;
+    const std::string &getFormula() const override;
+    void setFormula(std::string newFormula) override;
+    const AttributeColumnStats &getStats() const override;
+    void setDisplayParams(const DisplayParams &params) override { m_displayParams = params; }
+    const DisplayParams &getDisplayParams() const override { return m_displayParams; }
 
-    virtual void updateStats(float val, float oldVal = 0.0f) const;
+    void updateStats(float val, float oldVal = 0.0f) const override;
+    void setStats(const AttributeColumnStats &stats) const override;
 
   public:
     // stats are mutable - we need to be able to update them all the time,
     // even when not allowed to modify the column settings
-    mutable AttributeColumnStats m_stats;
+    mutable AttributeColumnStats stats;
 
     void setName(const std::string &name);
     // returns the physical column for comaptibility with the old attribute table
@@ -154,13 +158,13 @@ class AttributeRowImpl : public AttributeRow {
 
     // AttributeRow interface
   public:
-    virtual float getValue(const std::string &column) const;
-    virtual float getValue(size_t index) const;
-    virtual float getNormalisedValue(size_t index) const;
-    virtual AttributeRow &setValue(const std::string &column, float value);
-    virtual AttributeRow &setValue(size_t index, float value);
-    virtual AttributeRow &incrValue(const std::string &column, float value);
-    virtual AttributeRow &incrValue(size_t index, float value);
+    float getValue(const std::string &column) const override;
+    float getValue(size_t index) const override;
+    float getNormalisedValue(size_t index) const override;
+    AttributeRow &setValue(const std::string &column, float value) override;
+    AttributeRow &setValue(size_t index, float value) override;
+    AttributeRow &incrValue(const std::string &column, float value) override;
+    AttributeRow &incrValue(size_t index, float value) override;
 
     void addColumn();
     void removeColumn(size_t index);
@@ -187,9 +191,11 @@ struct AttributeKey {
 
     bool operator<(const AttributeKey &other) const { return value < other.value; }
 
-    void write(std::ostream &stream) const { stream.write((char *)&value, sizeof(int)); }
+    void write(std::ostream &stream) const {
+        stream.write(reinterpret_cast<const char *>(&value), sizeof(int));
+    }
 
-    void read(std::istream &stream) { stream.read((char *)&value, sizeof(int)); }
+    void read(std::istream &stream) { stream.read(reinterpret_cast<char *>(&value), sizeof(int)); }
 };
 
 ///
@@ -232,6 +238,7 @@ class AttributeTable : public AttributeColumnManager {
     /// \return const pointer to row, null if key not found
     ///
     const AttributeRow *getRowPtr(const AttributeKey &key) const;
+    size_t getRowIdx(const AttributeKey &key) const;
     AttributeRow &addRow(const AttributeKey &key);
     AttributeColumn &getColumn(size_t index);
     size_t insertOrResetColumn(const std::string &columnName,
@@ -269,12 +276,12 @@ class AttributeTable : public AttributeColumnManager {
 
     // interface AttributeColumnManager
   public:
-    virtual size_t getColumnIndex(const std::string &name) const;
-    virtual std::optional<size_t> getColumnIndexOptional(const std::string &name) const;
-    virtual const AttributeColumn &getColumn(size_t index) const;
-    virtual const std::string &getColumnName(size_t index) const;
-    virtual size_t getNumColumns() const;
-    virtual bool hasColumn(const std::string &name) const;
+    size_t getColumnIndex(const std::string &name) const override;
+    std::optional<size_t> getColumnIndexOptional(const std::string &name) const override;
+    const AttributeColumn &getColumn(size_t index) const override;
+    const std::string &getColumnName(size_t index) const override;
+    size_t getNumColumns() const override;
+    bool hasColumn(const std::string &name) const override;
 
     // TODO: Compatibility. Very inefficient method to retreive a column's index
     // if the set of columns was sorted
@@ -317,33 +324,35 @@ class AttributeTable : public AttributeColumnManager {
     // iterator
     template <typename iterator_type> class iterator_item_impl : public iterator_item {
       public:
-        iterator_item_impl(const iterator_type &iter) : m_iter(iter) {}
+        iterator_item_impl(const iterator_type &iter) : iter(iter) {}
         template <typename other_type>
-        iterator_item_impl(const iterator_item_impl<other_type> &other) : m_iter(other.m_iter) {}
+        iterator_item_impl(const iterator_item_impl<other_type> &other) : iter(other.iter) {}
 
         template <typename other_type>
         iterator_item_impl<iterator_type> &operator=(const iterator_item_impl<other_type> &other) {
-            m_iter = other.m_iter;
+            iter = other.iter;
             return *this;
         }
 
-        const AttributeKey &getKey() const { return m_iter->first; }
+        const AttributeKey &getKey() const override { return iter->first; }
 
-        const AttributeRow &getRow() const { return *m_iter->second; }
+        const AttributeRow &getRow() const override { return *iter->second; }
 
-        AttributeRow &getRow() { return *m_iter->second; }
+        AttributeRow &getRow() override { return *iter->second; }
 
-        void forward() const { ++m_iter; }
+        void forward() const { ++iter; }
 
-        void back() const { --m_iter; }
+        auto forward(int n) const { return std::next(iter, n); }
+
+        void back() const { --iter; }
 
         template <typename other_type>
         bool operator==(const iterator_item_impl<other_type> &other) const {
-            return m_iter == other.m_iter;
+            return iter == other.iter;
         }
 
       public:
-        mutable iterator_type m_iter;
+        mutable iterator_type iter;
     };
 
     // iterator implementation - templated on iterator type for const/non-const
@@ -360,6 +369,11 @@ class AttributeTable : public AttributeColumnManager {
         template <typename other_type>
         const_iterator_impl &operator=(const const_iterator_impl<other_type> &other) {
             m_item = other.m_item;
+            return *this;
+        }
+
+        const_iterator_impl &advance(int n) {
+            m_item.forward(n);
             return *this;
         }
 
@@ -431,6 +445,8 @@ class AttributeTable : public AttributeColumnManager {
     const_iterator end() const { return const_iterator(m_rows.end()); }
 
     iterator end() { return iterator(m_rows.end()); }
+
+    const_iterator find(AttributeKey key) const { return const_iterator(m_rows.find(key)); }
 
     iterator find(AttributeKey key) { return iterator(m_rows.find(key)); }
 

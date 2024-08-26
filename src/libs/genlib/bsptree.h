@@ -16,19 +16,16 @@ struct BSPNode {
 
   private:
     Line m_line;
-    int m_tag;
+    int m_tag = -1;
 
   public:
     enum { BSPLEFT, BSPRIGHT };
-    std::unique_ptr<BSPNode> m_left;
-    std::unique_ptr<BSPNode> m_right;
-    BSPNode *m_parent;
+    std::unique_ptr<BSPNode> left;
+    std::unique_ptr<BSPNode> right;
+    BSPNode *parent;
 
-    BSPNode(BSPNode *parent = NULL) : m_left(nullptr), m_right(nullptr) {
-        m_parent = parent;
-        m_tag = -1;
-    }
-    bool isLeaf() { return m_left == nullptr && m_right == nullptr; }
+    BSPNode(BSPNode *p = nullptr) : m_tag(-1), left(nullptr), right(nullptr), parent(p) {}
+    bool isLeaf() { return left == nullptr && right == nullptr; }
     int classify(const Point2f &p) {
         Point2f v0 = m_line.end() - m_line.start();
         v0.normalise();

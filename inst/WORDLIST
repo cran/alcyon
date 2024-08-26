@@ -1,3 +1,4 @@
+AdjacencyMatrix
 AgentLookMode
 AllLineShapeGraph
 AxialShapeGraph
@@ -15,6 +16,7 @@ OcclusionAny
 OcclusionFurthest
 OcclusionGroup
 OcclusionLength
+OpenMP
 PointMap
 PointMap's
 PointMaps
@@ -28,6 +30,7 @@ ShapeMaps
 VignetteEncoding
 VignetteEngine
 VignetteIndexEntry
+VGALocalAlgorithm
 depthmapX
 depthmapX's
 exosomatic

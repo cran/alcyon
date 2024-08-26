@@ -7,24 +7,23 @@
 #pragma once
 
 #include "genlib/stringutils.h"
-#include "salalib/ianalysis.h"
+#include "ivgametric.h"
 #include "salalib/pointmap.h"
 
-#include "genlib/simplematrix.h"
-
-class VGAMetricOpenMP : public IAnalysis {
+class VGAMetricOpenMP : public IVGAMetric {
   private:
-    PointMap &m_map;
     double m_radius;
-    bool m_gates_only;
+    bool m_gatesOnly;
+    std::optional<int> m_limitToThreads;
+    bool m_forceCommUpdatesMasterThread = false;
+
+    // To maintain binary compatibility with older .graph versions
+    // write the last "misc" values back to the points
+    bool m_legacyWriteMiscs = false;
 
     struct DataPoint {
         float mspa, mspl, dist, count;
     };
-
-    void extractMetric(Node &node, std::set<MetricTriple> &pixels, PointMap *pointdata,
-                       const MetricTriple &curs, depthmapX::RowMatrix<int> &miscs,
-                       depthmapX::RowMatrix<float> &dists, depthmapX::RowMatrix<float> &cumangles);
 
   public:
     struct Column {
@@ -48,8 +47,15 @@ class VGAMetricOpenMP : public IAnalysis {
     }
 
   public:
-    VGAMetricOpenMP(PointMap &map, double radius, bool gates_only)
-        : m_map(map), m_radius(radius), m_gates_only(gates_only) {}
+    VGAMetricOpenMP(const PointMap &map, double radius, bool gatesOnly,
+                    std::optional<int> limitToThreads = std::nullopt,
+                    bool forceCommUpdatesMasterThread = false)
+        : IVGAMetric(map), m_radius(radius), m_gatesOnly(gatesOnly),
+          m_limitToThreads(limitToThreads),
+          m_forceCommUpdatesMasterThread(forceCommUpdatesMasterThread) {}
     std::string getAnalysisName() const override { return "Metric Analysis (OpenMP)"; }
     AnalysisResult run(Communicator *comm) override;
+
+  public:
+    void setLegacyWriteMiscs(bool legacyWriteMiscs) { m_legacyWriteMiscs = legacyWriteMiscs; }
 };

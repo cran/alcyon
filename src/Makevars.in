@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2024 Petros Koutsolampros
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Set the C++ standard to C++17
+CXX_STD = CXX17
+
+BLDDIR = build-Release
+
+# Make sure libraries are included so that they can refer to each other
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_CPPFLAGS = -I../src/libs -I../../inst/include/ -I..
+PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(BLDDIR)/libalcyon_gensala.a @EXTRA_LIBS@
+
+SOURCES = main.cpp \
+          communicator.cpp \
+          rcpp_ShapeMap.cpp \
+          rcpp_ShapeGraph.cpp \
+          rcpp_AllLineMap.cpp \
+          rcpp_PointMap.cpp \
+          rcpp_metagraphdata.cpp \
+          process_convertInternal.cpp \
+          process_convertExternal.cpp \
+          process_link.cpp \
+          process_isovist.cpp \
+          analysis_axial.cpp \
+          analysis_segment.cpp \
+          analysis_segmentDepth.cpp \
+          analysis_segmentShortestPath.cpp \
+          analysis_allFewest.cpp \
+          analysis_vgaGlobal.cpp \
+          analysis_vgaLocal.cpp \
+          analysis_vgaIsovist.cpp \
+          analysis_vgaDepth.cpp \
+          analysis_vgaShortestPath.cpp \
+          analysis_agent.cpp \
+          RcppExports.cpp
+
+# Obtain the object files in the build directory
+OBJECTS=$(addprefix $(BLDDIR)/,$(SOURCES:.cpp=.o))
+
+# Make the shared object
+all: $(SHLIB)
+
+# Make sure the build directory exists
+$(BLDDIR):
+	mkdir -p $@
+
+# Build each object. This is necessary to override
+# becasue otherwise .o files would end up in src/
+$(BLDDIR)/%.o: %.cpp | $(BLDDIR)
+	$(CXX) $(ALL_CPPFLAGS) $(ALL_OBJCXXFLAGS) -c $< -o $@
+
+# Provide recipe to remove all objects
+clean:
+	@rm -f $(OBJECTS)

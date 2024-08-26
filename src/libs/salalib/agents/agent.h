@@ -33,43 +33,39 @@ class Agent {
     int m_gate = -1;
     bool m_stuck = false;
     bool m_stopped = false;
-    bool m_target_lock = false;
-    bool m_gate_encountered = false;
-    bool m_at_target = false;
-    bool m_at_destination = false;
-    int m_output_mode = OUTPUT_NOTHING;
+    bool m_targetLock = false;
+    bool m_gateEncountered = false;
+    bool m_atTarget = false;
+    bool m_atDestination = false;
+    int m_outputMode = OUTPUT_NOTHING;
     Point2f m_loc;
     Point2f m_target;
     Point2f m_vector;
-    PixelRef m_target_pix;
+    PixelRef m_targetPix;
     // a long term goal:
     Point2f m_destination;
     //
     // for recording trails:
-    int m_trail_num = -1;
+    int m_trailNum = -1;
     //
     // for occlusion memory
-    pflipper<PixelRefVector> m_occ_memory;
+    pflipper<PixelRefVector> m_occMemory;
     //
     // extra memory of last observed values for Gibsonian agents:
-    float m_last_los[9];
-    float m_curr_los[9];
+    float m_lastLos[9];
+    float m_currLos[9];
 
   public:
-    Agent() {
-        m_program = NULL;
-        m_pointmap = NULL;
-        m_output_mode = OUTPUT_NOTHING;
-    }
-    Agent(AgentProgram *program, PointMap *pointmap, int output_mode = OUTPUT_NOTHING);
-    void onInit(PixelRef node, int trail_num = -1);
+    Agent() : m_program(nullptr), m_pointmap(nullptr), m_outputMode(OUTPUT_NOTHING) {}
+    Agent(AgentProgram *program, PointMap *pointmap, int outputMode = OUTPUT_NOTHING);
+    void onInit(PixelRef node, int trailNum = -1);
     void onClose();
     Point2f onLook(bool wholeisovist);
     Point2f onStandardLook(bool wholeisovist);
     Point2f onWeightedLook(bool wholeisovist);
     Point2f onOcclusionLook(bool wholeisovist, int looktype);
-    Point2f onLoSLook(bool wholeisovist, int look_type);
-    Point2f onDirectedLoSLook(bool wholeisovist, int look_type);
+    Point2f onLoSLook(bool wholeisovist, int lookType);
+    Point2f onDirectedLoSLook(bool wholeisovist, int lookType);
     Point2f onGibsonianLook(bool wholeisovist);
     Point2f onGibsonianLook2(bool wholeisovist);
     int onGibsonianRule(int rule);
@@ -81,11 +77,11 @@ class Agent {
     void onStep();
     bool diagonalStep();
     bool goodStep(PixelRef node);
-    bool gateEncountered() { return m_gate_encountered; }
+    bool gateEncountered() { return m_gateEncountered; }
     const Point2f &getLoc() const { return m_loc; }
     //
-    bool atTarget() const { return m_at_target; }
-    bool atDestination() const { return m_at_destination; }
+    bool atTarget() const { return m_atTarget; }
+    bool atDestination() const { return m_atDestination; }
     //
     const Point2f &getLocation() const { return m_loc; }
     const Point2f &getVector() const { return m_vector; }
@@ -114,10 +110,7 @@ inline int binsbetween(int bin1, int bin2) {
 struct wpair {
     double weight;
     int node;
-    wpair(double w = 0.0, int n = -1) {
-        weight = w;
-        node = n;
-    }
+    wpair(double w = 0.0, int n = -1) : weight(w), node(n) {}
 };
 
 // convert an x / y difference to it's corresponding connection direction

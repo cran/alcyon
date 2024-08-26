@@ -22,8 +22,8 @@ AnalysisResult AxialLocal::run(Communicator *comm, ShapeGraph &map, bool) {
     attributes.insertOrResetColumn(Column::CONTROLLABILITY);
     result.addAttribute(Column::CONTROLLABILITY);
 
-    size_t control_col = attributes.getColumnIndex(Column::CONTROL);
-    size_t controllability_col = attributes.getColumnIndex(Column::CONTROLLABILITY);
+    size_t controlCol = attributes.getColumnIndex(Column::CONTROL);
+    size_t controllabilityCol = attributes.getColumnIndex(Column::CONTROLLABILITY);
 
     // n.b., for this operation we assume continuous line referencing from zero (this is silly?)
     // has already failed due to this!  when intro hand drawn fewest line (where user may have
@@ -34,29 +34,29 @@ AnalysisResult AxialLocal::run(Communicator *comm, ShapeGraph &map, bool) {
         AttributeRow &row = iter.getRow();
 
         double control = 0.0;
-        const auto &connections = map.getConnections()[i].m_connections;
+        const auto &connections = map.getConnections()[i].connections;
         std::vector<size_t> totalneighbourhood;
         for (auto connection : connections) {
             // n.b., as of Depthmap 10.0, connections[j] and i cannot coexist
             // if (connections[j] != i) {
             depthmapX::addIfNotExists(totalneighbourhood, connection);
-            int retro_size = 0;
-            auto &retconnectors = map.getConnections()[connection].m_connections;
+            int retroSize = 0;
+            auto &retconnectors = map.getConnections()[connection].connections;
             for (auto retconnector : retconnectors) {
-                retro_size++;
+                retroSize++;
                 depthmapX::addIfNotExists(totalneighbourhood, retconnector);
             }
-            control += 1.0 / double(retro_size);
+            control += 1.0 / double(retroSize);
             //}
         }
 
         if (connections.size() > 0) {
-            row.setValue(control_col, float(control));
-            row.setValue(controllability_col,
+            row.setValue(controlCol, float(control));
+            row.setValue(controllabilityCol,
                          float(double(connections.size()) / double(totalneighbourhood.size() - 1)));
         } else {
-            row.setValue(control_col, -1);
-            row.setValue(controllability_col, -1);
+            row.setValue(controlCol, -1);
+            row.setValue(controllabilityCol, -1);
         }
 
         if (comm) {

@@ -9,20 +9,20 @@
 #include "genlib/containerutils.h"
 #include "genlib/readwritehelpers.h"
 
-void Node::make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, int q_octants) {
+void Node::make(const PixelRef pix, PixelRefVector *bins, float *binFarDists, int qOctants) {
     m_pixel = pix;
 
     for (int i = 0; i < 32; i++) {
 
-        if (q_octants != 0x00FF) {
+        if (qOctants != 0x00FF) {
             // now, an octant filter has been used... note that the exact q-octants
             // that will have been processed rely on adjacenies in the q_octants...
-            if (!(q_octants & processoctant(i))) {
+            if (!(qOctants & processoctant(i))) {
                 continue;
             }
         }
 
-        m_bins[i].m_distance = bin_far_dists[i];
+        m_bins[i].m_distance = binFarDists[i];
 
         if (i == 4 || i == 20) {
             m_bins[i].make(bins[i], PixelRef::POSDIAGONAL);
@@ -38,36 +38,7 @@ void Node::make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, 
     }
 }
 
-void Node::extractUnseen(PixelRefVector &pixels, PointMap *pointdata) {
-    for (int i = 0; i < 32; i++) {
-        m_bins[i].extractUnseen(pixels, pointdata, (1 << i));
-    }
-}
-
-void Node::extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata,
-                         const MetricTriple &curs) {
-    // if (dist == 0.0f || concaveConnected()) { // increases effiency but is too
-    // inaccurate if (dist == 0.0f || !fullyConnected()) { // increases effiency
-    // but can miss lines
-    if (curs.dist == 0.0f || pointdata->getPoint(curs.pixel).blocked() ||
-        pointdata->blockedAdjacent(curs.pixel)) {
-        for (int i = 0; i < 32; i++) {
-            m_bins[i].extractMetric(pixels, pointdata, curs);
-        }
-    }
-}
-
 // based on extract metric
-
-void Node::extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata,
-                          const AngularTriple &curs) {
-    if (curs.angle == 0.0f || pointdata->getPoint(curs.pixel).blocked() ||
-        pointdata->blockedAdjacent(curs.pixel)) {
-        for (int i = 0; i < 32; i++) {
-            m_bins[i].extractAngular(pixels, pointdata, curs);
-        }
-    }
-}
 
 bool Node::concaveConnected() {
     // not quite correct -- sometimes at corners you 'see through' the very first
@@ -172,7 +143,7 @@ std::istream &Node::read(std::istream &stream) {
     }
 
     for (i = 0; i < 32; i++) {
-        dXreadwrite::readIntoVector(stream, m_occlusion_bins[i]);
+        dXreadwrite::readIntoVector(stream, occlusionBins[i]);
     }
 
     return stream;
@@ -185,7 +156,7 @@ std::ostream &Node::write(std::ostream &stream) {
     }
 
     for (i = 0; i < 32; i++) {
-        dXreadwrite::writeVector(stream, m_occlusion_bins[i]);
+        dXreadwrite::writeVector(stream, occlusionBins[i]);
     }
     return stream;
 }
@@ -201,15 +172,15 @@ std::ostream &operator<<(std::ostream &stream, const Node &node) {
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-void Bin::make(const PixelRefVector &pixels, char dir) {
-    m_pixel_vecs.clear();
-    m_node_count = 0;
+void Bin::make(const PixelRefVector &pixels, char onDir) {
+    pixelVecs.clear();
+    m_nodeCount = 0;
 
     if (pixels.size()) {
 
-        m_dir = dir;
+        dir = onDir;
 
-        if (m_dir & PixelRef::DIAGONAL) {
+        if (dir & PixelRef::DIAGONAL) {
 
             PixelVec cur(pixels[0], pixels[0]);
 
@@ -217,123 +188,56 @@ void Bin::make(const PixelRefVector &pixels, char dir) {
             // Both posdiagonal and negdiagonal are positive in the x direction
             // Note that it is ordered anyway, so no need for anything too fancy:
             if (pixels.back().x < cur.start().x) {
-                cur.m_start = pixels.back();
+                cur.setStart(pixels.back());
             }
             if (pixels.back().x > cur.end().x) {
-                cur.m_end = pixels.back();
+                cur.setEnd(pixels.back());
             }
 
-            m_pixel_vecs.push_back(cur);
-            m_node_count = static_cast<unsigned short>(pixels.size());
+            pixelVecs.push_back(cur);
+            m_nodeCount = static_cast<unsigned short>(pixels.size());
         } else {
             // Reorder the pixels:
-            if (m_dir == PixelRef::HORIZONTAL) {
-                std::set<PixelRefH> pixels_h;
+            if (dir == PixelRef::HORIZONTAL) {
+                std::set<PixelRefH> pixelsH;
                 for (size_t i = 0; i < pixels.size(); i++) {
-                    pixels_h.insert(PixelRefH(pixels[i]));
+                    pixelsH.insert(PixelRefH(pixels[i]));
                 }
                 // this looks like a simple bubble sort
-                auto curr = pixels_h.begin();
-                m_pixel_vecs.push_back(PixelVec(*curr, *curr));
+                auto curr = pixelsH.begin();
+                pixelVecs.push_back(PixelVec(*curr, *curr));
                 ++curr;
-                auto prev = pixels_h.begin();
-                for (; curr != pixels_h.end(); ++curr) {
+                auto prev = pixelsH.begin();
+                for (; curr != pixelsH.end(); ++curr) {
                     if (prev->y != curr->y || prev->x + 1 != curr->x) {
-                        m_pixel_vecs.back().m_end = *prev;
-                        m_pixel_vecs.push_back(PixelVec(*curr, *curr));
+                        pixelVecs.back().setEnd(*prev);
+                        pixelVecs.push_back(PixelVec(*curr, *curr));
                     }
                     prev = curr;
                 }
-                m_pixel_vecs.back().m_end = *pixels_h.rbegin();
+                pixelVecs.back().setEnd(*pixelsH.rbegin());
             }
-            if (m_dir == PixelRef::VERTICAL) {
-                std::set<PixelRefV> pixels_v;
+            if (dir == PixelRef::VERTICAL) {
+                std::set<PixelRefV> pixelsV;
                 for (size_t i = 0; i < pixels.size(); i++) {
-                    pixels_v.insert(PixelRefV(pixels[i]));
+                    pixelsV.insert(PixelRefV(pixels[i]));
                 }
                 // this looks like a simple bubble sort
-                auto curr = pixels_v.begin();
-                m_pixel_vecs.push_back(PixelVec(*curr, *curr));
+                auto curr = pixelsV.begin();
+                pixelVecs.push_back(PixelVec(*curr, *curr));
                 ++curr;
-                auto prev = pixels_v.begin();
-                for (; curr != pixels_v.end(); ++curr) {
+                auto prev = pixelsV.begin();
+                for (; curr != pixelsV.end(); ++curr) {
                     if (prev->x != curr->x || prev->y + 1 != curr->y) {
-                        m_pixel_vecs.back().m_end = *prev;
-                        m_pixel_vecs.push_back(PixelVec(*curr, *curr));
+                        pixelVecs.back().setEnd(*prev);
+                        pixelVecs.push_back(PixelVec(*curr, *curr));
                     }
                     prev = curr;
                 }
-                m_pixel_vecs.back().m_end = *pixels_v.rbegin();
+                pixelVecs.back().setEnd(*pixelsV.rbegin());
             }
 
-            m_node_count = static_cast<unsigned short>(pixels.size());
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-void Bin::extractUnseen(PixelRefVector &pixels, PointMap *pointdata, int binmark) {
-    for (auto pixVec : m_pixel_vecs) {
-        for (PixelRef pix = pixVec.start(); pix.col(m_dir) <= pixVec.end().col(m_dir);) {
-            Point &pt = pointdata->getPoint(pix);
-            if (pointdata->getPoint(pix).m_misc == 0) {
-                pixels.push_back(pix);
-                pointdata->getPoint(pix).m_misc |= binmark;
-            }
-            // 10.2.02 revised --- diagonal was breaking this as it was extent in
-            // diagonal or horizontal
-            if (!(m_dir & PixelRef::DIAGONAL)) {
-                if (pt.m_extent.col(m_dir) >= pixVec.end().col(m_dir))
-                    break;
-                pt.m_extent.col(m_dir) = pixVec.end().col(m_dir);
-            }
-            pix.move(m_dir);
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-void Bin::extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata,
-                        const MetricTriple &curs) {
-    for (auto pixVec : m_pixel_vecs) {
-        for (PixelRef pix = pixVec.start(); pix.col(m_dir) <= pixVec.end().col(m_dir);) {
-            Point &pt = pointdata->getPoint(pix);
-            if (pt.m_misc == 0 &&
-                (pt.m_dist == -1.0 || (curs.dist + dist(pix, curs.pixel) < pt.m_dist))) {
-                pt.m_dist = curs.dist + (float)dist(pix, curs.pixel);
-                // n.b. dmap v4.06r now sets angle in range 0 to 4 (1 = 90 degrees)
-                pt.m_cumangle =
-                    pointdata->getPoint(curs.pixel).m_cumangle +
-                    (curs.lastpixel == NoPixel
-                         ? 0.0f
-                         : (float)(angle(pix, curs.pixel, curs.lastpixel) / (M_PI * 0.5)));
-                pixels.insert(MetricTriple(pt.m_dist, pix, curs.pixel));
-            }
-            pix.move(m_dir);
-        }
-    }
-}
-
-// based on metric
-
-void Bin::extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata,
-                         const AngularTriple &curs) {
-    for (auto pixVec : m_pixel_vecs) {
-        for (PixelRef pix = pixVec.start(); pix.col(m_dir) <= pixVec.end().col(m_dir);) {
-            Point &pt = pointdata->getPoint(pix);
-            if (pt.m_misc == 0) {
-                // n.b. dmap v4.06r now sets angle in range 0 to 4 (1 = 90 degrees)
-                float ang = (curs.lastpixel == NoPixel)
-                                ? 0.0f
-                                : (float)(angle(pix, curs.pixel, curs.lastpixel) / (M_PI * 0.5));
-                if (pt.m_cumangle == -1.0 || curs.angle + ang < pt.m_cumangle) {
-                    pt.m_cumangle = pointdata->getPoint(curs.pixel).m_cumangle + ang;
-                    pixels.insert(AngularTriple(pt.m_cumangle, pix, curs.pixel));
-                }
-            }
-            pix.move(m_dir);
+            m_nodeCount = static_cast<unsigned short>(pixels.size());
         }
     }
 }
@@ -341,8 +245,8 @@ void Bin::extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata,
 ///////////////////////////////////////////////////////////////////////////////////////
 
 bool Bin::containsPoint(const PixelRef p) const {
-    for (auto pixVec : m_pixel_vecs) {
-        if (m_dir & PixelRef::DIAGONAL) {
+    for (auto pixVec : pixelVecs) {
+        if (dir & PixelRef::DIAGONAL) {
             // note abs is only allowed if you have pre-checked you are in the right
             // quadrant!
             if (p.x >= pixVec.start().x && p.x <= pixVec.end().x &&
@@ -350,9 +254,8 @@ bool Bin::containsPoint(const PixelRef p) const {
                 return true;
             }
         } else {
-            if (p.row(m_dir) == pixVec.start().row(m_dir) &&
-                p.col(m_dir) >= pixVec.start().col(m_dir) &&
-                p.col(m_dir) <= pixVec.end().col(m_dir)) {
+            if (p.row(dir) == pixVec.start().row(dir) && p.col(dir) >= pixVec.start().col(dir) &&
+                p.col(dir) <= pixVec.end().col(dir)) {
                 return true;
             }
         }
@@ -364,42 +267,42 @@ bool Bin::containsPoint(const PixelRef p) const {
 
 void Bin::first() const {
     m_curvec = 0;
-    if (!m_pixel_vecs.empty())
-        m_curpix = m_pixel_vecs[m_curvec].m_start;
+    if (!pixelVecs.empty())
+        m_curpix = pixelVecs[m_curvec].start();
 }
 
 void Bin::next() const {
-    if (m_curpix.move(m_dir).col(m_dir) > m_pixel_vecs[m_curvec].end().col(m_dir)) {
+    if (m_curpix.move(dir).col(dir) > pixelVecs[m_curvec].end().col(dir)) {
         m_curvec++;
-        if (m_curvec < static_cast<int>(m_pixel_vecs.size()))
-            m_curpix = m_pixel_vecs[m_curvec].m_start;
+        if (m_curvec < static_cast<int>(pixelVecs.size()))
+            m_curpix = pixelVecs[m_curvec].start();
     }
 }
 
-bool Bin::is_tail() const { return m_curvec >= static_cast<int>(m_pixel_vecs.size()); }
+bool Bin::is_tail() const { return m_curvec >= static_cast<int>(pixelVecs.size()); }
 
 PixelRef Bin::cursor() const { return (int)m_curpix; }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 std::istream &Bin::read(std::istream &stream) {
-    stream.read((char *)&m_dir, sizeof(m_dir));
-    stream.read((char *)&m_node_count, sizeof(m_node_count));
+    stream.read(reinterpret_cast<char *>(&dir), sizeof(dir));
+    stream.read(reinterpret_cast<char *>(&m_nodeCount), sizeof(m_nodeCount));
 
-    stream.read((char *)&m_distance, sizeof(m_distance));
-    stream.read((char *)&m_occ_distance, sizeof(m_occ_distance));
+    stream.read(reinterpret_cast<char *>(&m_distance), sizeof(m_distance));
+    stream.read(reinterpret_cast<char *>(&m_occDistance), sizeof(m_occDistance));
 
-    if (m_node_count) {
-        if (m_dir & PixelRef::DIAGONAL) {
-            m_pixel_vecs = std::vector<PixelVec>(1);
-            m_pixel_vecs[0].read(stream, m_dir);
+    if (m_nodeCount) {
+        if (dir & PixelRef::DIAGONAL) {
+            pixelVecs = std::vector<PixelVec>(1);
+            pixelVecs[0].read(stream, dir);
         } else {
             unsigned short length;
-            stream.read((char *)&length, sizeof(length));
-            m_pixel_vecs = std::vector<PixelVec>(length);
-            m_pixel_vecs[0].read(stream, m_dir);
+            stream.read(reinterpret_cast<char *>(&length), sizeof(length));
+            pixelVecs = std::vector<PixelVec>(length);
+            pixelVecs[0].read(stream, dir);
             for (int i = 1; i < length; i++) {
-                m_pixel_vecs[i].read(stream, m_dir, m_pixel_vecs[i - 1]);
+                pixelVecs[i].read(stream, dir, pixelVecs[i - 1]);
             }
         }
     }
@@ -408,23 +311,23 @@ std::istream &Bin::read(std::istream &stream) {
 }
 
 std::ostream &Bin::write(std::ostream &stream) {
-    stream.write((char *)&m_dir, sizeof(m_dir));
-    stream.write((char *)&m_node_count, sizeof(m_node_count));
+    stream.write(reinterpret_cast<const char *>(&dir), sizeof(dir));
+    stream.write(reinterpret_cast<const char *>(&m_nodeCount), sizeof(m_nodeCount));
 
-    stream.write((char *)&m_distance, sizeof(m_distance));
-    stream.write((char *)&m_occ_distance, sizeof(m_occ_distance));
+    stream.write(reinterpret_cast<const char *>(&m_distance), sizeof(m_distance));
+    stream.write(reinterpret_cast<const char *>(&m_occDistance), sizeof(m_occDistance));
 
-    if (m_node_count) {
+    if (m_nodeCount) {
 
-        if (m_dir & PixelRef::DIAGONAL) {
-            m_pixel_vecs[0].write(stream, m_dir);
+        if (dir & PixelRef::DIAGONAL) {
+            pixelVecs[0].write(stream, dir);
         } else {
             // TODO: Remove this limitation in the next version of the .graph format
-            auto length = static_cast<unsigned short>(m_pixel_vecs.size());
-            stream.write((char *)&length, sizeof(length));
-            m_pixel_vecs[0].write(stream, m_dir);
+            auto length = static_cast<unsigned short>(pixelVecs.size());
+            stream.write(reinterpret_cast<const char *>(&length), sizeof(length));
+            pixelVecs[0].write(stream, dir);
             for (size_t i = 1; i < length; i++) {
-                m_pixel_vecs[i].write(stream, m_dir, m_pixel_vecs[i - 1]);
+                pixelVecs[i].write(stream, dir, pixelVecs[i - 1]);
             }
         }
     }
@@ -434,9 +337,9 @@ std::ostream &Bin::write(std::ostream &stream) {
 
 std::ostream &operator<<(std::ostream &stream, const Bin &bin) {
     int c = 0;
-    for (auto pixVec : bin.m_pixel_vecs) {
-        for (PixelRef p = pixVec.m_start; p.col(bin.m_dir) <= pixVec.end().col(bin.m_dir);
-             p.move(bin.m_dir)) {
+    for (auto pixVec : bin.pixelVecs) {
+        for (PixelRef p = pixVec.start(); p.col(bin.dir) <= pixVec.end().col(bin.dir);
+             p.move(bin.dir)) {
             if (++c % 10 == 0) {
                 stream << "\n    ";
             }
@@ -450,8 +353,8 @@ std::ostream &operator<<(std::ostream &stream, const Bin &bin) {
 
 std::istream &PixelVec::read(std::istream &stream, const char dir) {
     unsigned short runlength;
-    stream.read((char *)&m_start, sizeof(m_start));
-    stream.read((char *)&runlength, sizeof(runlength));
+    stream.read(reinterpret_cast<char *>(&m_start), sizeof(m_start));
+    stream.read(reinterpret_cast<char *>(&runlength), sizeof(runlength));
     switch (dir) {
     case PixelRef::POSDIAGONAL:
         m_end.x = m_start.x + static_cast<short>(runlength);
@@ -474,7 +377,7 @@ std::istream &PixelVec::read(std::istream &stream, const char dir) {
 }
 
 std::ostream &PixelVec::write(std::ostream &stream, const char dir) {
-    stream.write((char *)&m_start, sizeof(m_start));
+    stream.write(reinterpret_cast<const char *>(&m_start), sizeof(m_start));
     unsigned short runlength;
     switch (dir) {
     case PixelRef::HORIZONTAL:
@@ -486,7 +389,7 @@ std::ostream &PixelVec::write(std::ostream &stream, const char dir) {
         runlength = static_cast<unsigned short>(m_end.y - m_start.y);
         break;
     }
-    stream.write((char *)&runlength, sizeof(runlength));
+    stream.write(reinterpret_cast<const char *>(&runlength), sizeof(runlength));
 
     return stream;
 }
@@ -499,8 +402,8 @@ struct ShiftLength {
 std::istream &PixelVec::read(std::istream &stream, const char dir, const PixelVec &context) {
     short primary;
     ShiftLength shiftlength;
-    stream.read((char *)&primary, sizeof(primary));
-    stream.read((char *)&shiftlength, sizeof(shiftlength));
+    stream.read(reinterpret_cast<char *>(&primary), sizeof(primary));
+    stream.read(reinterpret_cast<char *>(&shiftlength), sizeof(shiftlength));
     switch (dir) {
     case PixelRef::HORIZONTAL:
         m_start.x = primary;
@@ -523,17 +426,17 @@ std::ostream &PixelVec::write(std::ostream &stream, const char dir, const PixelV
     ShiftLength shiftlength;
     switch (dir) {
     case PixelRef::HORIZONTAL:
-        stream.write((char *)&(m_start.x), sizeof(m_start.x));
+        stream.write(reinterpret_cast<const char *>(&(m_start.x)), sizeof(m_start.x));
         shiftlength.runlength = static_cast<unsigned short>(m_end.x - m_start.x);
         shiftlength.shift = static_cast<unsigned short>(m_start.y - context.m_start.y);
         break;
     case PixelRef::VERTICAL:
-        stream.write((char *)&(m_start.y), sizeof(m_start.y));
+        stream.write(reinterpret_cast<const char *>(&(m_start.y)), sizeof(m_start.y));
         shiftlength.runlength = static_cast<unsigned short>(m_end.y - m_start.y);
         shiftlength.shift = static_cast<unsigned short>(m_start.x - context.m_start.x);
         break;
     }
-    stream.write((char *)&shiftlength, sizeof(shiftlength));
+    stream.write(reinterpret_cast<const char *>(&shiftlength), sizeof(shiftlength));
 
     return stream;
 }

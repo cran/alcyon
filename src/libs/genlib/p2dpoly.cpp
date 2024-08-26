@@ -42,13 +42,13 @@ Point2f gps2os(const Point2f &pt) {
     // GRS80 ellipsoid
     double a = 6378137.0000;
     double b = 6356752.3141;
-    double e_sq = (pafmath::sqr(a) - pafmath::sqr(b)) / pafmath::sqr(a);
+    double eSq = (pafmath::sqr(a) - pafmath::sqr(b)) / pafmath::sqr(a);
 
-    double nu = a / sqrt(1.0 - e_sq * pafmath::sqr(sin(phi)));
+    double nu = a / sqrt(1.0 - eSq * pafmath::sqr(sin(phi)));
 
     double x = nu * cos(phi) * cos(lambda);
     double y = nu * cos(phi) * sin(lambda);
-    double z = (1 - e_sq) * nu * sin(phi);
+    double z = (1 - eSq) * nu * sin(phi);
 
     // Now we have the ETRS89 location, convert it to a rough OSGB36 location:
 
@@ -58,13 +58,13 @@ Point2f gps2os(const Point2f &pt) {
     // -446.448    +125.157  -542.060   +20.4894   -0.1502    -0.2470    -0.8421 = (in radians: )
 
     // nb, seconds converted to radians:
-    double r_x = -0.7281901490265230623720509817416e-6;
-    double r_y = -1.1974897923405539041670878328241e-6;
-    double r_z = -4.0826160086234026020206666559563e-6;
+    double rX = -0.7281901490265230623720509817416e-6;
+    double rY = -1.1974897923405539041670878328241e-6;
+    double rZ = -4.0826160086234026020206666559563e-6;
 
-    x = -446.448 + (1.0 + 2.04894e-5) * x - r_z * y + r_y * z;
-    y = +125.157 + r_z * x + (1.0 + 2.04894e-5) * y - r_x * z;
-    z = -542.060 - r_y * x + r_x * y + (1.0 + 2.04894e-5) * z;
+    x = -446.448 + (1.0 + 2.04894e-5) * x - rZ * y + rY * z;
+    y = +125.157 + rZ * x + (1.0 + 2.04894e-5) * y - rX * z;
+    z = -542.060 - rY * x + rX * y + (1.0 + 2.04894e-5) * z;
 
     double p = sqrt(pafmath::sqr(x) + pafmath::sqr(y));
 
@@ -73,64 +73,64 @@ Point2f gps2os(const Point2f &pt) {
     // Airy 1830 (OSGB36) ellipsoid
     a = 6377563.396;
     b = 6356256.910;
-    e_sq = (pafmath::sqr(a) - pafmath::sqr(b)) / pafmath::sqr(a);
+    eSq = (pafmath::sqr(a) - pafmath::sqr(b)) / pafmath::sqr(a);
 
     lambda = atan(y / x);
-    phi = atan(z / (p * (1.0 - e_sq)));
+    phi = atan(z / (p * (1.0 - eSq)));
     double lastphi = phi;
 
-    nu = a / sqrt(1.0 - e_sq * pafmath::sqr(sin(phi)));
+    nu = a / sqrt(1.0 - eSq * pafmath::sqr(sin(phi)));
     do {
-        phi = atan((z + e_sq * nu * sin(phi)) / p);
+        phi = atan((z + eSq * nu * sin(phi)) / p);
     } while (fabs(lastphi - phi) > 1e-6);
 
     // now, it's on the ellipsoid, project it onto the OSGB36 grid:
 
     // E_0 easting of true origin                400 000m
-    double E_0 = 400000;
+    double e0 = 400000;
     // N_0 northing of true origin              -100 000m
-    double N_0 = -100000;
+    double n0 = -100000;
     // F_0 scaling factor on central meridian    0.9996012717
-    double F_0 = 0.9996012717;
+    double f0 = 0.9996012717;
     // lambda_0 longitude of true origin         -2.0 radians: -0.034906585039886591538473815369772
-    double lambda_0 = -0.034906585039886591538473815369772;
+    double lambda0 = -0.034906585039886591538473815369772;
     // phi_0 latitude of true origin             49.0 radians:
-    double phi_0 = 0.85521133347722149269260847655942;
+    double phi0 = 0.85521133347722149269260847655942;
 
-    nu = a * F_0 * pow((1 - e_sq * pafmath::sqr(sin(phi))), -0.5);
+    nu = a * f0 * pow((1 - eSq * pafmath::sqr(sin(phi))), -0.5);
 
     double n = (a - b) / (a + b);
-    double rho = a * F_0 * (1.0 - e_sq) * pow((1 - e_sq * pafmath::sqr(sin(phi))), -1.5);
-    double eta_sq = nu / rho - 1;
+    double rho = a * f0 * (1.0 - eSq) * pow((1 - eSq * pafmath::sqr(sin(phi))), -1.5);
+    double etaSq = nu / rho - 1;
 
-    double n_sq = pow(n, 2);
-    double n_cubed = pow(n, 3);
-    double M =
-        b * F_0 *
-        ((1.0 + n + 0.25 * 5 * (n_sq + n_cubed)) * (phi - phi_0) -
-         (3.0 * (n + n_sq + 0.125 * 7 * n_cubed)) * sin(phi - phi_0) * cos(phi + phi_0) +
-         (0.125 * 15.0 * (n_sq + n_cubed)) * sin(2.0 * (phi - phi_0)) * cos(2.0 * (phi + phi_0)) -
-         (35.0 / 24.0 * n_cubed) * sin(3.0 * (phi - phi_0)) * cos(3.0 * (phi + phi_0)));
-    double I = M + N_0;
-    double II = 0.5 * nu * sin(phi) * cos(phi);
+    double nSq = pow(n, 2);
+    double nCubed = pow(n, 3);
+    double m =
+        b * f0 *
+        ((1.0 + n + 0.25 * 5 * (nSq + nCubed)) * (phi - phi0) -
+         (3.0 * (n + nSq + 0.125 * 7 * nCubed)) * sin(phi - phi0) * cos(phi + phi0) +
+         (0.125 * 15.0 * (nSq + nCubed)) * sin(2.0 * (phi - phi0)) * cos(2.0 * (phi + phi0)) -
+         (35.0 / 24.0 * nCubed) * sin(3.0 * (phi - phi0)) * cos(3.0 * (phi + phi0)));
+    double i = m + n0;
+    double ii = 0.5 * nu * sin(phi) * cos(phi);
     double tanphi = tan(phi);
-    double III =
-        nu * sin(phi) * pow(cos(phi), 3.0) * (5.0 - pafmath::sqr(tanphi) + 9.0 * eta_sq) / 24.0;
-    double IIIA = nu * sin(phi) * pow(cos(phi), 5.0) *
+    double iii =
+        nu * sin(phi) * pow(cos(phi), 3.0) * (5.0 - pafmath::sqr(tanphi) + 9.0 * etaSq) / 24.0;
+    double iiia = nu * sin(phi) * pow(cos(phi), 5.0) *
                   (61.0 - 58.0 * pafmath::sqr(tanphi) + pow(tanphi, 4.0)) / 720.0;
-    double IV = nu * cos(phi);
-    double V = nu * pow(cos(phi), 3.0) * (nu / rho - pafmath::sqr(tanphi)) / 6.0;
-    double VI = nu * pow(cos(phi), 5.0) *
-                (5.0 - 18.0 * pafmath::sqr(tanphi) + pow(tanphi, 4) + 14.0 * eta_sq -
-                 58.0 * pafmath::sqr(tanphi) * eta_sq) /
+    double iv = nu * cos(phi);
+    double v = nu * pow(cos(phi), 3.0) * (nu / rho - pafmath::sqr(tanphi)) / 6.0;
+    double vi = nu * pow(cos(phi), 5.0) *
+                (5.0 - 18.0 * pafmath::sqr(tanphi) + pow(tanphi, 4) + 14.0 * etaSq -
+                 58.0 * pafmath::sqr(tanphi) * etaSq) /
                 120.0;
 
-    double E = E_0 + IV * (lambda - lambda_0) + V * pow((lambda - lambda_0), 3) +
-               VI * pow((lambda - lambda_0), 5);
-    double N = I + II * pow((lambda - lambda_0), 2) + III * pow((lambda - lambda_0), 4) +
-               IIIA * pow((lambda - lambda_0), 6);
+    double e = e0 + iv * (lambda - lambda0) + v * pow((lambda - lambda0), 3) +
+               vi * pow((lambda - lambda0), 5);
+    double nn = i + ii * pow((lambda - lambda0), 2) + iii * pow((lambda - lambda0), 4) +
+                iiia * pow((lambda - lambda0), 6);
 
-    return Point2f(E, N);
+    return Point2f(e, nn);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -174,13 +174,13 @@ bool ccwEdgeU(const EdgeU &a, const EdgeU &b, const EdgeU &c) {
 Point2f QtRegion::getEdgeUPoint(const EdgeU &eu) {
     switch (eu.edge) {
     case 0:
-        return Point2f(bottom_left.x + (eu.u * width()), bottom_left.y);
+        return Point2f(bottomLeft.x + (eu.u * width()), bottomLeft.y);
     case 1:
-        return Point2f(top_right.x, bottom_left.y + (eu.u * height()));
+        return Point2f(topRight.x, bottomLeft.y + (eu.u * height()));
     case 2:
-        return Point2f(top_right.x - (eu.u * width()), top_right.y);
+        return Point2f(topRight.x - (eu.u * width()), topRight.y);
     case 3:
-        return Point2f(bottom_left.x, top_right.y - (eu.u * height()));
+        return Point2f(bottomLeft.x, topRight.y - (eu.u * height()));
     }
     return Point2f();
 }
@@ -189,36 +189,36 @@ Point2f QtRegion::getEdgeUPoint(const EdgeU &eu) {
 // get where the polygon exits the viewport
 EdgeU QtRegion::getCutEdgeU(const Point2f &inside, const Point2f &outside) {
     EdgeU eu;
-    if (outside.x < bottom_left.x) {
+    if (outside.x < bottomLeft.x) {
         double y = outside.y +
-                   (inside.y - outside.y) * (bottom_left.x - outside.x) / (inside.x - outside.x);
-        if (y >= bottom_left.y && y <= top_right.y) {
+                   (inside.y - outside.y) * (bottomLeft.x - outside.x) / (inside.x - outside.x);
+        if (y >= bottomLeft.y && y <= topRight.y) {
             eu.edge = 3;
-            eu.u = (top_right.y - y) / height();
+            eu.u = (topRight.y - y) / height();
         }
     }
-    if (eu.edge == -1 && outside.x > top_right.x) {
+    if (eu.edge == -1 && outside.x > topRight.x) {
         double y =
-            inside.y + (outside.y - inside.y) * (top_right.x - inside.x) / (outside.x - inside.x);
-        if (y >= bottom_left.y && y <= top_right.y) {
+            inside.y + (outside.y - inside.y) * (topRight.x - inside.x) / (outside.x - inside.x);
+        if (y >= bottomLeft.y && y <= topRight.y) {
             eu.edge = 1;
-            eu.u = (y - bottom_left.y) / height();
+            eu.u = (y - bottomLeft.y) / height();
         }
     }
-    if (eu.edge == -1 && outside.y < bottom_left.y) {
+    if (eu.edge == -1 && outside.y < bottomLeft.y) {
         double x = outside.x +
-                   (inside.x - outside.x) * (bottom_left.y - outside.y) / (inside.y - outside.y);
-        if (x >= bottom_left.x && x <= top_right.x) {
+                   (inside.x - outside.x) * (bottomLeft.y - outside.y) / (inside.y - outside.y);
+        if (x >= bottomLeft.x && x <= topRight.x) {
             eu.edge = 0;
-            eu.u = (x - bottom_left.x) / width();
+            eu.u = (x - bottomLeft.x) / width();
         }
     }
-    if (eu.edge == -1 && outside.y > top_right.y) {
+    if (eu.edge == -1 && outside.y > topRight.y) {
         double x =
-            inside.x + (outside.x - inside.x) * (top_right.y - inside.y) / (outside.y - inside.y);
-        if (x >= bottom_left.x && x <= top_right.x) {
+            inside.x + (outside.x - inside.x) * (topRight.y - inside.y) / (outside.y - inside.y);
+        if (x >= bottomLeft.x && x <= topRight.x) {
             eu.edge = 2;
-            eu.u = (top_right.x - x) / width();
+            eu.u = (topRight.x - x) / width();
         }
     }
     // if at this stage eu.edge is still -1 there's a problem!
@@ -231,10 +231,10 @@ EdgeU QtRegion::getCutEdgeU(const Point2f &inside, const Point2f &outside) {
 
 QtRegion runion(const QtRegion &a, const QtRegion &b) {
     QtRegion n;
-    n.bottom_left.x = a.bottom_left.x < b.bottom_left.x ? a.bottom_left.x : b.bottom_left.x;
-    n.bottom_left.y = a.bottom_left.y < b.bottom_left.y ? a.bottom_left.y : b.bottom_left.y;
-    n.top_right.x = a.top_right.x > b.top_right.x ? a.top_right.x : b.top_right.x;
-    n.top_right.y = a.top_right.y > b.top_right.y ? a.top_right.y : b.top_right.y;
+    n.bottomLeft.x = a.bottomLeft.x < b.bottomLeft.x ? a.bottomLeft.x : b.bottomLeft.x;
+    n.bottomLeft.y = a.bottomLeft.y < b.bottomLeft.y ? a.bottomLeft.y : b.bottomLeft.y;
+    n.topRight.x = a.topRight.x > b.topRight.x ? a.topRight.x : b.topRight.x;
+    n.topRight.y = a.topRight.y > b.topRight.y ? a.topRight.y : b.topRight.y;
     return n;
 }
 
@@ -249,12 +249,12 @@ bool intersect_region(const QtRegion &a, const QtRegion &b, double tolerance) {
 }
 
 bool overlap_x(const QtRegion &a, const QtRegion &b, double tolerance) {
-    if (a.bottom_left.x > b.bottom_left.x) {
-        if (b.top_right.x >= a.bottom_left.x - tolerance) {
+    if (a.bottomLeft.x > b.bottomLeft.x) {
+        if (b.topRight.x >= a.bottomLeft.x - tolerance) {
             return true;
         }
     } else {
-        if (a.top_right.x >= b.bottom_left.x - tolerance) {
+        if (a.topRight.x >= b.bottomLeft.x - tolerance) {
             return true;
         }
     }
@@ -262,12 +262,12 @@ bool overlap_x(const QtRegion &a, const QtRegion &b, double tolerance) {
 }
 
 bool overlap_y(const QtRegion &a, const QtRegion &b, double tolerance) {
-    if (a.bottom_left.y > b.bottom_left.y) {
-        if (b.top_right.y >= a.bottom_left.y - tolerance) {
+    if (a.bottomLeft.y > b.bottomLeft.y) {
+        if (b.topRight.y >= a.bottomLeft.y - tolerance) {
             return true;
         }
     } else {
-        if (a.top_right.y >= b.bottom_left.y - tolerance) {
+        if (a.topRight.y >= b.bottomLeft.y - tolerance) {
             return true;
         }
     }
@@ -279,54 +279,54 @@ bool overlap_y(const QtRegion &a, const QtRegion &b, double tolerance) {
 // default: nothing:
 
 Line::Line() {
-    bits.parity = 0;
-    bits.direction = 0;
+    m_bits.parity = 0;
+    m_bits.direction = 0;
     // Points automatically assigned to 0,0
 }
 
 Line::Line(const Point2f &a, const Point2f &b) {
     if (a.x == b.x) {
-        bottom_left.x = a.x;
-        top_right.x = b.x;
+        bottomLeft.x = a.x;
+        topRight.x = b.x;
         // vertical lines stored consistently as parity 1
         if (a.y <= b.y) {
-            bottom_left.y = a.y;
-            top_right.y = b.y;
-            bits.parity = 1;
-            bits.direction = 1;
+            bottomLeft.y = a.y;
+            topRight.y = b.y;
+            m_bits.parity = 1;
+            m_bits.direction = 1;
         } else {
-            bottom_left.y = b.y;
-            top_right.y = a.y;
-            bits.parity = 1;
-            bits.direction = 0;
+            bottomLeft.y = b.y;
+            topRight.y = a.y;
+            m_bits.parity = 1;
+            m_bits.direction = 0;
         }
     } else if (a.x < b.x) {
-        bottom_left.x = a.x;
-        top_right.x = b.x;
+        bottomLeft.x = a.x;
+        topRight.x = b.x;
         if (a.y <= b.y) {
-            bottom_left.y = a.y;
-            top_right.y = b.y;
-            bits.parity = 1;
-            bits.direction = 1;
+            bottomLeft.y = a.y;
+            topRight.y = b.y;
+            m_bits.parity = 1;
+            m_bits.direction = 1;
         } else {
-            bottom_left.y = b.y;
-            top_right.y = a.y;
-            bits.parity = 0; // -1
-            bits.direction = 1;
+            bottomLeft.y = b.y;
+            topRight.y = a.y;
+            m_bits.parity = 0; // -1
+            m_bits.direction = 1;
         }
     } else {
-        bottom_left.x = b.x;
-        top_right.x = a.x;
+        bottomLeft.x = b.x;
+        topRight.x = a.x;
         if (b.y <= a.y) {
-            bottom_left.y = b.y;
-            top_right.y = a.y;
-            bits.parity = 1;
-            bits.direction = 0;
+            bottomLeft.y = b.y;
+            topRight.y = a.y;
+            m_bits.parity = 1;
+            m_bits.direction = 0;
         } else {
-            bottom_left.y = a.y;
-            top_right.y = b.y;
-            bits.parity = 0; // -1
-            bits.direction = 0;
+            bottomLeft.y = a.y;
+            topRight.y = b.y;
+            m_bits.parity = 0; // -1
+            m_bits.direction = 0;
         }
     }
 }
@@ -431,7 +431,7 @@ double Line::intersection_point(const Line &l, int axis, double tolerance) const
     double loc;
     if (axis == XAXIS) {
         if (l.width() == 0.0) {
-            loc = l.bottom_left.x;
+            loc = l.bottomLeft.x;
         } else {
             double lg = l.grad(YAXIS);
             double g = grad(YAXIS);
@@ -439,8 +439,7 @@ double Line::intersection_point(const Line &l, int axis, double tolerance) const
                 // these have almost the same gradient, so it's impossible to tell where they
                 // intersect: going for midpoint
                 Point2f p = l.midpoint();
-                loc = (p.x > top_right.x) ? top_right.x
-                                          : ((p.x < bottom_left.x) ? bottom_left.x : p.x);
+                loc = (p.x > topRight.x) ? topRight.x : ((p.x < bottomLeft.x) ? bottomLeft.x : p.x);
             } else {
                 // this is the same as: constant(YAXIS) - l.constant(YAXIS)) / (l.grad(YAXIS) -
                 // grad(YAXIS));
@@ -449,7 +448,7 @@ double Line::intersection_point(const Line &l, int axis, double tolerance) const
         }
     } else {
         if (l.height() == 0.0) {
-            loc = l.bottom_left.y;
+            loc = l.bottomLeft.y;
         } else {
             double lg = l.grad(XAXIS);
             double g = grad(XAXIS);
@@ -457,8 +456,7 @@ double Line::intersection_point(const Line &l, int axis, double tolerance) const
                 // these have almost the same gradient, so it's impossible to tell where they
                 // intersect: going for midpoint
                 Point2f p = l.midpoint();
-                loc = (p.y > top_right.y) ? top_right.y
-                                          : ((p.y < bottom_left.y) ? bottom_left.y : p.y);
+                loc = (p.y > topRight.y) ? topRight.y : ((p.y < bottomLeft.y) ? bottomLeft.y : p.y);
             } else {
                 // this is the same as: constant(XAXIS) - l.constant(XAXIS)) / (l.grad(XAXIS) -
                 // grad(XAXIS));
@@ -478,8 +476,8 @@ bool Line::intersect_line(const Line &l, int axis, double &loc) const {
         if (l.width() == 0.0) {
             // Special case:
             double y = ay() + sign() * (l.ax() - ax()) * height() / width();
-            if (y >= bottom_left.y && y <= l.top_right.y) { // <- you must have checked
-                loc = l.bottom_left.x;                      //    the regions overlap first
+            if (y >= bottomLeft.y && y <= l.topRight.y) { // <- you must have checked
+                loc = l.bottomLeft.x;                     //    the regions overlap first
                 return true;
             }
         } else {
@@ -491,7 +489,7 @@ bool Line::intersect_line(const Line &l, int axis, double &loc) const {
                 if (constant(YAXIS) == l.constant(YAXIS)) {
                     return true;
                 }
-            } else if (loc >= l.bottom_left.x && loc <= l.top_right.x) {
+            } else if (loc >= l.bottomLeft.x && loc <= l.topRight.x) {
                 return true;
             }
         }
@@ -499,8 +497,8 @@ bool Line::intersect_line(const Line &l, int axis, double &loc) const {
         if (l.height() == 0.0) {
             // Special case:
             double x = ax() + sign() * (l.ay() - ay()) * width() / height();
-            if (x >= bottom_left.x && x <= top_right.x) { // <- you must have checked
-                loc = l.bottom_left.y;                    //  the regions overlap first
+            if (x >= bottomLeft.x && x <= topRight.x) { // <- you must have checked
+                loc = l.bottomLeft.y;                   //  the regions overlap first
                 return true;
             }
         } else {
@@ -512,7 +510,7 @@ bool Line::intersect_line(const Line &l, int axis, double &loc) const {
                 if (constant(XAXIS) == l.constant(XAXIS)) {
                     return true;
                 }
-            } else if (loc >= l.bottom_left.y && loc <= l.top_right.y) {
+            } else if (loc >= l.bottomLeft.y && loc <= l.topRight.y) {
                 return true;
             }
         }
@@ -624,37 +622,37 @@ int intersections(const RegionTree &a, const Line &b) {
 // if line lies outside region, returns false
 
 bool Line::crop(const QtRegion &r) {
-    if (bx() >= r.bottom_left.x) {
-        if (ax() < r.bottom_left.x) {
+    if (bx() >= r.bottomLeft.x) {
+        if (ax() < r.bottomLeft.x) {
             // crop!
-            ay() += sign() * (height() * (r.bottom_left.x - ax()) / width());
-            ax() = r.bottom_left.x;
+            ay() += sign() * (height() * (r.bottomLeft.x - ax()) / width());
+            ax() = r.bottomLeft.x;
         }
-        if (ax() <= r.top_right.x) {
-            if (bx() > r.top_right.x) {
+        if (ax() <= r.topRight.x) {
+            if (bx() > r.topRight.x) {
                 // crop!
-                by() -= sign() * height() * (bx() - r.top_right.x) / width();
-                bx() = r.top_right.x;
+                by() -= sign() * height() * (bx() - r.topRight.x) / width();
+                bx() = r.topRight.x;
             }
-            if (top_right.y >= r.bottom_left.y) {
-                if (bottom_left.y < r.bottom_left.y) {
+            if (topRight.y >= r.bottomLeft.y) {
+                if (bottomLeft.y < r.bottomLeft.y) {
                     // crop!
-                    if (bits.parity) {
-                        ax() += width() * (r.bottom_left.y - bottom_left.y) / height();
+                    if (m_bits.parity) {
+                        ax() += width() * (r.bottomLeft.y - bottomLeft.y) / height();
                     } else {
-                        bx() -= width() * (r.bottom_left.y - bottom_left.y) / height();
+                        bx() -= width() * (r.bottomLeft.y - bottomLeft.y) / height();
                     }
-                    bottom_left.y = r.bottom_left.y;
+                    bottomLeft.y = r.bottomLeft.y;
                 }
-                if (bottom_left.y <= r.top_right.y) {
-                    if (top_right.y > r.top_right.y) {
+                if (bottomLeft.y <= r.topRight.y) {
+                    if (topRight.y > r.topRight.y) {
                         // crop!
-                        if (bits.parity) {
-                            bx() -= width() * (top_right.y - r.top_right.y) / height();
+                        if (m_bits.parity) {
+                            bx() -= width() * (topRight.y - r.topRight.y) / height();
                         } else {
-                            ax() += width() * (top_right.y - r.top_right.y) / height();
+                            ax() += width() * (topRight.y - r.topRight.y) / height();
                         }
-                        top_right.y = r.top_right.y;
+                        topRight.y = r.topRight.y;
                     }
                     // if we got this far, well done, it's in the region:
                     return true;
@@ -669,27 +667,27 @@ bool Line::crop(const QtRegion &r) {
 // cast a ray to the edge of a box
 
 void Line::ray(short dir, const QtRegion &r) {
-    if (dir == bits.direction) {
+    if (dir == m_bits.direction) {
         if (width() >= height()) {
-            by() = ay() + sign() * height() * (r.top_right.x - ax()) / width();
-            bx() = r.top_right.x;
-        } else if (bits.parity) {
-            bx() = ax() + width() * (r.top_right.y - ay()) / height();
-            by() = r.top_right.y;
+            by() = ay() + sign() * height() * (r.topRight.x - ax()) / width();
+            bx() = r.topRight.x;
+        } else if (m_bits.parity) {
+            bx() = ax() + width() * (r.topRight.y - ay()) / height();
+            by() = r.topRight.y;
         } else {
-            bx() = ax() + width() * (ay() - r.bottom_left.y) / height();
-            by() = r.bottom_left.y;
+            bx() = ax() + width() * (ay() - r.bottomLeft.y) / height();
+            by() = r.bottomLeft.y;
         }
     } else {
         if (width() >= height()) {
-            ay() = by() - sign() * height() * (bx() - r.bottom_left.x) / width();
-            ax() = r.bottom_left.x;
-        } else if (bits.parity) {
-            ax() = bx() - width() * (by() - r.bottom_left.y) / height();
-            ay() = r.bottom_left.y;
+            ay() = by() - sign() * height() * (bx() - r.bottomLeft.x) / width();
+            ax() = r.bottomLeft.x;
+        } else if (m_bits.parity) {
+            ax() = bx() - width() * (by() - r.bottomLeft.y) / height();
+            ay() = r.bottomLeft.y;
         } else {
-            ax() = bx() - width() * (r.top_right.y - by()) / height();
-            ay() = r.top_right.y;
+            ax() = bx() - width() * (r.topRight.y - by()) / height();
+            ay() = r.topRight.y;
         }
     }
     // now fit within bounds...
@@ -701,53 +699,52 @@ void Line::ray(short dir, const QtRegion &r) {
 // Polygon set up (the hard bit!)
 
 void Poly::add_line_segment(const Line &l) {
-    m_line_segments++;
+    m_lineSegments++;
     RegionTreeLeaf *leaf = new RegionTreeLeaf(l);
 
-    if (m_p_root == NULL) {
+    if (m_pRoot == nullptr) {
         // first ever node
 
-        m_p_root = (RegionTree *)leaf;
+        m_pRoot = (RegionTree *)leaf;
     } else {
         // traverse the tree to the insertion point
         //   you'll just have to take my word for it that the next line
         //   gives you the correct position to insert
-        int cut_level = bitcount(m_line_segments - 1) - 2;
+        int cutLevel = bitcount(m_lineSegments - 1) - 2;
 
-        if (cut_level < 0) {
+        if (cutLevel < 0) {
             // replace the root node
 
-            QtRegion new_region = runion(QtRegion(*m_p_root), QtRegion(*leaf));
-            RegionTree *new_root = new RegionTreeBranch(new_region, *m_p_root, *leaf);
-            m_p_root = new_root;
+            QtRegion newRegion = runion(QtRegion(*m_pRoot), QtRegion(*leaf));
+            RegionTree *newRoot = new RegionTreeBranch(newRegion, *m_pRoot, *leaf);
+            m_pRoot = newRoot;
         } else {
-            RegionTree *here = m_p_root;
-            for (int i = 0; i < cut_level; i++) {
-                here = here->m_p_right;
+            RegionTree *here = m_pRoot;
+            for (int i = 0; i < cutLevel; i++) {
+                here = here->m_pRight;
             }
 
             // cut and insert
 
-            RegionTree &insertion_point = here->right();
+            RegionTree &insertionPoint = here->right();
 
-            QtRegion new_region = runion(QtRegion(insertion_point), QtRegion(*leaf));
+            QtRegion newRegion = runion(QtRegion(insertionPoint), QtRegion(*leaf));
 
-            RegionTree *new_node = new RegionTreeBranch(new_region, insertion_point, *leaf);
+            RegionTree *newNode = new RegionTreeBranch(newRegion, insertionPoint, *leaf);
 
-            here->m_p_right = new_node;
+            here->m_pRight = newNode;
 
             // traverse up tree unioning regions
             // (saving data by not recording parents!)
             // Note must be '>=' to catch current root node --- I really stuffed up earlier with
             // '>'!
-            while (cut_level >= 0) {
-                here = m_p_root;
-                for (int j = 0; j < cut_level; j++) {
-                    here = here->m_p_right;
+            while (cutLevel >= 0) {
+                here = m_pRoot;
+                for (int j = 0; j < cutLevel; j++) {
+                    here = here->m_pRight;
                 }
-                here->m_p_region =
-                    new Line(runion(QtRegion(here->left()), QtRegion(here->right())));
-                cut_level--;
+                here->m_pRegion = new Line(runion(QtRegion(here->left()), QtRegion(here->right())));
+                cutLevel--;
             }
         }
     }
@@ -758,14 +755,14 @@ void Poly::add_line_segment(const Line &l) {
 
 RegionTree *Poly::copy_region_tree(const RegionTree *tree) {
     if (!tree) {
-        return NULL;
+        return nullptr;
     }
 
     RegionTree *newtree;
 
     if (tree->is_leaf()) {
         newtree = new RegionTreeLeaf();
-        newtree->m_p_region = new Line(*(tree->m_p_region));
+        newtree->m_pRegion = new Line(*(tree->m_pRegion));
         return newtree;
     } else {
         newtree = new RegionTreeBranch();
@@ -783,26 +780,26 @@ RegionTree *Poly::copy_region_tree(const RegionTree *tree) {
         RegionTree *newnode = newlist.back();
         newlist.pop_back();
 
-        newnode->m_p_region = new Line(*oldnode->m_p_region);
+        newnode->m_pRegion = new Line(*oldnode->m_pRegion);
 
-        if (oldnode->m_p_left) {
-            if (oldnode->m_p_left->is_leaf()) {
-                newnode->m_p_left = new RegionTreeLeaf();
-                newnode->m_p_left->m_p_region = new Line(*(oldnode->m_p_left->m_p_region));
+        if (oldnode->m_pLeft) {
+            if (oldnode->m_pLeft->is_leaf()) {
+                newnode->m_pLeft = new RegionTreeLeaf();
+                newnode->m_pLeft->m_pRegion = new Line(*(oldnode->m_pLeft->m_pRegion));
             } else {
-                oldlist.push_back(oldnode->m_p_left);
-                newnode->m_p_left = new RegionTreeBranch();
-                newlist.push_back(newnode->m_p_left);
+                oldlist.push_back(oldnode->m_pLeft);
+                newnode->m_pLeft = new RegionTreeBranch();
+                newlist.push_back(newnode->m_pLeft);
             }
         }
-        if (oldnode->m_p_right) {
-            if (oldnode->m_p_right->is_leaf()) {
-                newnode->m_p_right = new RegionTreeLeaf();
-                newnode->m_p_right->m_p_region = new Line(*(oldnode->m_p_right->m_p_region));
+        if (oldnode->m_pRight) {
+            if (oldnode->m_pRight->is_leaf()) {
+                newnode->m_pRight = new RegionTreeLeaf();
+                newnode->m_pRight->m_pRegion = new Line(*(oldnode->m_pRight->m_pRegion));
             } else {
-                oldlist.push_back(oldnode->m_p_right);
-                newnode->m_p_right = new RegionTreeBranch();
-                newlist.push_back(newnode->m_p_right);
+                oldlist.push_back(oldnode->m_pRight);
+                newnode->m_pRight = new RegionTreeBranch();
+                newlist.push_back(newnode->m_pRight);
             }
         }
 
@@ -814,46 +811,46 @@ RegionTree *Poly::copy_region_tree(const RegionTree *tree) {
 // polygon destruction
 
 void Poly::destroy_region_tree() {
-    if (!m_p_root) {
+    if (!m_pRoot) {
         return;
     }
 
-    std::vector<RegionTree *> del_node_list;
-    std::vector<short> del_node_dir;
+    std::vector<RegionTree *> delNodeList;
+    std::vector<short> delNodeDir;
 
-    del_node_list.push_back(m_p_root);
+    delNodeList.push_back(m_pRoot);
 
     do {
-        RegionTree *current_node = del_node_list.back();
+        RegionTree *currentNode = delNodeList.back();
 
-        if (current_node->m_p_left == current_node && current_node->m_p_right == current_node) {
+        if (currentNode->m_pLeft == currentNode && currentNode->m_pRight == currentNode) {
 
-            delete current_node;
-            del_node_list.pop_back();
+            delete currentNode;
+            delNodeList.pop_back();
 
-            if (del_node_list.size() > 0) {
-                if (del_node_dir.back() == 0) {
-                    del_node_list.back()->m_p_left = del_node_list.back();
-                    del_node_dir.pop_back();
+            if (delNodeList.size() > 0) {
+                if (delNodeDir.back() == 0) {
+                    delNodeList.back()->m_pLeft = delNodeList.back();
+                    delNodeDir.pop_back();
                 } else {
-                    del_node_list.back()->m_p_right = del_node_list.back();
-                    del_node_dir.pop_back();
+                    delNodeList.back()->m_pRight = delNodeList.back();
+                    delNodeDir.pop_back();
                 }
             }
         } else {
-            if (current_node->m_p_right == NULL) {
-                current_node->m_p_right = current_node;
-            } else if (current_node->m_p_right != current_node) {
-                del_node_list.push_back(current_node->m_p_right);
-                del_node_dir.push_back(1);
+            if (currentNode->m_pRight == nullptr) {
+                currentNode->m_pRight = currentNode;
+            } else if (currentNode->m_pRight != currentNode) {
+                delNodeList.push_back(currentNode->m_pRight);
+                delNodeDir.push_back(1);
             } else {
-                del_node_list.push_back(current_node->m_p_left);
-                del_node_dir.push_back(0);
+                delNodeList.push_back(currentNode->m_pLeft);
+                delNodeDir.push_back(0);
             }
         }
-    } while (del_node_list.size() > 0);
+    } while (delNodeList.size() > 0);
 
-    m_p_root = NULL;
+    m_pRoot = nullptr;
 }
 
 // contains? intersects??
@@ -864,19 +861,19 @@ bool Poly::contains(const Point2f &p) {
     // n.b., intersections throws on some accidental alignments --
     // we must use a point outside the polygon to extend our test
     // line from to prevent them
-    Line l(p, Point2f(get_bounding_box().top_right.x + get_bounding_box().width(),
-                      get_bounding_box().top_right.y + get_bounding_box().height()));
+    Line l(p, Point2f(get_bounding_box().topRight.x + get_bounding_box().width(),
+                      get_bounding_box().topRight.y + get_bounding_box().height()));
 
-    int double_n;
+    int doubleN;
 
     // note, touching intersections count 1/2
     try {
-        double_n = intersections(*(m_p_root), l);
+        doubleN = intersections(*(m_pRoot), l);
     } catch (int) {
         throw 1; // throws if on edge
     }
 
-    if (double_n % 2 == 0 && double_n % 4 != 0) {
+    if (doubleN % 2 == 0 && doubleN % 4 != 0) {
         return true;
     }
 
@@ -884,7 +881,7 @@ bool Poly::contains(const Point2f &p) {
 }
 
 bool intersect(const Poly &a, const Poly &b) {
-    if (intersect(*(a.m_p_root), *(b.m_p_root))) {
+    if (intersect(*(a.m_pRoot), *(b.m_pRoot))) {
         return true;
     }
     return false;

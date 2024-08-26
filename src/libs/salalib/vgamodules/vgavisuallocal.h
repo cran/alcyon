@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "salalib/ivga.h"
+#include "ivga.h"
 #include "salalib/pointmap.h"
 
-class VGAVisualLocal : IVGA {
+class VGAVisualLocal : public IVGA {
   private:
-    bool m_gates_only;
+    bool m_gatesOnly;
 
   public:
     struct Column {
@@ -23,6 +23,6 @@ class VGAVisualLocal : IVGA {
 
   public:
     std::string getAnalysisName() const override { return "Local Visibility Analysis"; }
-    AnalysisResult run(Communicator *comm, PointMap &map, bool simple_version) override;
-    VGAVisualLocal(bool gates_only) : m_gates_only(gates_only) {}
+    AnalysisResult run(Communicator *comm) override;
+    VGAVisualLocal(const PointMap &map, bool gatesOnly) : IVGA(map), m_gatesOnly(gatesOnly) {}
 };

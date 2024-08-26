@@ -71,7 +71,7 @@ class DxfTableRow {
     virtual ~DxfTableRow() {}
 
   protected:
-    virtual bool parse(const DxfToken &token, DxfParser *Parser);
+    virtual bool parse(const DxfToken &token, DxfParser *parser);
 
   public:
     // for hash table storage
@@ -88,8 +88,8 @@ class DxfEntity {
   protected:
     // Reference data
     int m_tag;
-    DxfLineType *m_p_line_type = nullptr;
-    DxfLayer *m_p_layer = nullptr;
+    DxfLineType *m_pLineType = nullptr;
+    DxfLayer *m_pLayer = nullptr;
 
   public:
     DxfEntity(int tag = -1);
@@ -120,18 +120,18 @@ class DxfVertex : public DxfEntity {
     void clear(); // for reuse when parsing
     // some simple manipulation
     // note, all ops are 2d...
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        x = (x - base_vertex.x) * scale.x + base_vertex.x;
-        y = (y - base_vertex.y) * scale.y + base_vertex.y;
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        x = (x - baseVertex.x) * scale.x + baseVertex.x;
+        y = (y - baseVertex.y) * scale.y + baseVertex.y;
     }
     // note, rotation is 2d op, angle in degrees, ccw
-    void rotate(const DxfVertex &base_vertex, double angle) {
+    void rotate(const DxfVertex &baseVertex, double angle) {
         DxfVertex reg;
         double ang = (2.0 * DXF_PI * angle / 360.0);
-        reg.x = (x - base_vertex.x) * cos(ang) - (y - base_vertex.y) * sin(ang);
-        reg.y = (y - base_vertex.y) * cos(ang) + (x - base_vertex.x) * sin(ang);
-        x = reg.x + base_vertex.x;
-        y = reg.y + base_vertex.y;
+        reg.x = (x - baseVertex.x) * cos(ang) - (y - baseVertex.y) * sin(ang);
+        reg.y = (y - baseVertex.y) * cos(ang) + (x - baseVertex.x) * sin(ang);
+        x = reg.x + baseVertex.x;
+        y = reg.y + baseVertex.y;
     }
     void translate(const DxfVertex &translation) {
         x += translation.x;
@@ -142,7 +142,7 @@ class DxfVertex : public DxfEntity {
     friend bool operator!=(const DxfVertex &a, const DxfVertex &b);
 
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ class DxfRegion {
     DxfVertex m_max;
 
   public:
-    DxfRegion() { m_first = true; }
+    DxfRegion() : m_first(true) {}
     void add(const DxfVertex &v) {
         if (m_first) {
             m_min = v;
@@ -183,9 +183,9 @@ class DxfRegion {
     bool empty() const { return m_first; }
     //
     // some simple manipulations
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        m_min.scale(base_vertex, scale);
-        m_max.scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        m_min.scale(baseVertex, scale);
+        m_max.scale(baseVertex, scale);
     }
     // rotate tricky...
     void rotate(const DxfVertex &, double) { ; }
@@ -214,15 +214,15 @@ class DxfLine : public DxfEntity, public DxfRegion {
     DxfVertex &getEnd() const;
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        m_start.scale(base_vertex, scale);
-        m_end.scale(base_vertex, scale);
-        DxfRegion::scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        m_start.scale(baseVertex, scale);
+        m_end.scale(baseVertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        m_start.rotate(base_vertex, angle);
-        m_end.rotate(base_vertex, angle);
-        DxfRegion::rotate(base_vertex, angle);
+    void rotate(const DxfVertex &baseVertex, double angle) {
+        m_start.rotate(baseVertex, angle);
+        m_end.rotate(baseVertex, angle);
+        DxfRegion::rotate(baseVertex, angle);
     }
     void translate(const DxfVertex &translation) {
         m_start.translate(translation);
@@ -231,7 +231,7 @@ class DxfLine : public DxfEntity, public DxfRegion {
     }
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 // PolyLine
@@ -243,7 +243,7 @@ class DxfPolyLine : public DxfEntity, public DxfRegion {
     enum { CLOSED = 1 }; // CLOSED = closed polygon
   protected:
     int m_attributes;
-    size_t m_vertex_count;
+    size_t m_vertexCount;
     std::vector<DxfVertex> m_vertices;
 
   public:
@@ -256,24 +256,24 @@ class DxfPolyLine : public DxfEntity, public DxfRegion {
     const DxfRegion &getBoundingBox();
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        for (size_t i = 0; i < m_vertex_count; i++)
-            m_vertices[i].scale(base_vertex, scale);
-        DxfRegion::scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        for (size_t i = 0; i < m_vertexCount; i++)
+            m_vertices[i].scale(baseVertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        for (size_t i = 0; i < m_vertex_count; i++)
-            m_vertices[i].rotate(base_vertex, angle);
-        DxfRegion::rotate(base_vertex, angle);
+    void rotate(const DxfVertex &baseVertex, double angle) {
+        for (size_t i = 0; i < m_vertexCount; i++)
+            m_vertices[i].rotate(baseVertex, angle);
+        DxfRegion::rotate(baseVertex, angle);
     }
     void translate(const DxfVertex &translation) {
-        for (size_t i = 0; i < m_vertex_count; i++)
+        for (size_t i = 0; i < m_vertexCount; i++)
             m_vertices[i].translate(translation);
         DxfRegion::translate(translation);
     }
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 // LwPolyLine --- just inherit from DxfPolyLine
@@ -282,14 +282,14 @@ class DxfLwPolyLine : public DxfPolyLine {
     friend class DxfParser;
     //
   protected:
-    int m_expected_vertex_count;
+    int m_expectedVertexCount;
 
   public:
     DxfLwPolyLine(int tag = -1);
     void clear(); // for reuse when parsing
                   //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -315,24 +315,24 @@ class DxfArc : public DxfEntity, public DxfRegion {
     const DxfRegion &getBoundingBox();
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        m_centre.scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        m_centre.scale(baseVertex, scale);
         m_radius *= (fabs(scale.x) + fabs(scale.y)) / 2.0;
         // this is rather tricky to do, need to think more than just reflect around 0,0,0
         if (m_start != m_end && (scale.x < 0 || scale.y < 0)) {
             reflect(scale.x, scale.y);
         }
-        DxfRegion::scale(base_vertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
     void reflect(double x, double y);
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        m_centre.rotate(base_vertex, angle);
+    void rotate(const DxfVertex &baseVertex, double angle) {
+        m_centre.rotate(baseVertex, angle);
         // this is rather tricky to do, need to think more than just rotate around 0,0,0
         if (m_start != m_end) {
             m_start += angle;
             m_end += angle;
         }
-        DxfRegion::rotate(base_vertex, angle);
+        DxfRegion::rotate(baseVertex, angle);
     }
     void translate(const DxfVertex &translation) {
         m_centre.translate(translation);
@@ -340,7 +340,7 @@ class DxfArc : public DxfEntity, public DxfRegion {
     }
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 class DxfEllipse : public DxfEntity, public DxfRegion {
@@ -364,8 +364,8 @@ class DxfEllipse : public DxfEntity, public DxfRegion {
     const DxfRegion &getBoundingBox();
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        m_centre.scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        m_centre.scale(baseVertex, scale);
 
         m_majorAxisEndPoint.x *= scale.x;
         m_majorAxisEndPoint.y *= scale.y;
@@ -374,17 +374,17 @@ class DxfEllipse : public DxfEntity, public DxfRegion {
         if (m_start != m_end && (scale.x < 0 || scale.y < 0)) {
             reflect(scale.x, scale.y);
         }
-        DxfRegion::scale(base_vertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
     void reflect(double x, double y);
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        m_centre.rotate(base_vertex, angle);
+    void rotate(const DxfVertex &baseVertex, double angle) {
+        m_centre.rotate(baseVertex, angle);
         // this is rather tricky to do, need to think more than just rotate around 0,0,0
         if (m_start != m_end) {
             m_start += angle;
             m_end += angle;
         }
-        DxfRegion::rotate(base_vertex, angle);
+        DxfRegion::rotate(baseVertex, angle);
     }
     void translate(const DxfVertex &translation) {
         m_centre.translate(translation);
@@ -392,7 +392,7 @@ class DxfEllipse : public DxfEntity, public DxfRegion {
     }
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 class DxfCircle : public DxfEntity, public DxfRegion {
@@ -410,22 +410,20 @@ class DxfCircle : public DxfEntity, public DxfRegion {
     const DxfRegion &getBoundingBox();
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        m_centre.scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        m_centre.scale(baseVertex, scale);
         m_radius *= (fabs(scale.x) + fabs(scale.y)) / 2.0;
-        DxfRegion::scale(base_vertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
     void reflect(double x, double y);
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        DxfRegion::rotate(base_vertex, angle);
-    }
+    void rotate(const DxfVertex &baseVertex, double angle) { DxfRegion::rotate(baseVertex, angle); }
     void translate(const DxfVertex &translation) {
         m_centre.translate(translation);
         DxfRegion::translate(translation);
     }
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -442,9 +440,9 @@ class DxfSpline : public DxfEntity, public DxfRegion {
   protected:
     int m_xyz;
     int m_attributes;
-    size_t m_ctrl_pt_count;
-    size_t m_knot_count;
-    std::vector<DxfVertex> m_ctrl_pts;
+    size_t m_ctrlPtCount;
+    size_t m_knotCount;
+    std::vector<DxfVertex> m_ctrlPts;
     std::vector<double> m_knots;
 
   public:
@@ -456,24 +454,24 @@ class DxfSpline : public DxfEntity, public DxfRegion {
     int getAttributes() const;
     //
     // some basic manipulation
-    void scale(const DxfVertex &base_vertex, const DxfVertex &scale) {
-        for (size_t i = 0; i < m_ctrl_pt_count; i++)
-            m_ctrl_pts[i].scale(base_vertex, scale);
-        DxfRegion::scale(base_vertex, scale);
+    void scale(const DxfVertex &baseVertex, const DxfVertex &scale) {
+        for (size_t i = 0; i < m_ctrlPtCount; i++)
+            m_ctrlPts[i].scale(baseVertex, scale);
+        DxfRegion::scale(baseVertex, scale);
     }
-    void rotate(const DxfVertex &base_vertex, double angle) {
-        for (size_t i = 0; i < m_ctrl_pt_count; i++)
-            m_ctrl_pts[i].rotate(base_vertex, angle);
-        DxfRegion::rotate(base_vertex, angle);
+    void rotate(const DxfVertex &baseVertex, double angle) {
+        for (size_t i = 0; i < m_ctrlPtCount; i++)
+            m_ctrlPts[i].rotate(baseVertex, angle);
+        DxfRegion::rotate(baseVertex, angle);
     }
     void translate(const DxfVertex &translation) {
-        for (size_t i = 0; i < m_ctrl_pt_count; i++)
-            m_ctrl_pts[i].translate(translation);
+        for (size_t i = 0; i < m_ctrlPtCount; i++)
+            m_ctrlPts[i].translate(translation);
         DxfRegion::translate(translation);
     }
 
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -495,7 +493,7 @@ class DxfInsert : public DxfEntity, public DxfRegion {
     void clear(); // for reuse when parsing
                   //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -511,7 +509,7 @@ class DxfLineType : public DxfTableRow {
     DxfLineType(const std::string &name = "");
 
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 // Layers
@@ -523,14 +521,14 @@ class DxfLayer : public DxfTableRow, public DxfRegion {
     // Originally was going to be clever, but it's far easier to have a list for each type:
     std::vector<DxfVertex> m_points;
     std::vector<DxfLine> m_lines;
-    std::vector<DxfPolyLine> m_poly_lines;
+    std::vector<DxfPolyLine> m_polyLines;
     std::vector<DxfArc> m_arcs;
     std::vector<DxfEllipse> m_ellipses;
     std::vector<DxfCircle> m_circles;
     std::vector<DxfSpline> m_splines;
     std::vector<DxfInsert> m_inserts;
-    size_t m_total_point_count = 0;
-    size_t m_total_line_count = 0;
+    size_t m_totalPointCount = 0;
+    size_t m_totalLineCount = 0;
 
   public:
     DxfLayer(const std::string &name = "");
@@ -551,14 +549,14 @@ class DxfLayer : public DxfTableRow, public DxfRegion {
     size_t numCircles() const;
     size_t numSplines() const;
     //
-    size_t numTotalPoints() const { return m_total_point_count; }
-    size_t numTotalLines() const { return m_total_line_count; }
+    size_t numTotalPoints() const { return m_totalPointCount; }
+    size_t numTotalLines() const { return m_totalLineCount; }
     //
     // this merges an insert (so the insert remains flattened)
     void insert(DxfInsert &insert, DxfParser *parser);
 
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 class DxfBlock : public DxfLayer {
@@ -566,13 +564,13 @@ class DxfBlock : public DxfLayer {
     friend class DxfLayer;
 
   protected:
-    DxfVertex m_base_point;
+    DxfVertex m_basePoint;
 
   public:
     DxfBlock(const std::string &name = "");
     //
   protected:
-    bool parse(const DxfToken &token, DxfParser *parser);
+    bool parse(const DxfToken &token, DxfParser *parser) override;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -614,13 +612,13 @@ class DxfParser {
     DxfRegion m_region;
     std::map<std::string, DxfLayer> m_layers;
     std::map<std::string, DxfBlock> m_blocks;
-    std::map<std::string, DxfLineType> m_line_types;
+    std::map<std::string, DxfLineType> m_lineTypes;
     //
     size_t m_size;
     Communicator *m_communicator;
 
   public:
-    DxfParser(Communicator *comm = NULL);
+    DxfParser(Communicator *comm = nullptr);
     //
     std::istream &open(std::istream &stream);
     //
@@ -628,14 +626,14 @@ class DxfParser {
     void openTables(std::istream &stream);
     void openBlocks(std::istream &stream);
     void openEntities(std::istream &stream, DxfToken &token,
-                      DxfBlock *block = NULL); // cannot have a default token: it's a reference.
-                                               // Removed default to DxfToken() AT 29.04.11
+                      DxfBlock *block = nullptr); // cannot have a default token: it's a reference.
+                                                  // Removed default to DxfToken() AT 29.04.11
     //
     const DxfVertex &getExtMin() const;
     const DxfVertex &getExtMax() const;
-    DxfLayer *getLayer(const std::string &layer_name); // const; <- removed as will have to add
-                                                       // layer when DXF hasn't declared one
-    DxfLineType *getLineType(const std::string &line_type_name); // const;
+    DxfLayer *getLayer(const std::string &layerName); // const; <- removed as will have to add
+                                                      // layer when DXF hasn't declared one
+    DxfLineType *getLineType(const std::string &lineTypeName); // const;
     //
     size_t numLayers() const;
     size_t numLineTypes() const;

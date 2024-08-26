@@ -32,7 +32,7 @@ class PixelBase {
                               int scalefactor = 1) const = 0;
     PixelRefVector pixelateLine(Line l, int scalefactor = 1) const;
     PixelRefVector pixelateLineTouching(Line l, double tolerance) const;
-    PixelRefVector quickPixelateLine(PixelRef p, PixelRef q);
+    PixelRefVector quickPixelateLine(PixelRef p, PixelRef q) const;
     bool includes(const PixelRef pix) const {
         return (pix.x >= 0 && pix.x < static_cast<short>(m_cols) && pix.y >= 0 &&
                 pix.y < static_cast<short>(m_rows));
@@ -49,11 +49,10 @@ class PixelBase {
 struct LineTest {
     Line line;
     unsigned int test;
-    LineTest(const Line &l = Line(), int t = -1) {
-        line = l;
+    LineTest(const Line &l = Line(), int t = -1) : line(l), test(static_cast<unsigned int>(t)) {
+
         // TODO: Shouldn't be casting an int with a known
         // default value of -1
-        test = static_cast<unsigned int>(t);
     }
     // operator Line() {return line;}
 };
@@ -89,13 +88,13 @@ class SpacePixel : public PixelBase {
     std::string m_name = "Default";
     bool m_show;
     bool m_edit;
-    depthmapX::RowMatrix<std::vector<int>> m_pixel_lines;
+    depthmapX::RowMatrix<std::vector<int>> m_pixelLines;
 
     int m_ref;
     std::map<int, LineTest> m_lines;
     //
     // for screen drawing
-    mutable std::vector<int> m_display_lines;
+    mutable std::vector<int> m_displayLines;
     mutable int m_current;
     //
     // for line testing
@@ -108,7 +107,7 @@ class SpacePixel : public PixelBase {
     SpacePixel &operator=(const SpacePixel &spacepixel);
     void construct(const SpacePixel &spacepixel);
     //
-    PixelRef pixelate(const Point2f &p, bool constrain = true, int = 1) const;
+    PixelRef pixelate(const Point2f &p, bool constrain = true, int = 1) const override;
     //   PixelRefVector pixelate( const Line& l ) const;
     //
     void initLines(int size, const Point2f &min, const Point2f &max, double density = 1.0);

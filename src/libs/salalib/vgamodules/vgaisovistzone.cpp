@@ -39,7 +39,7 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
             extractMetric(lp.getNode(), newPixels, m_map, MetricTriple(0.0f, ref, NoPixel));
             for (auto &zonePixel : newPixels) {
                 auto *zonePixelRow = attributes.getRowPtr(AttributeKey(zonePixel.pixel));
-                if (zonePixelRow != 0) {
+                if (zonePixelRow != nullptr) {
                     double zoneLineDist = dist(ref, zonePixel.pixel) * m_map.getSpacing();
                     float currZonePixelVal = zonePixelRow->getValue(zoneColumnIndex);
                     if ((currZonePixelVal == -1 || zoneLineDist < currZonePixelVal) &&
@@ -65,14 +65,13 @@ void VGAIsovistZone::extractMetric(Node n, std::set<MetricTriple> &pixels, Point
                                    const MetricTriple &curs) {
     for (int i = 0; i < 32; i++) {
         Bin &bin = n.bin(i);
-        for (auto pixVec : bin.m_pixel_vecs) {
-            for (PixelRef pix = pixVec.start();
-                 pix.col(bin.m_dir) <= pixVec.end().col(bin.m_dir);) {
+        for (auto pixVec : bin.pixelVecs) {
+            for (PixelRef pix = pixVec.start(); pix.col(bin.dir) <= pixVec.end().col(bin.dir);) {
                 Point &pt = map.getPoint(pix);
                 if (pt.filled()) {
                     pixels.insert(MetricTriple(0, pix, curs.pixel));
                 }
-                pix.move(bin.m_dir);
+                pix.move(bin.dir);
             }
         }
     }
@@ -81,13 +80,13 @@ void VGAIsovistZone::extractMetric(Node n, std::set<MetricTriple> &pixels, Point
 void VGAIsovistZone::setColumnFormulaAndUpdate(PointMap &pointmap, int columnIndex,
                                                std::string formula,
                                                std::optional<const std::set<int>> selectionSet) {
-    SalaObj program_context;
+    SalaObj programContext;
     SalaGrf graph;
     graph.map.point = &pointmap;
-    program_context = SalaObj(SalaObj::S_POINTMAPOBJ, graph);
+    programContext = SalaObj(SalaObj::S_POINTMAPOBJ, graph);
 
     std::istringstream stream(formula);
-    SalaProgram proggy(program_context);
+    SalaProgram proggy(programContext);
     if (!proggy.parse(stream)) {
         throw depthmapX::RuntimeException("There was an error parsing your formula:\n\n" +
                                           proggy.getLastErrorMessage());
@@ -103,5 +102,5 @@ void VGAIsovistZone::setColumnFormulaAndUpdate(PointMap &pointmap, int columnInd
                                               proggy.getLastErrorMessage());
         }
     }
-    program_context.getTable()->getColumn(columnIndex).setFormula(formula);
+    programContext.getTable()->getColumn(columnIndex).setFormula(formula);
 }

@@ -19,22 +19,11 @@ struct IsoSeg {
     Point2f endpoint;
     char quadrant;
     int tag;
-    IsoSeg(double start = 0.0, double end = 0.0, char q = 0, int t = -1) {
-        startangle = start;
-        endangle = end;
-        tagdelete = false;
-        quadrant = q;
-        tag = t;
-    }
-    IsoSeg(double start, double end, const Point2f &pstart, Point2f &pend, int t = -1) {
-        startangle = start;
-        endangle = end;
-        startpoint = pstart;
-        endpoint = pend;
-        tagdelete = false;
-        quadrant = 0;
-        tag = t;
-    }
+    IsoSeg(double start = 0.0, double end = 0.0, char q = 0, int t = -1)
+        : tagdelete(false), startangle(start), endangle(end), quadrant(q), tag(t) {}
+    IsoSeg(double start, double end, const Point2f &pstart, Point2f &pend, int t = -1)
+        : tagdelete(false), startangle(start), endangle(end), startpoint(pstart), endpoint(pend),
+          quadrant(0), tag(t) {}
     friend bool operator==(const IsoSeg &b1, const IsoSeg &b2);
     friend bool operator>(const IsoSeg &b1, const IsoSeg &b2);
     friend bool operator<(const IsoSeg &b1, const IsoSeg &b2);
@@ -54,12 +43,9 @@ inline bool operator<(const IsoSeg &b1, const IsoSeg &b2) {
 class AttributeTable;
 
 struct PointDist {
-    Point2f m_point;
-    double m_dist;
-    PointDist(const Point2f &p = Point2f(), double d = 0.0) {
-        m_point = p;
-        m_dist = d;
-    }
+    Point2f point;
+    double dist;
+    PointDist(const Point2f &p = Point2f(), double d = 0.0) : point(p), dist(d) {}
 };
 
 class Isovist {
@@ -68,16 +54,16 @@ class Isovist {
     std::set<IsoSeg> m_blocks;
     std::set<IsoSeg> m_gaps;
     std::vector<Point2f> m_poly;
-    std::vector<PointDist> m_occlusion_points;
+    std::vector<PointDist> m_occlusionPoints;
     double m_perimeter;
-    double m_occluded_perimeter;
-    double m_max_radial;
-    double m_min_radial;
+    double m_occludedPerimeter;
+    double m_maxRadial;
+    double m_minRadial;
 
   public:
     Isovist() { ; }
     const std::vector<Point2f> &getPolygon() const { return m_poly; }
-    const std::vector<PointDist> &getOcclusionPoints() const { return m_occlusion_points; }
+    const std::vector<PointDist> &getOcclusionPoints() const { return m_occlusionPoints; }
     const Point2f &getCentre() const { return m_centre; }
     //
     void makeit(BSPNode *root, const Point2f &p, const QtRegion &region, double startangle = 0.0,
@@ -88,9 +74,9 @@ class Isovist {
     std::pair<Point2f, double> getCentroidArea();
     std::pair<double, double> getDriftData();
     double getPerimeter() { return m_perimeter; }
-    double getMinRadial() { return m_min_radial; }
-    double getMaxRadial() { return m_max_radial; }
-    double getOccludedPerimeter() { return m_occluded_perimeter; }
+    double getMinRadial() { return m_minRadial; }
+    double getMaxRadial() { return m_maxRadial; }
+    double getOccludedPerimeter() { return m_occludedPerimeter; }
     //
     int getClosestLine(BSPNode *root, const Point2f &p);
 };

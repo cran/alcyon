@@ -47,74 +47,74 @@ class Point {
         CONNECT_SE = 0x80
     };
 
-    // TODO: These intermediary variables are only used for storing arbitrary data during the
-    // analysis. They should be made into local variables and removed from this class
-    int m_misc;        // <- undocounter / point seen register / agent reference number, etc
-    float m_dist;      // used to speed up metric analysis
-    float m_cumangle;  // cummulative angle -- used in metric analysis and angular analysis
-    PixelRef m_extent; // used to speed up graph analysis (not sure whether or not it breaks it!)
+    int undoCounter;
+
+    // These intermediary variables were only used for storing arbitrary data during the
+    // analysis. They have been replaced with analysis-local ones, and only kept here for
+    // binary compatibility with older versions of graph files
+    // undocounter / point seen register / agent reference number, etc
+    mutable int dummyMisc;
+    // used to speed up metric analysis
+    mutable float dummyDist;
+    // cummulative angle -- used in metric analysis and angular analysis
+    mutable float dummyCumangle;
+    // used to speed up graph analysis (not sure whether or not it breaks it!)
+    mutable PixelRef dummyExtent;
 
   protected:
     int m_block; // not used, unlikely to be used, but kept for time being
     int m_state;
-    char m_grid_connections;      // this is a standard set of grid connections, with bits set for
+    char m_gridConnections;       // this is a standard set of grid connections, with bits set for
                                   // E,NE,N,NW,W,SW,S,SE
     std::unique_ptr<Node> m_node; // graph links
     Point2f m_location; // note: this is large, but it helps allow loading of non-standard grid
-                        // points, whilst allowing them to be displayed as a visibility graph, also
-                        // speeds up time to display
+                        // points, whilst allowing them to be displayed as a visibility graph,
+                        // also speeds up time to display
     float m_color;      // although display color for the point now introduced
     PixelRef m_merge;   // to merge with another point
     // hmm... this is for my 3rd attempt at a quick line intersect algo:
-    // every line that goes through the gridsquare -- memory intensive I know, but what can you do:
-    // accuracy is imperative here!  Calculated pre-fillpoints / pre-makegraph, and (importantly) it
-    // works.
+    // every line that goes through the gridsquare -- memory intensive I know, but what can you
+    // do: accuracy is imperative here!  Calculated pre-fillpoints / pre-makegraph, and
+    // (importantly) it works.
     std::vector<Line> m_lines;
     int m_processflag;
 
   public:
-    Point() {
-        m_state = EMPTY;
-        m_block = 0;
-        m_misc = 0;
-        m_grid_connections = 0;
-        m_node = nullptr;
-        m_processflag = 0;
-        m_merge = NoPixel;
-        m_user_data = NULL;
+    Point()
+        : m_block(0), m_state(EMPTY), m_gridConnections(0), m_node(nullptr), m_merge(NoPixel),
+          m_processflag(0), m_userData(nullptr) {
+
+        //        m_misc = 0;
     }
     Point &operator=(const Point &p) {
         m_block = p.m_block;
         m_state = p.m_state;
-        m_misc = p.m_misc;
-        m_grid_connections = p.m_grid_connections;
+        //        m_misc = p.m_misc;
+        m_gridConnections = p.m_gridConnections;
         m_node = p.m_node ? std::unique_ptr<Node>(new Node(*p.m_node)) : nullptr;
         m_location = p.m_location;
         m_color = p.m_color;
         m_merge = p.m_merge;
         m_color = p.m_color;
-        m_extent = p.m_extent;
-        m_dist = p.m_dist;
-        m_cumangle = p.m_cumangle;
+        //        m_extent = p.m_extent;
+        //        m_dist = p.m_dist;
+        //        m_cumangle = p.m_cumangle;
         m_lines = p.m_lines;
         m_processflag = p.m_processflag;
         return *this;
     }
-    Point(const Point &p) {
-        m_block = p.m_block;
-        m_state = p.m_state;
-        m_misc = p.m_misc;
-        m_grid_connections = p.m_grid_connections;
+    Point(const Point &p)
+        : m_block(p.m_block), m_state(p.m_state), m_gridConnections(p.m_gridConnections),
+          m_location(p.m_location), m_color(p.m_color), m_merge(p.m_merge), m_lines(p.m_lines),
+          m_processflag(p.m_processflag) {
+
+        //        m_misc = p.m_misc;
+
         m_node = p.m_node ? std::unique_ptr<Node>(new Node(*p.m_node)) : nullptr;
-        m_location = p.m_location;
-        m_color = p.m_color;
-        m_merge = p.m_merge;
-        m_color = p.m_color;
-        m_extent = p.m_extent;
-        m_dist = p.m_dist;
-        m_cumangle = p.m_cumangle;
-        m_lines = p.m_lines;
-        m_processflag = p.m_processflag;
+
+        //        m_extent = p.m_extent;
+        //        m_dist = p.m_dist;
+        //        m_cumangle = p.m_cumangle;
     }
     //
     bool empty() const { return (m_state & EMPTY) == EMPTY; }
@@ -129,7 +129,7 @@ class Point {
     //
     void set(int state, int undocounter = 0) {
         m_state = state | (m_state & Point::BLOCKED); // careful not to clear the blocked flag
-        m_misc = undocounter;
+        undoCounter = undocounter;
     }
     void setBlock(bool blocked = true) {
         if (blocked)
@@ -155,17 +155,19 @@ class Point {
     //   { return m_block & 0x06600660; }
     int getState() const { return m_state; }
     int getState() { return m_state; }
-    int getMisc() // used as: undocounter, in graph construction, and an agent reference, as well as
-                  // for making axial maps
+    int getUndoCounter() // used as: undocounter, in graph construction, and an agent reference,
+                         // as well as for making axial maps
     {
-        return m_misc;
+        return undoCounter;
     }
-    void setMisc(int misc) { m_misc = misc; }
+    void setUndoCounter(int newUndoCountValue) { undoCounter = newUndoCountValue; }
     // note -- set merge pixel should be done only through merge pixels
     PixelRef getMergePixel() { return m_merge; }
+    PixelRef getMergePixel() const { return m_merge; }
     Node &getNode() { return *m_node; }
-    bool hasNode() { return m_node != nullptr; }
-    char getGridConnections() const { return m_grid_connections; }
+    Node &getNode() const { return *m_node; }
+    bool hasNode() const { return m_node != nullptr; }
+    char getGridConnections() const { return m_gridConnections; }
     float getBinDistance(int i);
     const Point2f &getLocation() const { return m_location; }
 
@@ -175,9 +177,9 @@ class Point {
     //
   protected:
     // for user processing, set their own data on the point:
-    void *m_user_data;
+    void *m_userData;
 
   public:
-    void *getUserData() { return m_user_data; }
-    void setUserData(void *user_data) { m_user_data = user_data; }
+    void *getUserData() { return m_userData; }
+    void setUserData(void *userData) { m_userData = userData; }
 };

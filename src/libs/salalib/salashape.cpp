@@ -12,27 +12,27 @@ bool SalaShape::read(std::istream &stream) {
     // defaults
     m_draworder = -1;
 
-    stream.read((char *)&m_type, sizeof(m_type));
+    stream.read(reinterpret_cast<char *>(&m_type), sizeof(m_type));
 
-    stream.read((char *)&m_region, sizeof(m_region));
+    stream.read(reinterpret_cast<char *>(&m_region), sizeof(m_region));
 
-    stream.read((char *)&m_centroid, sizeof(m_centroid));
+    stream.read(reinterpret_cast<char *>(&m_centroid), sizeof(m_centroid));
 
-    stream.read((char *)&m_area, sizeof(m_area));
-    stream.read((char *)&m_perimeter, sizeof(m_perimeter));
+    stream.read(reinterpret_cast<char *>(&m_area), sizeof(m_area));
+    stream.read(reinterpret_cast<char *>(&m_perimeter), sizeof(m_perimeter));
 
-    dXreadwrite::readIntoVector(stream, m_points);
+    dXreadwrite::readIntoVector(stream, points);
 
     return true;
 }
 
 bool SalaShape::write(std::ostream &stream) const {
-    stream.write((char *)&m_type, sizeof(m_type));
-    stream.write((char *)&m_region, sizeof(m_region));
-    stream.write((char *)&m_centroid, sizeof(m_centroid));
-    stream.write((char *)&m_area, sizeof(m_area));
-    stream.write((char *)&m_perimeter, sizeof(m_perimeter));
-    dXreadwrite::writeVector(stream, m_points);
+    stream.write(reinterpret_cast<const char *>(&m_type), sizeof(m_type));
+    stream.write(reinterpret_cast<const char *>(&m_region), sizeof(m_region));
+    stream.write(reinterpret_cast<const char *>(&m_centroid), sizeof(m_centroid));
+    stream.write(reinterpret_cast<const char *>(&m_area), sizeof(m_area));
+    stream.write(reinterpret_cast<const char *>(&m_perimeter), sizeof(m_perimeter));
+    dXreadwrite::writeVector(stream, points);
     return true;
 }
 
@@ -40,14 +40,14 @@ void SalaShape::setCentroidAreaPerim() {
     m_area = 0.0;
     m_perimeter = 0.0;
     m_centroid = Point2f(0, 0);
-    for (size_t i = 0; i < m_points.size(); i++) {
-        Point2f &p1 = m_points[i];
-        Point2f &p2 = m_points[(i + 1) % m_points.size()];
-        double a_i = (p1.x * p2.y - p2.x * p1.y) / 2.0;
-        m_area += a_i;
-        a_i /= 6.0;
-        m_centroid.x += (p1.x + p2.x) * a_i;
-        m_centroid.y += (p1.y + p2.y) * a_i;
+    for (size_t i = 0; i < points.size(); i++) {
+        Point2f &p1 = points[i];
+        Point2f &p2 = points[(i + 1) % points.size()];
+        double aI = (p1.x * p2.y - p2.x * p1.y) / 2.0;
+        m_area += aI;
+        aI /= 6.0;
+        m_centroid.x += (p1.x + p2.x) * aI;
+        m_centroid.y += (p1.y + p2.y) * aI;
         Point2f side = p2 - p1;
         m_perimeter += side.length();
     }
@@ -60,7 +60,7 @@ void SalaShape::setCentroidAreaPerim() {
     m_area = fabs(m_area);
     if (isOpen()) {
         // take off the automatically collected final side
-        Point2f side = m_points.back() - m_points.front();
+        Point2f side = points.back() - points.front();
         m_perimeter -= side.length();
     }
 }
@@ -71,8 +71,8 @@ void SalaShape::setCentroid(const Point2f &p) { m_centroid = p; }
 // get the angular deviation along the length of a poly line:
 double SalaShape::getAngDev() const {
     double dev = 0.0;
-    for (size_t i = 1; i < m_points.size() - 1; i++) {
-        double ang = angle(m_points[i - 1], m_points[i], m_points[i + 1]);
+    for (size_t i = 1; i < points.size() - 1; i++) {
+        double ang = angle(points[i - 1], points[i], points[i + 1]);
 
         // Quick mod - TV
 #if defined(_MSC_VER)
@@ -88,23 +88,23 @@ double SalaShape::getAngDev() const {
 
 std::vector<SalaEdgeU> SalaShape::getClippingSet(QtRegion &clipframe) const {
     std::vector<SalaEdgeU> edgeset;
-    bool last_inside = (clipframe.contains_touch(m_points[0])) ? true : false;
-    bool found_inside = last_inside;
-    for (size_t i = 1; i < m_points.size(); i++) {
-        bool next_inside = (clipframe.contains_touch(m_points[i])) ? true : false;
-        found_inside |= next_inside;
-        if (last_inside != next_inside) {
-            if (last_inside) {
-                EdgeU eu = clipframe.getCutEdgeU(m_points[i - 1], m_points[i]);
+    bool lastInside = (clipframe.contains_touch(points[0])) ? true : false;
+    bool foundInside = lastInside;
+    for (size_t i = 1; i < points.size(); i++) {
+        bool nextInside = (clipframe.contains_touch(points[i])) ? true : false;
+        foundInside |= nextInside;
+        if (lastInside != nextInside) {
+            if (lastInside) {
+                EdgeU eu = clipframe.getCutEdgeU(points[i - 1], points[i]);
                 edgeset.push_back(SalaEdgeU(i, false, eu));
             } else {
-                EdgeU eu = clipframe.getCutEdgeU(m_points[i], m_points[i - 1]);
+                EdgeU eu = clipframe.getCutEdgeU(points[i], points[i - 1]);
                 edgeset.push_back(SalaEdgeU(i - 1, true, eu));
             }
         }
-        last_inside = next_inside;
+        lastInside = nextInside;
     }
-    if (!found_inside) {
+    if (!foundInside) {
         // note: deliberately add a single empty SalaEdgeU if this polygon is never
         // inside the frame
         edgeset.push_back(SalaEdgeU());

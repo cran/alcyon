@@ -213,10 +213,10 @@ bool MapInfoData::exportFile(std::ostream& miffile, std::ostream& midfile, const
    // if bounds has not been filled in, fill it in
    if (m_bounds.empty()) {
       char bounds[256];
-      sprintf(bounds,"Bounds (%10f, %10f) (%10f, %10f)", map.m_region.bottom_left.x,
-                                                         map.m_region.bottom_left.y,
-                                                         map.m_region.top_right.x,
-                                                         map.m_region.top_right.y);
+      sprintf(bounds,"Bounds (%10f, %10f) (%10f, %10f)", map.m_region.bottomLeft.x,
+                                                         map.m_region.bottomLeft.y,
+                                                         map.m_region.topRight.x,
+                                                         map.m_region.topRight.y);
       m_bounds = bounds;
    }
 
@@ -243,9 +243,9 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
     // if bounds has not been filled in, fill it in
     if (m_bounds.empty()) {
         char bounds[256];
-        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", points.getRegion().bottom_left.x,
-                 points.getRegion().bottom_left.y, points.getRegion().top_right.x,
-                 points.getRegion().top_right.y);
+        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", points.getRegion().bottomLeft.x,
+                 points.getRegion().bottomLeft.y, points.getRegion().topRight.x,
+                 points.getRegion().topRight.y);
         m_bounds = bounds;
     }
 
@@ -272,9 +272,9 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
     // if bounds has not been filled in, fill it in
     if (m_bounds.empty()) {
         char bounds[256];
-        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", map.getRegion().bottom_left.x,
-                 map.getRegion().bottom_left.y, map.getRegion().top_right.x,
-                 map.getRegion().top_right.y);
+        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", map.getRegion().bottomLeft.x,
+                 map.getRegion().bottomLeft.y, map.getRegion().topRight.x,
+                 map.getRegion().topRight.y);
         m_bounds = bounds;
     }
 
@@ -305,18 +305,18 @@ bool MapInfoData::exportFile(std::ostream &miffile, std::ostream &midfile, const
                 miffile << "    PEN (1,2,0)" << std::endl;
             } else if (poly.isPolyLine()) {
                 miffile << "PLINE" << std::endl;
-                miffile << "  " << poly.m_points.size() << std::endl;
-                for (auto &point : poly.m_points) {
+                miffile << "  " << poly.points.size() << std::endl;
+                for (auto &point : poly.points) {
                     miffile << point.x << " " << point.y << std::endl;
                 }
                 miffile << "    PEN (1,2,0)" << std::endl;
             } else if (poly.isPolygon()) {
                 miffile << "REGION  1" << std::endl;
-                miffile << "  " << poly.m_points.size() + 1 << std::endl;
-                for (auto &point : poly.m_points) {
+                miffile << "  " << poly.points.size() + 1 << std::endl;
+                for (auto &point : poly.points) {
                     miffile << point.x << " " << point.y << std::endl;
                 }
-                miffile << poly.m_points[0].x << " " << poly.m_points[0].y << std::endl;
+                miffile << poly.points[0].x << " " << poly.points[0].y << std::endl;
                 miffile << "    PEN (1,2,0)" << std::endl;
                 miffile << "    BRUSH (2,16777215,16777215)" << std::endl;
                 miffile << "    CENTER " << poly.getCentroid().x << " " << poly.getCentroid().y
@@ -334,8 +334,8 @@ bool MapInfoData::exportPolygons(std::ostream &miffile, std::ostream &midfile,
     // if bounds has not been filled in, fill it in
     if (m_bounds.empty()) {
         char bounds[256];
-        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", region.bottom_left.x,
-                 region.bottom_left.y, region.top_right.x, region.top_right.y);
+        snprintf(bounds, 256, "Bounds (%10f, %10f) (%10f, %10f)", region.bottomLeft.x,
+                 region.bottomLeft.y, region.topRight.x, region.topRight.y);
         m_bounds = bounds;
     }
 
@@ -375,12 +375,10 @@ bool MapInfoData::exportPolygons(std::ostream &miffile, std::ostream &midfile,
 
 ///////////////////////////////////////////////////////////////////////
 
-MapInfoData::MapInfoData() {
-    m_version = "Version 300";
-    m_charset = "Charset \"WindowsLatin1\"";
-    m_delimiter = ',';
-    m_index = "Index 1";
-    m_coordsys = "CoordSys NonEarth Units \"m\" ";
+MapInfoData::MapInfoData()
+    : m_version("Version 300"), m_charset("Charset \"WindowsLatin1\""), m_delimiter(','),
+      m_index("Index 1"), m_coordsys("CoordSys NonEarth Units \"m\" ") {
+
     // note: m_bounds is filled in later
 }
 
@@ -551,11 +549,11 @@ std::ostream &MapInfoData::write(std::ostream &stream) const {
     // No longer used as of VERSION_MAPINFO_SHAPES
     int columns = m_columnheads.size();
     int rows = m_table.size();
-    stream.write((char *)&columns, sizeof(columns));
+    stream.write(reinterpret_cast<const char *>(&columns), sizeof(columns));
     for (int i = 0; i < m_columnheads.size(); i++) {
        m_columnheads[i].write(stream);
     }
-    stream.write((char *)&rows, sizeof(rows));
+    stream.write(reinterpret_cast<const char *>(&rows), sizeof(rows));
     for (int j = 0; j < m_table.size(); j++) {
        m_table[j].write(stream);
     }

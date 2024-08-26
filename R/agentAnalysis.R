@@ -56,40 +56,40 @@ agentAnalysis <- function(pointMap,
                           agentFov,
                           agentStepsToDecision,
                           agentLookMode,
-                          originX = NA,
-                          originY = NA,
+                          originX = vector(),
+                          originY = vector(),
                           locationSeed = 0L,
-                          numberOfTrails = NA,
+                          numberOfTrails = 0L,
                           getGateCounts = FALSE,
                           copyMap = TRUE,
                           verbose = FALSE,
                           progress = FALSE) {
-  if (!(agentLookMode %in% AgentLookMode)) {
-    stop("Unknown agent look mode: ", agentLookMode)
-  }
-  agentAnalysis <- Rcpp_agentAnalysis(
-    pointMapPtr = attr(pointMap, "sala_map"),
-    systemTimesteps = timesteps,
-    releaseRate = releaseRate,
-    agentLifeTimesteps = agentLifeTimesteps,
-    agentFov = agentFov,
-    agentStepsToDecision = agentStepsToDecision,
-    agentLookMode = agentLookMode,
-    agentReleaseLocations = cbind(originX, originY),
-    randomReleaseLocationSeed = locationSeed,
-    recordTrailForAgents = numberOfTrails,
-    getGateCounts = getGateCounts,
-    copyMapNV = copyMap,
-    verboseNV = verbose
-  )
-  finalResult <- list(
-    pointMap = processPointMapResult(pointMap, agentAnalysis)
-  )
-  if (hasName(agentAnalysis, "newShapeMaps")
-      && hasName(agentAnalysis$newShapeMaps, "trailMap")) {
-    finalResult$trailMap <- processPtrAsNewPolylineMap(
-      agentAnalysis$newShapeMaps$trailMap, "ShapeMap"
+    if (!(agentLookMode %in% AgentLookMode)) {
+        stop("Unknown agent look mode: ", agentLookMode)
+    }
+    agentAnalysis <- Rcpp_agentAnalysis(
+        mapPtr = attr(pointMap, "sala_map"),
+        systemTimesteps = timesteps,
+        releaseRate = releaseRate,
+        agentLifeTimesteps = agentLifeTimesteps,
+        agentFov = agentFov,
+        agentStepsToDecision = agentStepsToDecision,
+        agentLookMode = agentLookMode,
+        agentReleaseLocations = cbind(originX, originY),
+        randomReleaseLocationSeed = locationSeed,
+        recordTrailForAgents = numberOfTrails,
+        getGateCounts = getGateCounts,
+        copyMapNV = copyMap,
+        verboseNV = verbose
     )
-  }
-  return(finalResult)
+    finalResult <- list(
+        pointMap = processPointMapResult(pointMap, agentAnalysis)
+    )
+    if (hasName(agentAnalysis, "newShapeMaps") &&
+            hasName(agentAnalysis$newShapeMaps, "trailMap")) {
+        finalResult$trailMap <- processPtrAsNewPolylineMap(
+            agentAnalysis$newShapeMaps$trailMap, "ShapeMap"
+        )
+    }
+    return(finalResult)
 }

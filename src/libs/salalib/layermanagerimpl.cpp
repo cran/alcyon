@@ -67,12 +67,12 @@ void LayerManagerImpl::read(std::istream &stream) {
     m_layerLookup.clear();
     m_layers.clear();
     KeyType dummy;
-    stream.read((char *)&dummy, sizeof(dummy));
-    stream.read((char *)&m_visibleLayers, sizeof(m_visibleLayers));
+    stream.read(reinterpret_cast<char *>(&dummy), sizeof(dummy));
+    stream.read(reinterpret_cast<char *>(&m_visibleLayers), sizeof(m_visibleLayers));
     int count;
-    stream.read((char *)&count, sizeof(int));
+    stream.read(reinterpret_cast<char *>(&count), sizeof(int));
     for (int i = 0; i < count; ++i) {
-        stream.read((char *)&dummy, sizeof(dummy));
+        stream.read(reinterpret_cast<char *>(&dummy), sizeof(dummy));
         m_layers.push_back(dXstring::readString(stream));
         m_layerLookup[m_layers.back()] = i;
     }
@@ -113,8 +113,8 @@ void LayerManagerImpl::write(std::ostream &stream) const {
 
     stream.write((const char *)&availableLayers, sizeof(KeyType));
     stream.write((const char *)&m_visibleLayers, sizeof(KeyType));
-    int size_as_int = (int)m_layers.size();
-    stream.write((const char *)&size_as_int, sizeof(int));
+    int sizeAsInt = (int)m_layers.size();
+    stream.write((const char *)&sizeAsInt, sizeof(int));
 
     availableLayers = 0xffffffff << (32 + 0xfffffffe);
     int64_t newlayer = 0x1;

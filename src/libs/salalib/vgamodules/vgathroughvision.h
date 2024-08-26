@@ -6,10 +6,21 @@
 
 #pragma once
 
-#include "salalib/ivga.h"
+#include "ivga.h"
+
 #include "salalib/pointmap.h"
 
-class VGAThroughVision : IVGA {
+class VGAThroughVision : public IVGA {
+  protected:
+    struct AnalysisData {
+        const Point &point;
+        const PixelRef ref;
+        size_t attributeDataRow;
+        int misc = 0;
+        AnalysisData(const Point &point, const PixelRef ref, size_t attributeDataRow, int misc = 0)
+            : point(point), ref(ref), attributeDataRow(attributeDataRow), misc(misc) {}
+    };
+
   public:
     struct Column {
         inline static const std::string        //
@@ -17,6 +28,7 @@ class VGAThroughVision : IVGA {
     };
 
   public:
+    VGAThroughVision(const PointMap &map) : IVGA(map) {}
     std::string getAnalysisName() const override { return "Through Vision Analysis"; }
-    AnalysisResult run(Communicator *comm, PointMap &map, bool) override;
+    AnalysisResult run(Communicator *comm) override;
 };

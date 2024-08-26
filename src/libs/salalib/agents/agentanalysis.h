@@ -23,7 +23,7 @@ class AgentAnalysis : public IAnalysis {
 
   private: // members
     PointMap &m_pointMap;
-    AgentProgram agentProgram;
+    AgentProgram m_agentProgram;
 
     size_t m_systemTimesteps;
     double m_releaseRate = 0.1;
@@ -40,7 +40,7 @@ class AgentAnalysis : public IAnalysis {
 
   private: // internal functions
     void init(std::vector<Agent> &agents, std::vector<PixelRef> &releaseLocations, size_t agent,
-              int trail_num);
+              int trailNum);
 
     void move(std::vector<Agent> &agents);
 

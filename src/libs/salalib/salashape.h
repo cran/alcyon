@@ -15,7 +15,7 @@
 
 class SalaShape {
   public:
-    std::vector<Point2f> m_points;
+    std::vector<Point2f> points;
     enum {
         SHAPE_POINT = 0x01,
         SHAPE_LINE = 0x02,
@@ -35,34 +35,20 @@ class SalaShape {
     double m_perimeter;
     // these are all temporary data which are recalculated on reload
     //    mutable bool m_selected;
-    mutable float m_color;
-    mutable int m_draworder;
+    mutable float m_color = 0;
+    mutable int m_draworder = -1;
 
   public:
-    SalaShape(unsigned char type = 0) {
-        m_type = type;
-        m_draworder = -1;
-        //        m_selected = false;
-        m_area = 0.0;
-        m_perimeter = 0.0;
-    }
-    SalaShape(const Point2f &point) {
-        m_type = SHAPE_POINT;
-        m_draworder = -1;
-        //        m_selected = false;
+    SalaShape(unsigned char type = 0)
+        : m_type(type), m_area(0.0), m_perimeter(0.0), m_draworder(-1) {}
+    SalaShape(const Point2f &point)
+        : m_type(SHAPE_POINT), m_centroid(point), m_area(0.0), m_perimeter(0.0), m_draworder(-1) {
         m_region = Line(point, point);
-        m_centroid = point;
-        m_area = 0.0;
-        m_perimeter = 0.0;
     }
-    SalaShape(const Line &line) {
-        m_type = SHAPE_LINE;
-        m_draworder = -1;
-        //        m_selected = false;
-        m_region = line;
+    SalaShape(const Line &line)
+        : m_type(SHAPE_LINE), m_region(line), m_area(0.0), m_perimeter(m_region.length()),
+          m_draworder(-1) {
         m_centroid = m_region.getCentre();
-        m_area = 0.0;
-        m_perimeter = m_region.length();
     }
     bool operator==(const SalaShape &other) const {
         return                                     //
@@ -114,11 +100,11 @@ class SalaShape {
         if (isLine()) {
             lines.push_back(getLine());
         } else if (isPolyLine() || isPolygon()) {
-            for (size_t j = 0; j < m_points.size() - 1; j++) {
-                lines.push_back(Line(m_points[j], m_points[j + 1]));
+            for (size_t j = 0; j < points.size() - 1; j++) {
+                lines.push_back(Line(points[j], points[j + 1]));
             }
             if (isClosed()) {
-                lines.push_back(Line(m_points[m_points.size() - 1], m_points[0]));
+                lines.push_back(Line(points[points.size() - 1], points[0]));
             }
         }
         return lines;

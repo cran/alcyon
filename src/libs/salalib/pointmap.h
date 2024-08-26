@@ -28,9 +28,7 @@ namespace depthmapX {
 
       public:
         PointMapException(PointMapExceptionType errorType, std::string message)
-            : depthmapX::RuntimeException(message) {
-            m_errorType = errorType;
-        }
+            : depthmapX::RuntimeException(message), m_errorType(errorType) {}
         PointMapExceptionType getErrorType() const { return m_errorType; }
     };
 } // namespace depthmapX
@@ -38,22 +36,35 @@ namespace depthmapX {
 class PointMap : public AttributeMap {
 
   public: // members
-    bool m_hasIsovistAnalysis = false;
+    bool hasIsovistAnalysis() {
+        for (size_t j = 0; j < m_cols; j++) {
+            for (size_t k = 0; k < m_rows; k++) {
+                // check if occdistance of any pixel's bin is set, meaning that
+                // the isovist analysis was done
+                for (int b = 0; b < 32; b++) {
+                    if (m_points(k, j).m_node && m_points(k, j).m_node->occdistance(b) > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
   protected: // members
     std::string m_name;
     const QtRegion *m_parentRegion;
     depthmapX::ColumnMatrix<Point> m_points; // will contain the graph reference when created
-    int m_filled_point_count;
+    int m_filledPointCount;
     double m_spacing;
     Point2f m_offset;
-    Point2f m_bottom_left;
+    Point2f m_bottomLeft;
     bool m_initialised;
     bool m_blockedlines;
     bool m_processed;
     bool m_boundarygraph;
     int m_undocounter;
-    std::vector<PixelRefPair> m_merge_lines;
+    std::vector<PixelRefPair> m_mergeLines;
 
   public: // known columns
     struct Column {
@@ -65,7 +76,7 @@ class PointMap : public AttributeMap {
 
   public: // ctors
     PointMap(const QtRegion &parentRegion, const std::string &name = std::string("VGA Map"));
-    virtual ~PointMap() {}
+    ~PointMap() override {}
     void copy(const PointMap &sourcemap, bool copypoints = false, bool copyattributes = false);
     const std::string &getName() const { return m_name; }
 
@@ -75,7 +86,6 @@ class PointMap : public AttributeMap {
         : AttributeMap(std::move(other.m_attributes), std::move(other.m_attribHandle),
                        std::move(other.m_layers)),
           m_parentRegion(std::move(other.m_parentRegion)), m_points(std::move(other.m_points)) {
-        m_hasIsovistAnalysis = other.m_hasIsovistAnalysis;
         copy(other);
     }
     PointMap &operator=(PointMap &&other) {
@@ -84,7 +94,6 @@ class PointMap : public AttributeMap {
         m_attributes = std::move(other.m_attributes);
         m_attribHandle = std::move(other.m_attribHandle);
         m_layers = std::move(other.m_layers);
-        m_hasIsovistAnalysis = other.m_hasIsovistAnalysis;
         copy(other);
         return *this;
     }
@@ -94,7 +103,7 @@ class PointMap : public AttributeMap {
   public: // methods
     void communicate(time_t &atime, Communicator *comm, size_t record);
     // constrain is constrain to existing rows / cols
-    PixelRef pixelate(const Point2f &p, bool constrain = true, int scalefactor = 1) const;
+    PixelRef pixelate(const Point2f &p, bool constrain = true, int scalefactor = 1) const override;
     Point2f depixelate(const PixelRef &p, double scalefactor = 1.0) const; // Inlined below
     QtRegion regionate(const PixelRef &p, double border) const;            // Inlined below
     void addPointsInRegionToSet(const QtRegion &r, std::set<PixelRef> &selSet);
@@ -104,12 +113,12 @@ class PointMap : public AttributeMap {
         // unnecessary converter until the m_merge_lines variable is
         // replaced with a std container
         std::vector<std::pair<PixelRef, PixelRef>> mergedPixelPairs;
-        for (size_t i = 0; i < m_merge_lines.size(); i++) {
-            mergedPixelPairs.push_back(std::make_pair(m_merge_lines[i].a, m_merge_lines[i].b));
+        for (size_t i = 0; i < m_mergeLines.size(); i++) {
+            mergedPixelPairs.push_back(std::make_pair(m_mergeLines[i].a, m_mergeLines[i].b));
         }
         return mergedPixelPairs;
     }
-    const std::vector<PixelRefPair> &getMergeLines() const { return m_merge_lines; }
+    const std::vector<PixelRefPair> &getMergeLines() const { return m_mergeLines; }
 
     bool isProcessed() const { return m_processed; }
     void fillLine(const Line &li);
@@ -119,7 +128,7 @@ class PointMap : public AttributeMap {
     bool fillPoint(const Point2f &p, bool add = true); // use add = false for remove point
     // bool blockPoint(const Point2f& p, bool add = true); // no longer used
     //
-    bool makePoints(const Point2f &seed, int fill_type,
+    bool makePoints(const Point2f &seed, int fillType,
                     Communicator *comm = nullptr); // Point2f non-reference deliberate
     bool clearAllPoints();                         // Clear *selected* points
     bool clearPointsInRange(PixelRef bl, PixelRef tr,
@@ -157,16 +166,17 @@ class PointMap : public AttributeMap {
         return m_points(static_cast<size_t>(p.y), static_cast<size_t>(p.x));
     }
     depthmapX::BaseMatrix<Point> &getPoints() { return m_points; }
+    const depthmapX::BaseMatrix<Point> &getPoints() const { return m_points; }
     const int &pointState(const PixelRef &p) const {
         return m_points(static_cast<size_t>(p.y), static_cast<size_t>(p.x)).m_state;
     }
     // to be phased out
     bool blockedAdjacent(const PixelRef p) const;
 
-    int getFilledPointCount() const { return m_filled_point_count; }
+    int getFilledPointCount() const { return m_filledPointCount; }
 
     void requireIsovistAnalysis() {
-        if (!m_hasIsovistAnalysis) {
+        if (!hasIsovistAnalysis()) {
             throw depthmapX::PointMapException(
                 depthmapX::PointMapExceptionType::NO_ISOVIST_ANALYSIS,
                 "Current pointmap does not contain isovist analysis");
@@ -210,82 +220,18 @@ class PointMap : public AttributeMap {
 // inlined to make thread safe
 
 inline Point2f PointMap::depixelate(const PixelRef &p, double scalefactor) const {
-    return Point2f(m_bottom_left.x + m_spacing * scalefactor * double(p.x),
-                   m_bottom_left.y + m_spacing * scalefactor * double(p.y));
+    return Point2f(m_bottomLeft.x + m_spacing * scalefactor * double(p.x),
+                   m_bottomLeft.y + m_spacing * scalefactor * double(p.y));
 }
 
 inline QtRegion PointMap::regionate(const PixelRef &p, double border) const {
-    return QtRegion(Point2f(m_bottom_left.x + m_spacing * (double(p.x) - 0.5 - border),
-                            m_bottom_left.y + m_spacing * (double(p.y) - 0.5 - border)),
-                    Point2f(m_bottom_left.x + m_spacing * (double(p.x) + 0.5 + border),
-                            m_bottom_left.y + m_spacing * (double(p.y) + 0.5 + border)));
+    return QtRegion(Point2f(m_bottomLeft.x + m_spacing * (double(p.x) - 0.5 - border),
+                            m_bottomLeft.y + m_spacing * (double(p.y) - 0.5 - border)),
+                    Point2f(m_bottomLeft.x + m_spacing * (double(p.x) + 0.5 + border),
+                            m_bottomLeft.y + m_spacing * (double(p.y) + 0.5 + border)));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-
-// A helper class for metric integration
-
-// to allow a dist / PixelRef pair for easy sorting
-// (have to do comparison operation on both dist and PixelRef as
-// otherwise would have a duplicate key for pqmap / pqvector)
-
-struct MetricTriple {
-    float dist;
-    PixelRef pixel;
-    PixelRef lastpixel;
-    MetricTriple(float d = 0.0f, PixelRef p = NoPixel, PixelRef lp = NoPixel) {
-        dist = d;
-        pixel = p;
-        lastpixel = lp;
-    }
-    friend bool operator==(const MetricTriple &mp1, const MetricTriple &mp2);
-    friend bool operator<(const MetricTriple &mp1, const MetricTriple &mp2);
-    friend bool operator>(const MetricTriple &mp1, const MetricTriple &mp2);
-    friend bool operator!=(const MetricTriple &mp1, const MetricTriple &mp2);
-};
-
-inline bool operator==(const MetricTriple &mp1, const MetricTriple &mp2) {
-    return (mp1.dist == mp2.dist && mp1.pixel == mp2.pixel);
-}
-inline bool operator<(const MetricTriple &mp1, const MetricTriple &mp2) {
-    return (mp1.dist < mp2.dist) || (mp1.dist == mp2.dist && mp1.pixel < mp2.pixel);
-}
-inline bool operator>(const MetricTriple &mp1, const MetricTriple &mp2) {
-    return (mp1.dist > mp2.dist) || (mp1.dist == mp2.dist && mp1.pixel > mp2.pixel);
-}
-inline bool operator!=(const MetricTriple &mp1, const MetricTriple &mp2) {
-    return (mp1.dist != mp2.dist) || (mp1.pixel != mp2.pixel);
-}
-
-// Note: angular triple simply based on metric triple
-
-struct AngularTriple {
-    float angle;
-    PixelRef pixel;
-    PixelRef lastpixel;
-    AngularTriple(float a = 0.0f, PixelRef p = NoPixel, PixelRef lp = NoPixel) {
-        angle = a;
-        pixel = p;
-        lastpixel = lp;
-    }
-    friend bool operator==(const AngularTriple &mp1, const AngularTriple &mp2);
-    friend bool operator<(const AngularTriple &mp1, const AngularTriple &mp2);
-    friend bool operator>(const AngularTriple &mp1, const AngularTriple &mp2);
-    friend bool operator!=(const AngularTriple &mp1, const AngularTriple &mp2);
-};
-
-inline bool operator==(const AngularTriple &mp1, const AngularTriple &mp2) {
-    return (mp1.angle == mp2.angle && mp1.pixel == mp2.pixel);
-}
-inline bool operator<(const AngularTriple &mp1, const AngularTriple &mp2) {
-    return (mp1.angle < mp2.angle) || (mp1.angle == mp2.angle && mp1.pixel < mp2.pixel);
-}
-inline bool operator>(const AngularTriple &mp1, const AngularTriple &mp2) {
-    return (mp1.angle > mp2.angle) || (mp1.angle == mp2.angle && mp1.pixel > mp2.pixel);
-}
-inline bool operator!=(const AngularTriple &mp1, const AngularTriple &mp2) {
-    return (mp1.angle != mp2.angle) || (mp1.pixel != mp2.pixel);
-}
 
 // true grads are also similar to generated grads...
 // this scruffy helper function converts a true grad to a bin:
@@ -519,7 +465,7 @@ inline int flagoctant(int bin) {
 // Another helper, this time to write down the q-octant for the bin opposing you
 
 inline int q_opposite(int bin) {
-    int opposing_bin = (16 + bin) % 32;
+    int opposingBin = (16 + bin) % 32;
 
     /*
      *       \ 6 | 7 /
@@ -529,5 +475,5 @@ inline int q_opposite(int bin) {
      *      / 4 | 5 \
      */
 
-    return flagoctant(opposing_bin);
+    return flagoctant(opposingBin);
 }

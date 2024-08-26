@@ -6,17 +6,20 @@
 
 #pragma once
 
-#include "salalib/ivga.h"
-#include "salalib/pixelref.h"
+#include "ivgavisual.h"
 #include "salalib/pointmap.h"
 
-#include "genlib/simplematrix.h"
 #include "genlib/stringutils.h"
 
-class VGAVisualGlobal : IVGA {
+class VGAVisualGlobal : public IVGAVisual {
   private:
     double m_radius;
-    bool m_gates_only;
+    bool m_gatesOnly;
+    bool m_simpleVersion = false;
+
+    // To maintain binary compatibility with older .graph versions
+    // write the last "misc" values back to the points
+    bool m_legacyWriteMiscs = false;
 
   public:
     struct Column {
@@ -36,10 +39,16 @@ class VGAVisualGlobal : IVGA {
         return column;
     }
 
+  private:
+    std::vector<std::string> getColumns(bool simpleVersion) const;
+
   public:
+    VGAVisualGlobal(const PointMap &map, double radius, bool gatesOnly)
+        : IVGAVisual(map), m_radius(radius), m_gatesOnly(gatesOnly) {}
     std::string getAnalysisName() const override { return "Global Visibility Analysis"; }
-    AnalysisResult run(Communicator *comm, PointMap &map, bool simple_version) override;
-    void extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
-                       depthmapX::RowMatrix<PixelRef> &extents);
-    VGAVisualGlobal(double radius, bool gates_only) : m_radius(radius), m_gates_only(gates_only) {}
+    AnalysisResult run(Communicator *comm) override;
+
+  public:
+    void setSimpleVersion(bool simpleVersion) { m_simpleVersion = simpleVersion; }
+    void setLegacyWriteMiscs(bool legacyWriteMiscs) { m_legacyWriteMiscs = legacyWriteMiscs; }
 };

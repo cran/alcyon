@@ -14,6 +14,11 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
 
 #if !defined(_OPENMP)
     std::cerr << "OpenMP NOT available, only running on a single core" << std::endl;
+    m_forceCommUpdatesMasterThread = false;
+#else
+    if (m_limitToThreads.has_value()) {
+        omp_set_num_threads(m_limitToThreads.value());
+    }
 #endif
 
     time_t atime = 0;
@@ -42,7 +47,7 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
 
     count = 0;
 
-    std::vector<DataPoint> col_data(filled.size());
+    std::vector<DataPoint> colData(filled.size());
 
     if (comm) {
         qtimer(atime, 0);
@@ -52,21 +57,18 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
     }
     std::vector<std::set<int>> hoods(filled.size());
 
-    int i, N = int(filled.size());
+    int i, n = int(filled.size());
     std::map<PixelRef, int> refToFilled;
-    for (i = 0; i < N; ++i) {
+    for (i = 0; i < n; ++i) {
         refToFilled.insert(std::make_pair(filled[size_t(i)], i));
     }
+
 #if defined(_OPENMP)
 #pragma omp parallel for default(shared) private(i) schedule(dynamic)
 #endif
-    for (i = 0; i < N; ++i) {
+    for (i = 0; i < n; ++i) {
         Point &p = m_map.getPoint(filled[size_t(i)]);
-        std::set<PixelRef> neighbourhood;
-#if defined(_OPENMP)
-#pragma omp critical(dumpNeighbourhood)
-#endif
-        { dumpNeighbourhood(p.getNode(), neighbourhood); }
+        std::set<PixelRef> neighbourhood = getNeighbourhood(p.getNode());
         for (auto &neighbour : neighbourhood) {
             if (m_map.getPoint(neighbour).hasNode()) {
                 hoods[size_t(i)].insert(refToFilled[neighbour]);
@@ -77,9 +79,9 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
 #if defined(_OPENMP)
 #pragma omp parallel for default(shared) private(i) schedule(dynamic)
 #endif
-    for (i = 0; i < N; ++i) {
+    for (i = 0; i < n; ++i) {
 
-        DataPoint &dp = col_data[i];
+        DataPoint &dp = colData[i];
 
         Point &p = m_map.getPoint(filled[size_t(i)]);
         if ((p.contextfilled() && !filled[size_t(i)].iseven())) {
@@ -121,10 +123,14 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
         }
 
 #if defined(_OPENMP)
-#pragma omp critical(count)
+#pragma omp atomic
 #endif
-        {
-            count++; // <- increment count
+        count++; // <- increment count
+
+#if defined(_OPENMP)
+        // only executed by the main thread if requested
+        if (!m_forceCommUpdatesMasterThread || omp_get_thread_num() == 0)
+#endif
             if (comm) {
                 if (qtimer(atime, 500)) {
                     if (comm->IsCancelled()) {
@@ -133,26 +139,25 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
                     comm->CommPostMessage(Communicator::CURRENT_RECORD, count);
                 }
             }
-        }
     }
 
     AnalysisResult result;
 
-    std::string cluster_col_name = Column::VISUAL_CLUSTERING_COEFFICIENT;
-    std::string control_col_name = Column::VISUAL_CONTROL;
-    std::string controllability_col_name = Column::VISUAL_CONTROLLABILITY;
-    int cluster_col = attributes.insertOrResetColumn(cluster_col_name);
-    result.addAttribute(cluster_col_name);
-    int control_col = attributes.insertOrResetColumn(control_col_name);
-    result.addAttribute(control_col_name);
-    int controllability_col = attributes.insertOrResetColumn(controllability_col_name);
-    result.addAttribute(controllability_col_name);
+    std::string clusterColName = Column::VISUAL_CLUSTERING_COEFFICIENT;
+    std::string controlColName = Column::VISUAL_CONTROL;
+    std::string controllabilityColName = Column::VISUAL_CONTROLLABILITY;
+    int clusterCol = attributes.insertOrResetColumn(clusterColName);
+    result.addAttribute(clusterColName);
+    int controlCol = attributes.insertOrResetColumn(controlColName);
+    result.addAttribute(controlColName);
+    int controllabilityCol = attributes.insertOrResetColumn(controllabilityColName);
+    result.addAttribute(controllabilityColName);
 
-    auto dataIter = col_data.begin();
+    auto dataIter = colData.begin();
     for (auto row : rows) {
-        row->setValue(cluster_col, dataIter->cluster);
-        row->setValue(control_col, dataIter->control);
-        row->setValue(controllability_col, dataIter->controllability);
+        row->setValue(clusterCol, dataIter->cluster);
+        row->setValue(controlCol, dataIter->control);
+        row->setValue(controllabilityCol, dataIter->controllability);
         dataIter++;
     }
 
@@ -161,15 +166,16 @@ AnalysisResult VGAVisualLocalOpenMP::run(Communicator *comm) {
     return result;
 }
 
-void VGAVisualLocalOpenMP::dumpNeighbourhood(Node &node, std::set<PixelRef> &hood) const {
+std::set<PixelRef> VGAVisualLocalOpenMP::getNeighbourhood(const Node &node) const {
+    std::set<PixelRef> hood;
     for (int i = 0; i < 32; i++) {
-        Bin &bin = node.bin(i);
-        for (auto pixVec : bin.m_pixel_vecs) {
-            for (PixelRef pix = pixVec.start();
-                 pix.col(bin.m_dir) <= pixVec.end().col(bin.m_dir);) {
+        const Bin &bin = node.bin(i);
+        for (auto pixVec : bin.pixelVecs) {
+            for (PixelRef pix = pixVec.start(); pix.col(bin.dir) <= pixVec.end().col(bin.dir);) {
                 hood.insert(pix);
-                pix.move(bin.m_dir);
+                pix.move(bin.dir);
             }
         }
     }
+    return hood;
 }
