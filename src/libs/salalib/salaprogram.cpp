@@ -20,15 +20,14 @@
 // User defined functions are not included yet, but should be fairly easy using
 // a global function stack alongside the global variable stack
 
-#include "salalib/salaprogram.h"
-#include "salalib/connector.h"
-#include "salalib/ngraph.h"
-#include "salalib/pointmap.h"
-#include "salalib/shapemap.h"
+#include "salaprogram.h"
+#include "connector.h"
+#include "ngraph.h"
+#include "pointmap.h"
+#include "shapemap.h"
 
 #include <cmath>
 #include <cstring>
-#include <float.h>
 #include <time.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +149,12 @@ bool SalaProgram::parse(std::istream &program) {
         int indent = 0;
         bool endloop = false;
         while (!endloop) {
-            char ch = program.peek();
+            std::istream::traits_type::int_type c = program.peek();
+            if (c == std::istream::traits_type::eof()) {
+                program.get(); // actually shift onto the eof character
+                break;
+            }
+            auto ch = std::istream::traits_type::to_char_type(c);
             switch (ch) {
             case ' ':
                 indent++;
@@ -163,23 +167,21 @@ bool SalaProgram::parse(std::istream &program) {
                 break;
             case '#':
                 // hit comment, read to end of line:
-                while (ch != EOF && ch != '\n') {
+                while (std::istream::traits_type::not_eof(c) && ch != '\n') {
                     program.get();
-                    ch = program.peek();
+                    c = program.peek();
+                    ch = std::istream::traits_type::to_char_type(c);
                 }
                 line++;
                 break;
             case '\\':
                 // hit line continuation, ignore everything after it:
-                while (ch != EOF && ch != '\n') {
+                while (std::istream::traits_type::not_eof(c) && ch != '\n') {
                     program.get();
-                    ch = program.peek();
+                    c = program.peek();
+                    ch = std::istream::traits_type::to_char_type(c);
                 }
                 line++;
-                break;
-            case EOF:
-                program.get(); // actually shift onto the eof character
-                endloop = true;
                 break;
             default:
                 endloop = true;
@@ -403,13 +405,16 @@ int SalaCommand::parse(std::istream &program, int line) {
             }
             {
                 char delim = alpha;
-                char beta = program.peek();
-                while (beta != EOF && beta != '\n' && (beta != delim || alpha == '\\')) {
+                std::istream::traits_type::int_type b = program.peek();
+                char beta = std::istream::traits_type::to_char_type(b);
+                while (std::istream::traits_type::not_eof(b) && beta != '\n' &&
+                       (beta != delim || alpha == '\\')) {
                     alpha = program.get();
-                    beta = program.peek();
+                    b = program.peek();
+                    beta = std::istream::traits_type::to_char_type(b);
                     buffer.add(alpha);
                 }
-                if (beta == EOF || beta == '\n') {
+                if (b == std::istream::traits_type::eof() || beta == '\n') {
                     throw SalaError("No closing quote", m_line);
                 } else {
                     program.get(); // take off closing quote and discard
@@ -498,10 +503,12 @@ int SalaCommand::parse(std::istream &program, int line) {
             // check for pair of open / close brackets: () or (  ) -- this is a null
             // value
             {
-                char beta = program.peek();
-                while (beta != EOF && beta == ' ') {
+                std::istream::traits_type::int_type b = program.peek();
+                char beta = std::istream::traits_type::to_char_type(b);
+                while (std::istream::traits_type::not_eof(b) && beta == ' ') {
                     alpha = program.get();
-                    beta = program.peek();
+                    b = program.peek();
+                    beta = std::istream::traits_type::to_char_type(b);
                 }
                 if (beta == ')') {
                     alpha = program.get();
@@ -530,10 +537,12 @@ int SalaCommand::parse(std::istream &program, int line) {
             // check for pair of open / close brackets: [] or [  ] -- this is a null
             // value or empty list depending on context
             {
-                char beta = program.peek();
-                while (beta != EOF && beta == ' ') {
+                std::istream::traits_type::int_type b = program.peek();
+                char beta = std::istream::traits_type::to_char_type(b);
+                while (std::istream::traits_type::not_eof(b) && beta == ' ') {
                     alpha = program.get();
-                    beta = program.peek();
+                    b = program.peek();
+                    beta = std::istream::traits_type::to_char_type(b);
                 }
                 if (beta == ']') {
                     alpha = program.get();
@@ -660,7 +669,7 @@ int SalaCommand::parse(std::istream &program, int line) {
                 last = decode(buffer);
                 buffer.clear();
             }
-            if (alpha != EOF &&
+            if (!program.eof() &&
                 alpha != 13) { // 13 ignored, as it appears \n is 10 in this stream...
                 if (!isalphanum_(alpha) && alpha != '&' &&
                     alpha != '|') { // include & and | for and and or

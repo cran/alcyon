@@ -1,43 +1,45 @@
 Package: alcyon
 Type: Package
 Title: Spatial Network Analysis
-Version: 0.5.0
+Version: 0.6.0
 Authors@R: c(
     person(given = "Petros",
            family = "Koutsolampros",
            email = "r-devel@pklampros.net",
-           role = c("cre", "aut", "cph"),
+           role = c("cre", "aut"),
            comment = c(ORCID = "0000-0003-2842-9899",
                        "'sala' library contributor through 'depthmapX'")),
     person(given = "Fani",
            family = "Kostourou",
-           role = c("aut", "ctb", "cph"),
+           role = c("ctb"),
            comment = c(ORCID = "0000-0002-6544-7693")),
     person(given = "Kimon",
            family = "Krenz",
-           role = c("ctb", "cph"),
+           role = c("ctb"),
            comment = c(ORCID = "0000-0001-6077-7282")),
     person(given = "Alasdair",
            family = "Turner",
-           role = c("ctb", "cph"),
+           role = c("ctb"),
            comment = c("'sala' library contributor through 'depthmapX'")),
     person(given = "Tasos",
            family = "Varoudis",
-           role = c("ctb", "cph"),
+           role = c("ctb"),
            comment = c(ORCID = "0000-0001-7790-5623",
                        "'sala' library contributor through 'depthmapX'")),
     person(given = "Christian",
            family = "Sailer",
-           role = c("ctb", "cph"),
+           role = c("ctb"),
            comment = c("'sala' library contributor through 'depthmapX'")),
     person(given = "Eva",
            family = "Friedrich",
-           role = c("ctb", "cph"),
+           role = c("ctb"),
            comment = c("'sala' library contributor through 'depthmapX'")),
     person(given = "University College London",
-           role = "fnd"),
+           role = c("fnd", "cph"),
+           comment = c("2015 - 2020")),
     person(given = "Spacelab UK",
-           role = "fnd"))
+           role = "fnd",
+           comment = c("2015 - 2020")))
 Description: Interface package for 'sala', the spatial network analysis library
     from the 'depthmapX' software application. The R parts of the code are based
     on the 'rdepthmap' package. Allows for the analysis of urban and
@@ -68,25 +70,22 @@ Collate: 'generics.R' 'rcppRoxygen.R' 'helper-loadMapsRoxygen.R'
         'vgaLocal.R'
 RoxygenNote: 7.3.2
 Language: en-GB
-URL: https://github.com/spatialnous/alcyon
+URL: https://github.com/spatialnous/alcyon,
+        https://spatialnous.github.io/alcyon/
 NeedsCompilation: yes
-Packaged: 2024-08-25 16:29:30 UTC; petros
-Author: Petros Koutsolampros [cre, aut, cph]
+Packaged: 2024-12-22 17:49:13 UTC; petros
+Author: Petros Koutsolampros [cre, aut]
     (<https://orcid.org/0000-0003-2842-9899>, 'sala' library
     contributor through 'depthmapX'),
-  Fani Kostourou [aut, ctb, cph]
-    (<https://orcid.org/0000-0002-6544-7693>),
-  Kimon Krenz [ctb, cph] (<https://orcid.org/0000-0001-6077-7282>),
-  Alasdair Turner [ctb, cph] ('sala' library contributor through
-    'depthmapX'),
-  Tasos Varoudis [ctb, cph] (<https://orcid.org/0000-0001-7790-5623>,
-    'sala' library contributor through 'depthmapX'),
-  Christian Sailer [ctb, cph] ('sala' library contributor through
-    'depthmapX'),
-  Eva Friedrich [ctb, cph] ('sala' library contributor through
-    'depthmapX'),
-  University College London [fnd],
-  Spacelab UK [fnd]
+  Fani Kostourou [ctb] (<https://orcid.org/0000-0002-6544-7693>),
+  Kimon Krenz [ctb] (<https://orcid.org/0000-0001-6077-7282>),
+  Alasdair Turner [ctb] ('sala' library contributor through 'depthmapX'),
+  Tasos Varoudis [ctb] (<https://orcid.org/0000-0001-7790-5623>, 'sala'
+    library contributor through 'depthmapX'),
+  Christian Sailer [ctb] ('sala' library contributor through 'depthmapX'),
+  Eva Friedrich [ctb] ('sala' library contributor through 'depthmapX'),
+  University College London [fnd, cph] (2015 - 2020),
+  Spacelab UK [fnd] (2015 - 2020)
 Maintainer: Petros Koutsolampros <r-devel@pklampros.net>
 Repository: CRAN
-Date/Publication: 2024-08-26 05:50:06 UTC
+Date/Publication: 2024-12-22 18:20:02 UTC

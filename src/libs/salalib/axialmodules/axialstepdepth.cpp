@@ -4,9 +4,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "salalib/axialmodules/axialstepdepth.h"
+#include "axialstepdepth.h"
 
-#include "genlib/pflipper.h"
+#include "../genlib/pflipper.h"
 
 AnalysisResult AxialStepDepth::run(Communicator *, ShapeGraph &map, bool) {
 

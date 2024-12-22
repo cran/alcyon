@@ -7,9 +7,10 @@
 #pragma once
 
 #include "ivgavisual.h"
-#include "salalib/pointmap.h"
 
-#include "genlib/stringutils.h"
+#include "../pointmap.h"
+
+#include "../genlib/stringutils.h"
 
 class VGAVisualGlobal : public IVGAVisual {
   private:

@@ -8,16 +8,16 @@
 
 #include "agentprogram.h"
 
-#include "salalib/agents/agent.h"
-#include "salalib/ianalysis.h"
-#include "salalib/pointmap.h"
+#include "../ianalysis.h"
+#include "../pointmap.h"
+#include "agent.h"
 #include <bitset>
 
 class AgentAnalysis : public IAnalysis {
 
   public: // publicly accessible struct
     struct TrailRecordOptions {
-        std::optional<size_t> limit;
+        std::optional<size_t> limit = std::nullopt;
         std::reference_wrapper<ShapeMap> map;
     };
 
