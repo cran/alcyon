@@ -1,6 +1,6 @@
-4a296e04e33a1cabfb252a83c82bd1b4 *DESCRIPTION
+5c52add7bb6d01e557ce020aacb71302 *DESCRIPTION
 14e39e42e93caa3de73e6d9fe0fc0d2f *NAMESPACE
-d739c19ec0c3e7e69c06534f6dcee76c *NEWS.md
+efa31d0d9c10c24b3783bad494280df9 *NEWS.md
 06c8cce60449168e615cdf187a272ed4 *R/AgentLookMode.R
 00f217831615fd5903fc357f84cdd4ff *R/AllLineShapeGraph.R
 38c0ef3902c9c8fd0e92063c94333c3b *R/AxialShapeGraph.R
@@ -34,8 +34,8 @@ f6dec1d2360492b9f83a82c31d9e3b4c *R/shapegraphToGraphData.R
 42f89eabfdfb1a3311067842d5d84b04 *README.md
 b16f39466006211dfc4b580b387e9d00 *build/vignette.rds
 01c5a91bb9b806d00b36251c5120f082 *cleanup
-7da524924d5575c357a3e8f4cf488c79 *configure
-fcf53e6b6beb306cf7d860c68cb8f0b3 *configure.ac
+6c2c90be7ddf7753d36dd7021052d00a *configure
+717b83fa1731da211ec4d2ac79249213 *configure.ac
 1c0706faa7053dc0c28e390ca841e2b0 *configure.win
 82f5bdae0e96c2510f7bf7c25a45cfc0 *inst/CITATION
 f0687b09099fec872a63136bb19cef2a *inst/WORDLIST
@@ -159,7 +159,7 @@ d2842c34a4f86ac3a56167ae0970448c *src/enum_TraversalType.h
 ed27eaa5b0aaaaf304c890bfcb02aaa2 *src/helper_rcppanalysisresults.h
 9c8d87abd32417cd8f207666e8249392 *src/helper_runAnalysis.h
 6e9b99e68ba5082a33215e3f2b0199a7 *src/libs/CMakeLists.txt
-61c6733fdd07b66c8b3bc436ad32fb54 *src/libs/salalib/CMakeLists.txt
+c8d2ed1ce38578755dc735812eec960e *src/libs/salalib/CMakeLists.txt
 75d892af193fd5a298f724c4377d8f62 *src/libs/salalib/LICENSES/GPL-3.0-or-later.txt
 310c7c93cf5181c6b0cc8229a1f3c6f6 *src/libs/salalib/LICENSES/LGPL-2.1-or-later.txt
 ef520ab649ac99ab8a276d233fac81a8 *src/libs/salalib/README.md
@@ -210,8 +210,8 @@ ba774e7fc67f582be7d0eec2edc69909 *src/libs/salalib/fileproperties.h
 234e82eb925e889ac69f3c393a444401 *src/libs/salalib/genlib/comm.h
 2c0d542df3d4d17d38153efc23186f6d *src/libs/salalib/genlib/containerutils.h
 6fb423075723bc0f65607e14180e73c2 *src/libs/salalib/genlib/exceptions.h
-87c73263ff5db22253c150ed19d0dccd *src/libs/salalib/genlib/p2dpoly.cpp
-e66491194ff315585d83938d9aab76f1 *src/libs/salalib/genlib/p2dpoly.h
+318292a8cc90221c175fab5ea91c05bc *src/libs/salalib/genlib/p2dpoly.cpp
+2b9055f21ed94c7b05c8b8b4bdb88932 *src/libs/salalib/genlib/p2dpoly.h
 5f78151ce0fb9a560ae648e689fa1bd3 *src/libs/salalib/genlib/pafmath.cpp
 5a51991a8669e75ffb7dfcd51cf0426a *src/libs/salalib/genlib/pafmath.h
 56cef3599ef2fa1d05ac59e22c5dc222 *src/libs/salalib/genlib/pflipper.h
@@ -228,7 +228,7 @@ eba822f498a8ce6e1e2f113ec641f423 *src/libs/salalib/gridproperties.h
 6dc7e62bc5a556daa044d5c4cffd0e5e *src/libs/salalib/ianalysis.h
 161ca97679434c22804acaefdd1e48e9 *src/libs/salalib/iaxial.h
 20016f2e50576bce750765c870e26597 *src/libs/salalib/importtypedefs.h
-fd17f9ed90178dabdddb190d60093506 *src/libs/salalib/importutils.cpp
+eb66d075aa3841466f26d0a5fdc7642f *src/libs/salalib/importutils.cpp
 c7dbf252dee8aa4d36bb6fb5e40dc0b6 *src/libs/salalib/importutils.h
 703ce95d0de7c373e4a4f0b944a30185 *src/libs/salalib/isegment.h
 e7445369b0fd6347e73dc12460d5f947 *src/libs/salalib/isovist.cpp
@@ -273,8 +273,8 @@ bbe698cea60a137b31fde7028e9463d9 *src/libs/salalib/salaedgeu.h
 c6d402e4b5cd9cc505c5a9cbf1b65a48 *src/libs/salalib/salaevent.h
 2110cb957c4a826142f98e8aee6d6d38 *src/libs/salalib/salaprogram.cpp
 e5619ec01266618784275294458c715e *src/libs/salalib/salaprogram.h
-5f06c7a4abdcb34e3a3e0e71de5cc118 *src/libs/salalib/salashape.cpp
-84f26b494d54b657d54ec76a011273b4 *src/libs/salalib/salashape.h
+e276447cfef68da247a4abf4c362a9b5 *src/libs/salalib/salashape.cpp
+7bcd5ae0506a55f4b15b9079d5801045 *src/libs/salalib/salashape.h
 15333e287e38833b58b80a340a2f84b4 *src/libs/salalib/segmmodules/CMakeLists.txt
 29e0f4f8c62487780add48e7528a7ba7 *src/libs/salalib/segmmodules/segmangular.cpp
 b93e6a581d01ae673c39999de9ff5e25 *src/libs/salalib/segmmodules/segmangular.h
@@ -363,7 +363,7 @@ d59c69cb8f0b82fafa40d81b9df55f18 *src/libs/salalib/vgamodules/vgavisualshortestp
 e5dad23209d3af9b8e8b088f41347d5d *src/main.cpp
 d41b38de51fd2b31e58bf8acece5f296 *src/process_convertExternal.cpp
 2bc1cd6b7a1b9adade532bc7edceca82 *src/process_convertInternal.cpp
-7f14f50dd48e0b94ecd01a7770b84c17 *src/process_isovist.cpp
+7dc57813d3e16b75b8ac826d13d5a49c *src/process_isovist.cpp
 fec8cabba22417926ad409cf5359183d *src/process_link.cpp
 a40975d0ab5d006532a241b02f60c5d1 *src/rcpp_AllLineMap.cpp
 8fdef8770ea0f82abc4d08f3879709a4 *src/rcpp_PointMap.cpp
@@ -372,7 +372,7 @@ a40975d0ab5d006532a241b02f60c5d1 *src/rcpp_AllLineMap.cpp
 cc053cc43124a5e07df3ff103cadffa7 *src/rcpp_ShapeMap.cpp
 6f1298c17aa2ef20ba3ef4e7bd33fb64 *src/rcpp_ShapeMap.h
 bc0aa2ff11926dcd6c34077f2e316358 *src/rcpp_metagraphdata.cpp
-f5628dd9ab357c9a226a95b6c62123d1 *tests/testthat.R
+2fff925b85df97e1dcb5842d8b0c0451 *tests/testthat.R
 94696c6ff8984a9278ff4fc150fa45dc *tests/testthat/helper-loadMaps.R
 a7b1770bb807216fbcd9fec9711684be *tests/testthat/test-AxialShapeGraph.R
 37ce143da13b5048721eeb2e7bac2bbd *tests/testthat/test-MetaGraph.R
