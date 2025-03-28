@@ -1,7 +1,7 @@
 Package: alcyon
 Type: Package
 Title: Spatial Network Analysis
-Version: 0.7.0
+Version: 0.8.0
 Authors@R: c(
     person(given = "Petros",
            family = "Koutsolampros",
@@ -52,9 +52,9 @@ Description: Interface package for 'sala', the spatial network analysis library
 License: GPL-3
 Encoding: UTF-8
 LinkingTo: Rcpp, cli
-Imports: Rcpp, methods, withr
+Imports: Rcpp, methods
 Depends: sf, stars
-Suggests: knitr, rmarkdown, testthat
+Suggests: knitr, rmarkdown, testthat, withr
 SystemRequirements: C++17
 VignetteBuilder: knitr
 Collate: 'generics.R' 'rcppRoxygen.R' 'helper-loadMapsRoxygen.R'
@@ -73,7 +73,7 @@ Language: en-GB
 URL: https://github.com/spatialnous/alcyon,
         https://spatialnous.github.io/alcyon/
 NeedsCompilation: yes
-Packaged: 2025-01-21 11:34:43 UTC; petros
+Packaged: 2025-03-28 08:06:05 UTC; petros
 Author: Petros Koutsolampros [cre, aut]
     (<https://orcid.org/0000-0003-2842-9899>, 'sala' library
     contributor through 'depthmapX'),
@@ -88,4 +88,4 @@ Author: Petros Koutsolampros [cre, aut]
   Spacelab UK [fnd] (2015 - 2020)
 Maintainer: Petros Koutsolampros <r-devel@pklampros.net>
 Repository: CRAN
-Date/Publication: 2025-01-21 12:10:02 UTC
+Date/Publication: 2025-03-28 09:00:02 UTC

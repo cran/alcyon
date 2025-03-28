@@ -3,10 +3,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "isovist.h"
+#include "isovist.hpp"
+#include "salalib/tolerances.hpp"
 
 #include <cmath>
-#include <float.h>
 #include <time.h>
 
 ///////////////////////////////////////////////////////////////////////
@@ -18,11 +18,11 @@
 
 // This uses BSP trees, and appears to be superfast once the tree is built
 
-void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, double startangle,
-                     double endangle) {
+void Isovist::makeit(BSPNode *root, const Point2f &p, const Region4f &region, double startangle,
+                     double endangle, bool forceClosePoly) {
     // region is used to give an idea of scale, so isovists can be linked when
     // there is floating point error
-    double tolerance = std::max(region.width(), region.height()) * 1e-9;
+    double tolerance = std::max(region.width(), region.height()) * Tolerance::ISOVIST_POINT_MATCH;
 
     m_centre = p;
     m_blocks.clear();
@@ -66,23 +66,23 @@ void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, do
             // perimeter! occlusivity!
             markedcentre = true;
         }
-        if (curr != m_blocks.begin() && !approxeq(prev->endpoint, curr->startpoint, tolerance)) {
+        if (curr != m_blocks.begin() && !prev->endpoint.approxeq(curr->startpoint, tolerance)) {
             m_poly.push_back(curr->startpoint);
             // record perimeter information:
-            double occluded = dist(prev->endpoint, curr->startpoint);
+            double occluded = prev->endpoint.dist(curr->startpoint);
             m_perimeter += occluded;
             m_occludedPerimeter += occluded;
             // record the near *point* for use in agent analysis
             // (as the point will not move between isovists, so can record *which*
             // occlusion this is, and spot novel ones)
-            if (dist(prev->endpoint, m_centre) < dist(curr->startpoint, m_centre)) {
+            if (prev->endpoint.dist(m_centre) < curr->startpoint.dist(m_centre)) {
                 m_occlusionPoints.push_back(PointDist(prev->endpoint, occluded));
             } else {
                 m_occlusionPoints.push_back(PointDist(curr->startpoint, occluded));
             }
         }
         m_poly.push_back(curr->endpoint);
-        m_perimeter += dist(curr->startpoint, curr->endpoint);
+        m_perimeter += curr->startpoint.dist(curr->endpoint);
         prev = curr;
     }
     // for some reason to do with ordering, if parity is true, the centre point
@@ -93,22 +93,28 @@ void Isovist::makeit(BSPNode *root, const Point2f &p, const QtRegion &region, do
         // perimeter! occlusivity!
     }
     if (m_blocks.size() &&
-        !approxeq(m_blocks.rbegin()->endpoint, m_blocks.begin()->startpoint, tolerance)) {
+        !m_blocks.rbegin()->endpoint.approxeq(m_blocks.begin()->startpoint, tolerance)) {
         m_poly.push_back(m_blocks.begin()->startpoint);
         // record perimeter information:
-        double occluded = dist(m_blocks.rbegin()->endpoint, m_blocks.begin()->startpoint);
+        double occluded = m_blocks.rbegin()->endpoint.dist(m_blocks.begin()->startpoint);
         m_perimeter += occluded;
         m_occludedPerimeter += occluded;
         // record the near *point* for use in agent analysis
         // (as the point will not move between isovists, so can record *which*
         // occlusion this is, and spot novel ones)
         if (occluded > 1.5) {
-            if (dist(m_blocks.rbegin()->endpoint, m_centre) <
-                dist(m_blocks.begin()->startpoint, m_centre)) {
+            if (m_blocks.rbegin()->endpoint.dist(m_centre) <
+                m_blocks.begin()->startpoint.dist(m_centre)) {
                 m_occlusionPoints.push_back(PointDist(m_blocks.rbegin()->endpoint, occluded));
             } else {
                 m_occlusionPoints.push_back(PointDist(m_blocks.begin()->startpoint, occluded));
             }
+        }
+    }
+    if (forceClosePoly) {
+        // if the polygon is not closed force it to close
+        if (!m_poly.front().approxeq(m_poly.back(), tolerance)) {
+            m_poly.push_back(m_poly.front());
         }
     }
 }
@@ -126,9 +132,9 @@ int Isovist::getClosestLine(BSPNode *root, const Point2f &p) {
     double mindist = 0.0;
 
     for (auto &block : m_blocks) {
-        Line l(block.startpoint, block.endpoint);
-        if (mintag == -1 || dist(p, l) < mindist) {
-            mindist = dist(p, l);
+        Line4f l(block.startpoint, block.endpoint);
+        if (mintag == -1 || l.dist(p) < mindist) {
+            mindist = l.dist(p);
             mintag = block.tag;
         }
     }
@@ -155,30 +161,40 @@ void Isovist::make(BSPNode *here) {
     }
 }
 
-void Isovist::drawnode(const Line &li, int tag) {
+void Isovist::drawnode(const Line4f &li, int tag) {
+    long double pipi = 2.0 * M_PI;
+
     Point2f p1 = li.start() - m_centre;
     p1.normalise();
-    double angle1 = p1.angle();
     Point2f p2 = li.end() - m_centre;
     p2.normalise();
-    double angle2 = p2.angle();
+
+    auto p1x = static_cast<long double>(p1.x);
+    auto p2x = static_cast<long double>(p2.x);
+
+    long double acosl1x = acosl(p1x);
+    long double acosl2x = acosl(p2x);
+
+    long double angle1 = (p1.y < 0) ? (pipi - acosl1x) : acosl1x;
+    long double angle2 = (p2.y < 0) ? (pipi - acosl2x) : acosl2x;
+
     if (angle2 > angle1) {
         if (angle2 - angle1 >= M_PI) {
             // 0 to angle1 and angle2 to 2 pi
-            addBlock(li, tag, 0.0, angle1);
-            addBlock(li, tag, angle2, 2.0 * M_PI);
+            addBlock(li, tag, 0.0, static_cast<double>(angle1));
+            addBlock(li, tag, static_cast<double>(angle2), static_cast<double>(pipi));
         } else {
             // angle1 to angle2
-            addBlock(li, tag, angle1, angle2);
+            addBlock(li, tag, static_cast<double>(angle1), static_cast<double>(angle2));
         }
     } else {
         if (angle1 - angle2 >= M_PI) {
             // 0 to angle2 and angle1 to 2 pi
-            addBlock(li, tag, 0.0, angle2);
-            addBlock(li, tag, angle1, 2.0 * M_PI);
+            addBlock(li, tag, 0.0, static_cast<double>(angle2));
+            addBlock(li, tag, static_cast<double>(angle1), static_cast<double>(pipi));
         } else {
             // angle2 to angle1
-            addBlock(li, tag, angle2, angle1);
+            addBlock(li, tag, static_cast<double>(angle2), static_cast<double>(angle1));
         }
     }
     //
@@ -191,7 +207,12 @@ void Isovist::drawnode(const Line &li, int tag) {
     }
 }
 
-void Isovist::addBlock(const Line &li, int tag, double startangle, double endangle) {
+union myUnion {
+    double dValue;
+    uint64_t iValue;
+};
+
+void Isovist::addBlock(const Line4f &li, int tag, double startangle, double endangle) {
     auto gap = m_gaps.begin();
     bool finished = false;
 
@@ -200,7 +221,7 @@ void Isovist::addBlock(const Line &li, int tag, double startangle, double endang
             gap++;
         }
         if (gap != m_gaps.end() && gap->startangle < endangle + 1e-9) {
-            double a, b;
+            long double a, b;
             if (gap->startangle > startangle - 1e-9) {
                 a = gap->startangle;
                 if (gap->endangle < endangle + 1e-9) {
@@ -237,9 +258,16 @@ void Isovist::addBlock(const Line &li, int tag, double startangle, double endang
                     gap++; // advance past gap just added
                 }
             }
-            Point2f pa = intersection_point(li, Line(m_centre, m_centre + pointfromangle(a)));
-            Point2f pb = intersection_point(li, Line(m_centre, m_centre + pointfromangle(b)));
-            m_blocks.insert(IsoSeg(a, b, pa, pb, tag));
+
+            // using cos and sin directly to achieve double binary parity between macos and linux
+            Point2f pa = li.intersection_point(
+                Line4f(m_centre, m_centre + Point2f(static_cast<double>(cosl(a)),
+                                                    static_cast<double>(sinl(a)))));
+            Point2f pb = li.intersection_point(
+                Line4f(m_centre, m_centre + Point2f(static_cast<double>(cosl(b)),
+                                                    static_cast<double>(sinl(b)))));
+
+            m_blocks.insert(IsoSeg(static_cast<double>(a), static_cast<double>(b), pa, pb, tag));
         } else {
             finished = true;
         }
@@ -262,13 +290,13 @@ std::pair<Point2f, double> Isovist::getCentroidArea() {
         aI /= 6.0;
         centroid.x += (p1.x + p2.x) * aI;
         centroid.y += (p1.y + p2.y) * aI;
-        double dpoint = dist(m_centre, p1);
-        double dline = dist(m_centre, Line(p1, p2));
+        double dpoint = m_centre.dist(p1);
+        double dline = Line4f(p1, p2).dist(m_centre);
         if (i != 0) {
             // This is not minimum radial -- it's the distance to the closest corner!
             if (dline < m_minRadial) {
                 m_minRadial = dline;
-                dist(m_centre, Line(p1, p2));
+                Line4f(p1, p2).dist(m_centre);
             }
             if (dpoint > m_maxRadial) {
                 m_maxRadial = dpoint;
@@ -278,7 +306,11 @@ std::pair<Point2f, double> Isovist::getCentroidArea() {
             m_minRadial = dline;
         }
     }
-    centroid.scale(2.0 / fabs(area));
+    if (area == 0.0) {
+        centroid.scale(0);
+    } else {
+        centroid.scale(2.0 / fabs(area));
+    }
     return std::make_pair(centroid, area);
 }
 

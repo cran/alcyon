@@ -414,17 +414,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // shapeMapToSegment
-Rcpp::List shapeMapToSegment(Rcpp::XPtr<ShapeMap> shapeMap, const Rcpp::Nullable<std::string> nameNV, const Rcpp::Nullable<bool> keeporiginalNV, const Rcpp::Nullable<bool> copydataNV, const Rcpp::Nullable<bool> progressNV);
-RcppExport SEXP _alcyon_shapeMapToSegment(SEXP shapeMapSEXP, SEXP nameNVSEXP, SEXP keeporiginalNVSEXP, SEXP copydataNVSEXP, SEXP progressNVSEXP) {
+Rcpp::List shapeMapToSegment(Rcpp::XPtr<ShapeMap> shapeMap, const Rcpp::Nullable<std::string> nameNV, const Rcpp::Nullable<bool> copydataNV, const Rcpp::Nullable<bool> progressNV);
+RcppExport SEXP _alcyon_shapeMapToSegment(SEXP shapeMapSEXP, SEXP nameNVSEXP, SEXP copydataNVSEXP, SEXP progressNVSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::XPtr<ShapeMap> >::type shapeMap(shapeMapSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Nullable<std::string> >::type nameNV(nameNVSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type keeporiginalNV(keeporiginalNVSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type copydataNV(copydataNVSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Nullable<bool> >::type progressNV(progressNVSEXP);
-    rcpp_result_gen = Rcpp::wrap(shapeMapToSegment(shapeMap, nameNV, keeporiginalNV, copydataNV, progressNV));
+    rcpp_result_gen = Rcpp::wrap(shapeMapToSegment(shapeMap, nameNV, copydataNV, progressNV));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -895,7 +894,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_alcyon_toShapeMap", (DL_FUNC) &_alcyon_toShapeMap, 2},
     {"_alcyon_toAxialShapeGraph", (DL_FUNC) &_alcyon_toAxialShapeGraph, 4},
     {"_alcyon_axialToSegment", (DL_FUNC) &_alcyon_axialToSegment, 5},
-    {"_alcyon_shapeMapToSegment", (DL_FUNC) &_alcyon_shapeMapToSegment, 5},
+    {"_alcyon_shapeMapToSegment", (DL_FUNC) &_alcyon_shapeMapToSegment, 4},
     {"_alcyon_makeIsovists", (DL_FUNC) &_alcyon_makeIsovists, 5},
     {"_alcyon_shapeGraphLinkCoords", (DL_FUNC) &_alcyon_shapeGraphLinkCoords, 3},
     {"_alcyon_shapeGraphLinkRefs", (DL_FUNC) &_alcyon_shapeGraphLinkRefs, 3},

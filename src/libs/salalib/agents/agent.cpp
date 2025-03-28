@@ -4,12 +4,13 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "agent.h"
+#include "agent.hpp"
 
-#include "agentanalysis.h"
+#include "agentanalysis.hpp"
 
 Agent::Agent(AgentProgram *program, PointMap *pointmap, int outputMode)
-    : m_program(program), m_pointmap(pointmap), m_outputMode(outputMode), m_trailNum(-1) {}
+    : m_program(program), m_pointmap(pointmap), m_node(), m_outputMode(outputMode), m_trailNum(-1),
+      m_loc(), m_target(), m_vector(), m_destination(), m_targetPix(), m_occMemory() {}
 
 void Agent::onInit(PixelRef node, int trailNum) {
     m_node = node;
@@ -17,9 +18,9 @@ void Agent::onInit(PixelRef node, int trailNum) {
     if (m_outputMode & OUTPUT_GATE_COUNTS) {
         // see note about gates in Through vision analysis
         m_gate = (m_pointmap->getPoint(node).filled())
-                     ? (int)m_pointmap->getAttributeTable()
-                           .getRow(AttributeKey(m_node))
-                           .getValue(AgentAnalysis::Column::INTERNAL_GATE)
+                     ? static_cast<int>(m_pointmap->getAttributeTable()
+                                            .getRow(AttributeKey(m_node))
+                                            .getValue(AgentAnalysis::Column::INTERNAL_GATE))
                      : -1;
     } else {
         m_gate = -1;
@@ -47,11 +48,11 @@ void Agent::onInit(PixelRef node, int trailNum) {
 void Agent::onMove() {
     m_atTarget = false;
     m_frame++;
-    if (m_program->destinationDirected && dist(m_loc, m_destination) < 10.0) {
+    if (m_program->destinationDirected && m_loc.dist(m_destination) < 10.0) {
         // reached final destination
         onDestination();
     } else if ((m_program->selType & AgentProgram::SEL_TARGETTED) &&
-               dist(m_loc, m_target) < m_pointmap->getSpacing()) {
+               m_loc.dist(m_target) < m_pointmap->getSpacing()) {
         // reached target (intermediate destination)
         m_step = 0;
         onTarget();
@@ -84,7 +85,7 @@ void Agent::onMove() {
                 row.incrValue(AgentAnalysis::Column::GATE_COUNTS);
             }
             if (m_outputMode & OUTPUT_GATE_COUNTS) {
-                int obj = (int)row.getValue(AgentAnalysis::Column::INTERNAL_GATE);
+                int obj = static_cast<int>(row.getValue(AgentAnalysis::Column::INTERNAL_GATE));
                 if (m_gate != obj) {
                     m_gate = obj;
                     if (m_gate != -1) {
@@ -110,7 +111,7 @@ void Agent::onStep() {
     m_stopped = false;
     m_step++;
     //
-    Point2f nextloc = m_loc + (m_pointmap->getSpacing() * m_vector);
+    Point2f nextloc = m_loc + (m_vector * m_pointmap->getSpacing());
     // note: false returns unconstrained pixel: goodStep must check it is in bounds using
     // m_pointmap->includes
     PixelRef nextnode = m_pointmap->pixelate(nextloc, false);
@@ -129,20 +130,21 @@ void Agent::onStep() {
         m_loc = nextloc;
     }
     if (!m_stopped && m_trailNum != -1) {
-        m_program->trails[m_trailNum].push_back(Event2f(m_loc, m_program->steps));
+        m_program->trails[static_cast<size_t>(m_trailNum)].push_back(
+            Event2f(m_loc, m_program->steps));
     }
 }
 bool Agent::diagonalStep() {
     Point2f vector1 = m_vector;
     vector1.rotate(M_PI / 4.0);
-    Point2f nextloc1 = m_loc + (m_pointmap->getSpacing() * vector1);
+    Point2f nextloc1 = m_loc + (vector1 * m_pointmap->getSpacing());
     // note: "false" does not constrain to bounds: must be checked using m_pointmap->includes before
     // getPoint is used
     PixelRef nextnode1 = m_pointmap->pixelate(nextloc1, false);
 
     Point2f vector2 = m_vector;
     vector2.rotate(-M_PI / 4.0);
-    Point2f nextloc2 = m_loc + (m_pointmap->getSpacing() * vector2);
+    Point2f nextloc2 = m_loc + (vector2 * m_pointmap->getSpacing());
     // note: "false" does not constrain to bounds: must be checked using m_pointmap->includes before
     // getPoint is used
     int nextnode2 = m_pointmap->pixelate(nextloc2, false);
@@ -252,7 +254,7 @@ Point2f Agent::onStandardLook(bool wholeisovist) {
             return Point2f(0, 0);
         }
     } else {
-        int chosen = pafmath::pafrand() % choices;
+        auto chosen = static_cast<int>(pafmath::pafrand() % static_cast<unsigned int>(choices));
         Node &node = m_pointmap->getPoint(m_node).getNode();
         for (; chosen >= node.bincount(directionbin % 32); directionbin++) {
             chosen -= node.bincount(directionbin % 32);
@@ -358,20 +360,27 @@ Point2f Agent::onOcclusionLook(bool wholeisovist, int looktype) {
         Node &node = m_pointmap->getPoint(m_node).getNode();
         for (int i = 0; i < vbin; i++) {
             if (node.occlusionBins[(directionbin + i) % 32].size()) {
-                choices += node.occlusionBins[(directionbin + i) % 32].size();
+                choices += static_cast<int>(node.occlusionBins[(directionbin + i) % 32].size());
             }
         }
         if (choices == 0) {
             if (!wholeisovist) {
                 return onStandardLook(false);
-            } else {
-                m_stuck = true;
-                m_targetPix = m_node;
-                m_target = m_loc;
-                return Point2f(0, 0);
             }
+            // Originally here the agents could be put to the
+            // stuck state, however at a point it was decided
+            // that it should instead revert to the Standard
+            // look. With an earlier check for wholeisovist this
+            // check will never be entered, but left here for
+            // reference
+            // else {
+            //     m_stuck = true;
+            //     m_targetPix = m_node;
+            //     m_target = m_loc;
+            //     return Point2f(0, 0);
+            // }
         } else {
-            size_t chosen = pafmath::pafrand() % choices;
+            size_t chosen = pafmath::pafrand() % static_cast<unsigned int>(choices);
             for (; chosen >= node.occlusionBins[directionbin % 32].size(); directionbin++) {
                 chosen -= node.occlusionBins[directionbin % 32].size();
             }
@@ -416,10 +425,10 @@ Point2f Agent::onOcclusionLook(bool wholeisovist, int looktype) {
                         weight += fardist;
                         break;
                     case AgentProgram::SEL_OCC_WEIGHT_ANG:
-                        weight += (double(vbin - abs(i - vbin)));
+                        weight += static_cast<double>(vbin - abs(i - vbin));
                         break;
                     case AgentProgram::SEL_OCC_WEIGHT_DIST_ANG:
-                        weight += fardist * (double(vbin - abs(i - vbin)));
+                        weight += fardist * static_cast<double>(vbin - abs(i - vbin));
                         break;
                     default:
                         weight += 1.0;
@@ -432,11 +441,18 @@ Point2f Agent::onOcclusionLook(bool wholeisovist, int looktype) {
         if (weightmap.size() == 0) {
             if (!wholeisovist) {
                 return onStandardLook(false);
-            } else {
-                m_stuck = true;
-                m_target = m_loc;
-                return Point2f(0, 0);
             }
+            // Originally here the agents could be put to the
+            // stuck state, however at a point it was decided
+            // that it should instead revert to the Standard
+            // look. With an earlier check for wholeisovist this
+            // check will never be entered, but left here for
+            // reference
+            // else {
+            //     m_stuck = true;
+            //     m_target = m_loc;
+            //     return Point2f(0, 0);
+            // }
         } else {
             double chosen = pafmath::prandomr() * weight;
             for (size_t i = 0; i < weightmap.size(); i++) {
@@ -485,7 +501,7 @@ Point2f Agent::onLoSLook(bool wholeisovist, int lookType) {
             los *= los;
         }
         if (m_program->destinationDirected) {
-            los *= 1.0 - double(binsbetween(((directionbin + i) % 32), bbin)) / 16.0;
+            los *= 1.0 - static_cast<double>(binsbetween(((directionbin + i) % 32), bbin)) / 16.0;
         }
         weight += los;
         weightmap.push_back(wpair(weight, (directionbin + i) % 32));
@@ -508,7 +524,7 @@ Point2f Agent::onLoSLook(bool wholeisovist, int lookType) {
         }
     }
 
-    float angle = (float)anglefrombin2(targetbin);
+    float angle = static_cast<float>(anglefrombin2(targetbin));
 
     return Point2f(cosf(angle), sinf(angle));
 }
@@ -558,7 +574,7 @@ Point2f Agent::onDirectedLoSLook(bool wholeisovist, int lookType) {
         }
     }
 
-    float angle = (float)anglefrombin2(targetbin);
+    float angle = static_cast<float>(anglefrombin2(targetbin));
 
     return Point2f(cosf(angle), sinf(angle));
 }
@@ -587,7 +603,8 @@ Point2f Agent::onGibsonianLook(bool wholeisovist) {
     float angle = 0.0;
 
     if (ruleChoice != -1) {
-        angle = (float)anglefrombin2((binfromvec(m_vector) + (2 * ruleChoice + 1) * dir + 32) % 32);
+        angle = static_cast<float>(
+            anglefrombin2((binfromvec(m_vector) + (2 * ruleChoice + 1) * dir + 32) % 32));
     }
 
     // if no rule selection made, carry on in current direction
@@ -648,7 +665,7 @@ int Agent::onGibsonianRule(int rule) {
     } else if (option == 0x11 &&
                m_program->ruleProbability[0] > pafmath::prandomr() * pafmath::prandomr()) {
         // note, use random * random event as there are two ways to do this
-        dir = (rand() % 2) ? -1 : +1;
+        dir = (pafmath::pafrand() % 2) ? -1 : +1;
     }
     return dir;
 }
@@ -699,7 +716,7 @@ Point2f Agent::onGibsonianLook2(bool wholeisovist) {
     }
 
     int bin = binfromvec(m_vector) + maxbin;
-    float angle = (float)anglefrombin2(bin);
+    float angle = static_cast<float>(anglefrombin2(bin));
 
     return (maxbin == 0) ? m_vector : Point2f(cosf(angle), sinf(angle));
 }

@@ -5,20 +5,33 @@
 
 target_sources(salalib
     PRIVATE
-        bsptree.h
-        comm.h
-        containerutils.h
-        exceptions.h
-        p2dpoly.h
-        pafmath.h
-        pflipper.h
-        readwritehelpers.h
-        simplematrix.h
-        stringutils.h
-        xmlparse.h
+        bsptree.hpp
+        comm.hpp
+        containerutils.hpp
+        exceptions.hpp
+        point2f.hpp
+        point3f.hpp
+        edgeu.hpp
+        event2f.hpp
+        region4f.hpp
+        line4f.hpp
+        simpleline.hpp
+        regiontree.hpp
+        poly.hpp
+        pafmath.hpp
+        pflipper.hpp
+        readwritehelpers.hpp
+        simplematrix.hpp
+        stringutils.hpp
+        xmlparse.hpp
     PUBLIC
         bsptree.cpp
-        p2dpoly.cpp
+        point2f.cpp
+        edgeu.cpp
+        region4f.cpp
+        line4f.cpp
+        regiontree.cpp
+        poly.cpp
         pafmath.cpp
         stringutils.cpp
         xmlparse.cpp

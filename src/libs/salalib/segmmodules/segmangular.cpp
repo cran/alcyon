@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "segmangular.h"
+#include "segmangular.hpp"
 
 AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
     AnalysisResult result;
@@ -41,14 +41,14 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
     // first enter table values
     for (auto radius : radii) {
         std::string depthColText = getFormattedColumn(Column::ANGULAR_MEAN_DEPTH, radius);
-        attributes.insertOrResetColumn(depthColText.c_str());
-        result.addAttribute(depthColText);
+        attributes.insertOrResetColumn(depthColText);
+        result.addAttribute(std::move(depthColText));
         std::string countColText = getFormattedColumn(Column::ANGULAR_NODE_COUNT, radius);
-        attributes.insertOrResetColumn(countColText.c_str());
-        result.addAttribute(countColText);
+        attributes.insertOrResetColumn(countColText);
+        result.addAttribute(std::move(countColText));
         std::string totalColText = getFormattedColumn(Column::ANGULAR_TOTAL_DEPTH, radius);
-        attributes.insertOrResetColumn(totalColText.c_str());
-        result.addAttribute(totalColText);
+        attributes.insertOrResetColumn(totalColText);
+        result.addAttribute(std::move(totalColText));
     }
 
     for (auto radius : radii) {
@@ -68,7 +68,8 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
             covered[j] = false;
         }
         std::vector<std::pair<float, SegmentData>> anglebins;
-        anglebins.push_back(std::make_pair(0.0f, SegmentData(0, i, SegmentRef(), 0, 0.0, 0)));
+        anglebins.push_back(
+            std::make_pair(0.0f, SegmentData(0, static_cast<int>(i), SegmentRef(), 0, 0.0, 0)));
 
         std::vector<double> totalDepth;
         std::vector<int> nodeCount;
@@ -78,18 +79,18 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
         }
         // node_count includes this one, but will be added in next algo:
         while (anglebins.size()) {
-            auto iter = anglebins.begin();
-            SegmentData lineindex = iter->second;
-            if (!covered[lineindex.ref]) {
-                covered[lineindex.ref] = true;
-                double depthToLine = iter->first;
+            auto biniter = anglebins.begin();
+            SegmentData lineindex = biniter->second;
+            if (!covered[static_cast<size_t>(lineindex.ref)]) {
+                covered[static_cast<size_t>(lineindex.ref)] = true;
+                double depthToLine = biniter->first;
                 totalDepth[lineindex.coverage] += depthToLine;
                 nodeCount[lineindex.coverage] += 1;
-                anglebins.erase(iter);
-                Connector &line = map.getConnections()[lineindex.ref];
+                anglebins.erase(biniter);
+                Connector &line = map.getConnections()[static_cast<size_t>(lineindex.ref)];
                 if (lineindex.dir != -1) {
                     for (auto &segconn : line.forwardSegconns) {
-                        if (!covered[segconn.first.ref]) {
+                        if (!covered[static_cast<size_t>(segconn.first.ref)]) {
                             double angle = depthToLine + segconn.second;
                             size_t rbin = lineindex.coverage;
                             while (rbin != radii.size() && radii[rbin] != -1 &&
@@ -99,16 +100,16 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
                             if (rbin != radii.size()) {
                                 depthmapX::insert_sorted(
                                     anglebins,
-                                    std::make_pair(
-                                        float(angle),
-                                        SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
+                                    std::make_pair(static_cast<float>(angle),
+                                                   SegmentData(segconn.first, SegmentRef(), 0, 0.0,
+                                                               static_cast<unsigned int>(rbin))));
                             }
                         }
                     }
                 }
                 if (lineindex.dir != 1) {
                     for (auto &segconn : line.backSegconns) {
-                        if (!covered[segconn.first.ref]) {
+                        if (!covered[static_cast<size_t>(segconn.first.ref)]) {
                             double angle = depthToLine + segconn.second;
                             size_t rbin = lineindex.coverage;
                             while (rbin != radii.size() && radii[rbin] != -1 &&
@@ -118,15 +119,15 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
                             if (rbin != radii.size()) {
                                 depthmapX::insert_sorted(
                                     anglebins,
-                                    std::make_pair(
-                                        float(angle),
-                                        SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
+                                    std::make_pair(static_cast<float>(angle),
+                                                   SegmentData(segconn.first, SegmentRef(), 0, 0.0,
+                                                               static_cast<unsigned int>(rbin))));
                             }
                         }
                     }
                 }
             } else {
-                anglebins.erase(iter);
+                anglebins.erase(biniter);
             }
         }
         AttributeRow &row = iter.getRow();
@@ -136,13 +137,13 @@ AnalysisResult SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
         for (size_t r = 0; r < radii.size(); r++) {
             cursNodeCount += nodeCount[r];
             cursTotalDepth += totalDepth[r];
-            row.setValue(countCol[r], float(cursNodeCount));
+            row.setValue(countCol[r], static_cast<float>(cursNodeCount));
             if (cursNodeCount > 1) {
                 // note -- node_count includes this one -- mean depth as per p.108 Social Logic of
                 // Space
-                double meanDepth = cursTotalDepth / double(cursNodeCount - 1);
-                row.setValue(depthCol[r], float(meanDepth));
-                row.setValue(totalCol[r], float(cursTotalDepth));
+                double meanDepth = cursTotalDepth / static_cast<double>(cursNodeCount - 1);
+                row.setValue(depthCol[r], static_cast<float>(meanDepth));
+                row.setValue(totalCol[r], static_cast<float>(cursTotalDepth));
             } else {
                 row.setValue(depthCol[r], -1);
                 row.setValue(totalCol[r], -1);

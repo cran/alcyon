@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "xmlparse.h"
+#include "xmlparse.hpp"
 
 enum {
     STEP_START,
@@ -12,11 +12,12 @@ enum {
     STEP_ATTRIBUTE_VALUE,
     STEP_CLOSING
 };
-
-bool iscrlf(char c) {
-    // \n is MAC = 13, UNIX = 10, MS = 13,10
-    return (c == 10 || c == 13);
-}
+namespace {
+    bool iscrlf(char c) {
+        // \n is MAC = 13, UNIX = 10, MS = 13,10
+        return (c == 10 || c == 13);
+    }
+} // namespace
 
 bool xmlelement::parse(std::ifstream &stream, bool parsesubelements) {
     bool closed = false;
@@ -136,12 +137,12 @@ bool xmlelement::parse(std::ifstream &stream, bool parsesubelements) {
     return closed;
 }
 
-void xmlelement::badcharacter(char c, const std::string &location) {
+[[noreturn]] void xmlelement::badcharacter(char c, const std::string &location) {
     if (isprint(c)) {
         throw(std::string("Found '") + c + std::string("' while ") + location);
     } else {
         std::stringstream s;
-        s << "Found character " << int(c) << " while " << location;
+        s << "Found character " << static_cast<int>(c) << " while " << location;
         throw(s.str());
     }
 }

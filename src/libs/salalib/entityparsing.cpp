@@ -2,19 +2,20 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "entityparsing.h"
+#include "entityparsing.hpp"
 
-#include "genlib/stringutils.h"
+#include "genlib/stringutils.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <exception>
 #include <sstream>
 
 namespace EntityParsing {
 
-    std::vector<Line> parseLines(std::istream &stream, char delimiter = '\t') {
+    std::vector<Line4f> parseLines(std::istream &stream, char delimiter = '\t') {
 
-        std::vector<Line> lines;
+        std::vector<Line4f> lines;
 
         std::string inputline;
         std::getline(stream, inputline);
@@ -28,7 +29,7 @@ namespace EntityParsing {
         size_t i;
         for (i = 0; i < strings.size(); i++) {
             if (!strings[i].empty()) {
-                std::transform(strings[i].begin(), strings[i].end(), strings[i].begin(), ::tolower);
+                dXstring::toLower(strings[i]);
                 // strings[i].ltrim('\"');
                 // strings[i].rtrim('\"');
             }
@@ -37,13 +38,13 @@ namespace EntityParsing {
         int x1col = -1, y1col = -1, x2col = -1, y2col = -1;
         for (i = 0; i < strings.size(); i++) {
             if (strings[i] == "x1") {
-                x1col = i;
+                x1col = static_cast<int>(i);
             } else if (strings[i] == "x2") {
-                x2col = i;
+                x2col = static_cast<int>(i);
             } else if (strings[i] == "y1") {
-                y1col = i;
+                y1col = static_cast<int>(i);
             } else if (strings[i] == "y2") {
-                y2col = i;
+                y2col = static_cast<int>(i);
             }
         }
 
@@ -76,7 +77,7 @@ namespace EntityParsing {
                         p2.y = std::atof(strings[i].c_str());
                     }
                 }
-                lines.push_back(Line(p1, p2));
+                lines.push_back(Line4f(p1, p2));
             }
         }
         return lines;
@@ -98,7 +99,7 @@ namespace EntityParsing {
         size_t i;
         for (i = 0; i < strings.size(); i++) {
             if (!strings[i].empty()) {
-                std::transform(strings[i].begin(), strings[i].end(), strings[i].begin(), ::tolower);
+                dXstring::toLower(strings[i]);
                 // strings[i].ltrim('\"');
                 // strings[i].rtrim('\"');
             }
@@ -107,9 +108,9 @@ namespace EntityParsing {
         int xcol = -1, ycol = -1;
         for (i = 0; i < strings.size(); i++) {
             if (strings[i] == "x") {
-                xcol = i;
+                xcol = static_cast<int>(i);
             } else if (strings[i] == "y") {
-                ycol = i;
+                ycol = static_cast<int>(i);
             }
         }
 
@@ -172,20 +173,20 @@ namespace EntityParsing {
         size_t i;
         for (i = 0; i < strings.size(); i++) {
             if (!strings[i].empty()) {
-                std::transform(strings[i].begin(), strings[i].end(), strings[i].begin(), ::tolower);
+                dXstring::toLower(strings[i]);
             }
         }
 
         int xcol = -1, ycol = -1, anglecol = -1, viewcol = -1;
         for (i = 0; i < strings.size(); i++) {
             if (strings[i] == "x") {
-                xcol = i;
+                xcol = static_cast<int>(i);
             } else if (strings[i] == "y") {
-                ycol = i;
+                ycol = static_cast<int>(i);
             } else if (strings[i] == "angle") {
-                anglecol = i;
+                anglecol = static_cast<int>(i);
             } else if (strings[i] == "viewangle") {
-                viewcol = i;
+                viewcol = static_cast<int>(i);
             }
         }
 
@@ -209,12 +210,14 @@ namespace EntityParsing {
                     throw EntityParseException(message.str().c_str());
                 }
 
-                double x = std::atof(strings[xcol].c_str());
-                double y = std::atof(strings[ycol].c_str());
+                double x = std::atof(strings[static_cast<size_t>(xcol)].c_str());
+                double y = std::atof(strings[static_cast<size_t>(ycol)].c_str());
 
                 if (partialIsovists) {
-                    double angle = std::atof(strings[anglecol].c_str()) / 180.0 * M_PI;
-                    double viewAngle = std::atof(strings[viewcol].c_str()) / 180.0 * M_PI;
+                    double angle =
+                        std::atof(strings[static_cast<size_t>(anglecol)].c_str()) / 180.0 * M_PI;
+                    double viewAngle =
+                        std::atof(strings[static_cast<size_t>(viewcol)].c_str()) / 180.0 * M_PI;
                     isovists.push_back(IsovistDefinition(x, y, angle, viewAngle));
                 } else {
                     isovists.push_back(IsovistDefinition(x, y));
@@ -255,7 +258,7 @@ namespace EntityParsing {
         size_t i;
         for (i = 0; i < strings.size(); i++) {
             if (!strings[i].empty()) {
-                std::transform(strings[i].begin(), strings[i].end(), strings[i].begin(), ::tolower);
+                dXstring::toLower(strings[i]);
                 // strings[i].ltrim('\"');
                 // strings[i].rtrim('\"');
             }
@@ -264,9 +267,9 @@ namespace EntityParsing {
         int fromcol = -1, tocol = -1;
         for (i = 0; i < strings.size(); i++) {
             if (strings[i] == "reffrom") {
-                fromcol = int(i);
+                fromcol = static_cast<int>(i);
             } else if (strings[i] == "refto") {
-                tocol = int(i);
+                tocol = static_cast<int>(i);
             }
         }
 
@@ -288,9 +291,9 @@ namespace EntityParsing {
                 }
                 int from = -1, to = -1;
                 for (i = 0; i < strings.size(); i++) {
-                    if (i == size_t(fromcol)) {
+                    if (i == static_cast<size_t>(fromcol)) {
                         from = std::atoi(strings[i].c_str());
-                    } else if (i == size_t(tocol)) {
+                    } else if (i == static_cast<size_t>(tocol)) {
                         to = std::atoi(strings[i].c_str());
                     }
                 }

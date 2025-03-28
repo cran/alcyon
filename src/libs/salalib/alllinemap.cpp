@@ -4,12 +4,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "alllinemap.h"
+#include "alllinemap.hpp"
 
-#include "axialminimiser.h"
-#include "tolerances.h"
+#include "axialminimiser.hpp"
+#include "tolerances.hpp"
 
-#include "genlib/exceptions.h"
+#include "genlib/exceptions.hpp"
 
 #include <iomanip>
 #include <time.h>
@@ -27,33 +27,33 @@ void AllLine::generate(Communicator *comm, ShapeGraph &map, MapData &mapData,
                        const std::vector<std::reference_wrapper<const ShapeMap>> &drawingLayers,
                        const Point2f &seed) {
 
-    std::vector<Line> lines;
-    QtRegion region;
+    std::vector<Line4f> lines;
+    Region4f region;
 
     // add all visible layers to the set of polygon lines...
-    for (auto map : drawingLayers) {
+    for (auto layer : drawingLayers) {
         if (region.atZero()) {
-            region = map.get().getRegion();
+            region = layer.get().getRegion();
         } else {
-            region = runion(region, map.get().getRegion());
+            region = region.runion(layer.get().getRegion());
         }
-        std::vector<SimpleLine> newLines = map.get().getAllShapesAsSimpleLines();
+        std::vector<SimpleLine> newLines = layer.get().getAllShapesAsSimpleLines();
         for (const auto &line : newLines) {
-            lines.push_back(Line(line.start(), line.end()));
+            lines.push_back(Line4f(line.start(), line.end()));
         }
     }
     generate(comm, map, mapData, lines, region, seed);
 }
 
-AllLine::MapData AllLine::generate(Communicator *comm, ShapeGraph &map, std::vector<Line> &lines,
-                                   QtRegion &region, const Point2f &seed) {
+AllLine::MapData AllLine::generate(Communicator *comm, ShapeGraph &map, std::vector<Line4f> &lines,
+                                   Region4f &region, const Point2f &seed) {
     MapData mapData;
     generate(comm, map, mapData, lines, region, seed);
     return mapData;
 }
 
 void AllLine::generate(Communicator *comm, ShapeGraph &map, AllLine::MapData &mapData,
-                       std::vector<Line> &lines, QtRegion &region, const Point2f &seed) {
+                       std::vector<Line4f> &lines, Region4f &region, const Point2f &seed) {
     if (comm) {
         comm->CommPostMessage(Communicator::NUM_STEPS, 3);
         comm->CommPostMessage(Communicator::CURRENT_STEP, 1);
@@ -83,7 +83,7 @@ void AllLine::generate(Communicator *comm, ShapeGraph &map, AllLine::MapData &ma
     // okay, we've got as far as finding a seed corner, now the real fun begins...
     // test outwards from corner, add other corners to
     // test set...
-    std::vector<Line> axiallines;
+    std::vector<Line4f> axiallines;
     KeyVertices preaxialdata;
     // also poly_connections used in fewest line axial map construction:
     mapData.polyConnections.clear();
@@ -96,7 +96,7 @@ void AllLine::generate(Communicator *comm, ShapeGraph &map, AllLine::MapData &ma
     }
 
     time_t atime = 0;
-    int count = 0;
+    size_t count = 0;
     if (comm) {
         qtimer(atime, 0);
         comm->CommPostMessage(Communicator::CURRENT_STEP, 2);
@@ -128,14 +128,14 @@ void AllLine::generate(Communicator *comm, ShapeGraph &map, AllLine::MapData &ma
     // cut out duplicates:
     for (size_t j = 0; j < axiallines.size(); j++) {
         for (size_t k = axiallines.size() - 1; k > j; k--) {
-            double maxdim = __max(region.width(), region.height());
-            if (approxeq(axiallines[j].start(), axiallines[k].start(), maxdim * TOLERANCE_B) &&
-                approxeq(axiallines[j].end(), axiallines[k].end(), maxdim * TOLERANCE_B)) {
+            double maxdim = std::max(region.width(), region.height());
+            if (axiallines[j].start().approxeq(axiallines[k].start(), maxdim * TOLERANCE_B) &&
+                axiallines[j].end().approxeq(axiallines[k].end(), maxdim * TOLERANCE_B)) {
                 for (int preaxiali : preaxialdata[k]) {
                     preaxialdata[j].insert(preaxiali);
                 }
-                preaxialdata.erase(preaxialdata.begin() + int(k));
-                axiallines.erase(axiallines.begin() + int(k));
+                preaxialdata.erase(preaxialdata.begin() + static_cast<int>(k));
+                axiallines.erase(axiallines.begin() + static_cast<int>(k));
             }
         }
     }
@@ -153,24 +153,25 @@ void AllLine::generate(Communicator *comm, ShapeGraph &map, AllLine::MapData &ma
     // -> don't know what this was for: alllinemap.sortBins(m_poly_connections);
     map.makeConnections(preaxialdata);
 
-    map.setKeyVertexCount(mapData.polygons.vertexPossibles.size());
+    map.setKeyVertexCount(static_cast<int>(mapData.polygons.vertexPossibles.size()));
 }
 
-std::tuple<ShapeGraph, ShapeGraph>
-AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &mapData) {
+std::tuple<ShapeGraph, ShapeGraph> AllLine::extractFewestLineMaps(Communicator *comm,
+                                                                  ShapeGraph &map, MapData &mapData,
+                                                                  unsigned int seed) {
 
     if (comm) {
         comm->CommPostMessage(Communicator::NUM_STEPS, 2);
         comm->CommPostMessage(Communicator::CURRENT_STEP, 1);
     }
 
-    pafmath::pafsrand((unsigned int)time(nullptr));
+    pafmath::pafsrand(seed);
 
     // make one rld for each radial line...
     std::map<RadialKey, std::set<int>> radialdivisions;
     size_t i;
     for (auto &radialLine : mapData.radialLines) {
-        radialdivisions.insert(std::make_pair((RadialKey)radialLine, std::set<int>()));
+        radialdivisions.insert(std::make_pair(static_cast<RadialKey>(radialLine), std::set<int>()));
     }
 
     // also, a list of radial lines cut by each axial line
@@ -202,7 +203,8 @@ AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &map
         ++iter;
         for (; iter != mapData.radialLines.end();) {
             if (iter->vertex == prevIter->vertex && iter->ang != prevIter->ang) {
-                radialsegs.insert(std::make_pair((RadialKey)(*iter), (RadialSegment)(*prevIter)));
+                radialsegs.insert(std::make_pair(static_cast<RadialKey>(*iter),
+                                                 static_cast<RadialSegment>(*prevIter)));
             }
             ++iter;
             ++prevIter;
@@ -221,14 +223,15 @@ AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &map
             ++axRadCutIter;
             for (size_t j = 1; j < axIter->second.size(); ++j) {
                 // note similarity to loop above
-                RadialKey &rkEnd = mapData.radialLines[size_t(*axRadCutIter)];
-                RadialKey &rkStart = mapData.radialLines[size_t(*axRadCutIterPrev)];
+                RadialKey &rkEnd = mapData.radialLines[static_cast<size_t>(*axRadCutIter)];
+                RadialKey &rkStart = mapData.radialLines[static_cast<size_t>(*axRadCutIterPrev)];
                 if (rkStart.vertex == rkEnd.vertex) {
                     auto radialSegIter = radialsegs.find(rkEnd);
                     if (radialSegIter != radialsegs.end() &&
                         rkStart == radialSegIter->second.radialB) {
                         radialSegIter->second.indices.insert(axIter->first);
-                        axSeg->second.insert(std::distance(radialsegs.begin(), radialSegIter));
+                        axSeg->second.insert(
+                            static_cast<int>(std::distance(radialsegs.begin(), radialSegIter)));
                     }
                 }
                 ++axRadCutIter;
@@ -255,7 +258,7 @@ AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &map
                 auto res = std::lower_bound(conn.begin(), conn.end(), axbi);
                 if (res == conn.end() || axbi < *res) {
                     conn.insert(res, axbi);
-                    keyvertexcounts[axbi] += 1;
+                    keyvertexcounts[static_cast<size_t>(axbi)] += 1;
                 }
             }
         }
@@ -266,7 +269,7 @@ AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &map
 
     AxialMinimiser minimiser(map, axSegCuts.size(), radialsegs.size());
 
-    std::vector<Line> linesS, linesM;
+    std::vector<Line4f> linesS, linesM;
 
     minimiser.removeSubsets(axSegCuts, radialsegs, radialdivisions, mapData.radialLines,
                             keyvertexconns, keyvertexcounts);
@@ -284,31 +287,32 @@ AllLine::extractFewestLineMaps(Communicator *comm, ShapeGraph &map, MapData &map
                             keyvertexconns, keyvertexcounts);
 
     // make new lines here (assumes line map has only lines
-    for (int k = 0; k < int(map.getAllShapes().size()); k++) {
-        if (!minimiser.removed(k)) {
-            linesM.push_back(depthmapX::getMapAtIndex(map.getAllShapes(), k)->second.getLine());
+    for (int sk = 0; sk < static_cast<int>(map.getAllShapes().size()); sk++) {
+        if (!minimiser.removed(sk)) {
+            linesM.push_back(depthmapX::getMapAtIndex(map.getAllShapes(), static_cast<size_t>(sk))
+                                 ->second.getLine());
         }
     }
 
     ShapeGraph fewestlinemapSubsets("Fewest-Line Map (Subsets)", ShapeMap::AXIALMAP);
     fewestlinemapSubsets.clearAll();
-    fewestlinemapSubsets.init(int(linesS.size()), mapData.polygons.getRegion());
+    fewestlinemapSubsets.init(linesS.size(), mapData.polygons.getRegion());
 
     fewestlinemapSubsets.initialiseAttributesAxial();
-    for (size_t k = 0; k < linesS.size(); k++) {
-        fewestlinemapSubsets.makeLineShape(linesS[k]);
+    for (size_t lidx = 0; lidx < linesS.size(); lidx++) {
+        fewestlinemapSubsets.makeLineShape(linesS[lidx]);
     }
     fewestlinemapSubsets.makeConnections();
 
     ShapeGraph fewestlinemapMinimal("Fewest-Line Map (Minimal)", ShapeMap::AXIALMAP);
     fewestlinemapMinimal.clearAll();
     fewestlinemapMinimal.init(
-        int(linesM.size()),
+        linesM.size(),
         mapData.polygons.getRegion()); // used to have a '2' for double pixel density
 
     fewestlinemapMinimal.initialiseAttributesAxial();
-    for (size_t k = 0; k < linesM.size(); k++) {
-        fewestlinemapMinimal.makeLineShape(linesM[k]);
+    for (size_t lidx = 0; lidx < linesM.size(); lidx++) {
+        fewestlinemapMinimal.makeLineShape(linesM[lidx]);
     }
     fewestlinemapMinimal.makeConnections();
 
@@ -325,12 +329,15 @@ void AllLine::makeDivisions(ShapeGraph &map, const std::vector<PolyConnector> &p
         comm->CommPostMessage(Communicator::NUM_RECORDS, polyconnections.size());
     }
 
+    long double tolerance = sqrt(TOLERANCE_A); // * polyconnections[i].line.length();
     for (size_t i = 0; i < polyconnections.size(); i++) {
         PixelRefVector pixels = map.pixelateLine(polyconnections[i].line);
         std::vector<size_t> testedshapes;
         auto connIter = radialdivisions.find(polyconnections[i].key);
-        size_t connindex = std::distance(radialdivisions.begin(), connIter);
-        double tolerance = sqrt(TOLERANCE_A); // * polyconnections[i].line.length();
+        if (connIter == radialdivisions.end()) {
+            throw depthmapX::RuntimeException("Connection not found when making divisions");
+        }
+        auto connindex = static_cast<int>(std::distance(radialdivisions.begin(), connIter));
         for (size_t j = 0; j < pixels.size(); j++) {
             PixelRef pix = pixels[j];
             const auto &shapes = map.getShapesAtPixel(pix);
@@ -339,35 +346,41 @@ void AllLine::makeDivisions(ShapeGraph &map, const std::vector<PolyConnector> &p
                 if (iter != testedshapes.end()) {
                     continue;
                 }
-                testedshapes.insert(iter, int(shape.shapeRef));
-                const Line &line = map.getAllShapes().find(shape.shapeRef)->second.getLine();
+                testedshapes.insert(iter, shape.shapeRef);
+                auto shapeIter = map.getAllShapes().find(static_cast<int>(shape.shapeRef));
+                if (shapeIter == map.getAllShapes().end()) {
+                    throw depthmapX::RuntimeException("Shape " + std::to_string(shape.shapeRef) +
+                                                      " not found when making divisions");
+                }
+                const Line4f &line = shapeIter->second.getLine();
                 //
-                if (intersect_region(line, polyconnections[i].line, tolerance * line.length())) {
-                    switch (intersect_line_distinguish(line, polyconnections[i].line,
-                                                       tolerance * line.length())) {
+                if (line.Region4f::intersects(polyconnections[i].line,
+                                              static_cast<double>(tolerance * line.length()))) {
+                    switch (line.intersects_distinguish(
+                        polyconnections[i].line, static_cast<double>(tolerance * line.length()))) {
                     case 0:
                         break;
                     case 2: {
-                        size_t index =
-                            depthmapX::findIndexFromKey(axialdividers, (int)shape.shapeRef);
-                        if (index != shape.shapeRef) {
+                        auto index = static_cast<int>(depthmapX::findIndexFromKey(
+                            axialdividers, static_cast<int>(shape.shapeRef)));
+                        if (index != static_cast<int>(shape.shapeRef)) {
                             throw 1; // for the code to work later this can't be true!
                         }
                         axialdividers[index].insert(connindex);
-                        connIter->second.insert(shape.shapeRef);
+                        connIter->second.insert(static_cast<int>(shape.shapeRef));
                     } break;
                     case 1: {
-                        size_t index =
-                            depthmapX::findIndexFromKey(axialdividers, (int)shape.shapeRef);
-                        if (index != shape.shapeRef) {
+                        auto index = static_cast<int>(depthmapX::findIndexFromKey(
+                            axialdividers, static_cast<int>(shape.shapeRef)));
+                        if (index != static_cast<int>(shape.shapeRef)) {
                             throw 1; // for the code to work later this can't be true!
                         }
                         //
                         // this makes sure actually crosses between the line and the
                         // openspace properly
-                        if (radiallines[connindex].cuts(line)) {
+                        if (radiallines[static_cast<size_t>(connindex)].cuts(line)) {
                             axialdividers[index].insert(connindex);
-                            connIter->second.insert(shape.shapeRef);
+                            connIter->second.insert(static_cast<int>(shape.shapeRef));
                         }
                     } break;
                     default:

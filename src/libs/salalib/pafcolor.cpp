@@ -2,75 +2,72 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "pafcolor.h" // <- sala actually includes vertex.h for us
+#include "pafcolor.hpp" // <- sala actually includes vertex.h for us
 
 #include <cmath>
 #include <float.h> // _finite support
 
-static unsigned int g_nicecolor[] = {
-    0x003333DD, // 0 blue
-    0x003388DD, // 1
-    0x0022CCDD, // 2
-    0x0022CCBB, // 3
-    0x0022DD88, // 4
-    0x0088DD22, // 5
-    0x00BBCC22, // 6
-    0x00DDCC22, // 7
-    0x00DD8833, // 8
-    0x00DD3333, // 9 red
-};
+namespace {
+    static unsigned int g_nicecolor[] = {
+        0x003333DD, // 0 blue
+        0x003388DD, // 1
+        0x0022CCDD, // 2
+        0x0022CCBB, // 3
+        0x0022DD88, // 4
+        0x0088DD22, // 5
+        0x00BBCC22, // 6
+        0x00DDCC22, // 7
+        0x00DD8833, // 8
+        0x00DD3333, // 9 red
+    };
 
-// Test a range designed to try to keep consistent saturation and brightness of
-// g_nicecolor, and only move hue
-static unsigned int g_nicecolorhsb[] = {
-    0x003333DD, // 0 blue
-    0x003377DD, // 1
-    0x0033BBDD, // 2
-    0x0033DDBB, // 3
-    0x0033DD55, // 4
-    0x0055DD33, // 5
-    0x00BBDD33, // 6
-    0x00DDBB33, // 7
-    0x00DD7733, // 8
-    0x00DD3333, // 9 red
-};
+    // Test a range designed to try to keep consistent saturation and brightness of
+    // g_nicecolor, and only move hue
+    static unsigned int g_nicecolorhsb[] = {
+        0x003333DD, // 0 blue
+        0x003377DD, // 1
+        0x0033BBDD, // 2
+        0x0033DDBB, // 3
+        0x0033DD55, // 4
+        0x0055DD33, // 5
+        0x00BBDD33, // 6
+        0x00DDBB33, // 7
+        0x00DD7733, // 8
+        0x00DD3333, // 9 red
+    };
 
-static unsigned int g_greyscale[] = {
-    0x00000000, // 0 black
-    0x00444444, // 1
-    0x00777777, // 2
-    0x00AAAAAA, // 3
-    0x00CCCCCC, // 4
-    0x00EEEEEE, // 5
-    0x00FFFFFF, // 6 white
-};
+    static unsigned int g_greyscale[] = {
+        0x00000000, // 0 black
+        0x00444444, // 1
+        0x00777777, // 2
+        0x00AAAAAA, // 3
+        0x00CCCCCC, // 4
+        0x00EEEEEE, // 5
+        0x00FFFFFF, // 6 white
+    };
 
-static unsigned int g_bluered[] = {
-    0x004575B4, // 0 blue
-    0x0091BFDB, 0x00E0F3F8, 0x00FFFFBF, 0x00FEE090, 0x00FC8D59,
-    0x00D73027 // 6 red
-};
+    static unsigned int g_bluered[] = {
+        0x004575B4, // 0 blue
+        0x0091BFDB, 0x00E0F3F8, 0x00FFFFBF, 0x00FEE090, 0x00FC8D59,
+        0x00D73027 // 6 red
+    };
 
-static unsigned int g_purpleorange[] = {
-    0x00542788, // 0 purple
-    0x00998EC3, // 1
-    0x00D8DAEB, // 2
-    0x00F7F7F7, // 3
-    0x00FEE0B6, // 4
-    0x00F1A340, // 5
-    0x00B35806  // 6 orange
-};
+    static unsigned int g_purpleorange[] = {
+        0x00542788, // 0 purple
+        0x00998EC3, // 1
+        0x00D8DAEB, // 2
+        0x00F7F7F7, // 3
+        0x00FEE0B6, // 4
+        0x00F1A340, // 5
+        0x00B35806  // 6 orange
+    };
 
-// htmlByte converts a normalised number to an HTML safe byte
+    // htmlByte converts a normalised number to an HTML safe byte
 
-unsigned char htmlByte(double colorByte) {
-    // Quick mod - TV
-#if defined(_MSC_VER)
-    return (unsigned char((colorByte + 0.0333) * 15.0) * 0x11);
-#else
-    return ((unsigned char)((colorByte + 0.0333) * 15.0) * 0x11);
-#endif
-}
+    unsigned char htmlByte(double colorByte) {
+        return (static_cast<unsigned char>((colorByte + 0.0333) * 15.0) * 0x11);
+    }
+} // namespace
 
 PafColor &PafColor::makeColor(double field, DisplayParams dp) {
     // Quick mod - TV
@@ -131,33 +128,33 @@ PafColor &PafColor::makeColor(double field, DisplayParams dp) {
 // this makes an Axman-like colour range
 
 PafColor &PafColor::makeAxmanesque(double field) {
-    color = 0xff000000 | g_nicecolor[int((field - 1e-9) * 10.0)];
+    color = 0xff000000 | g_nicecolor[static_cast<int>((field - 1e-9) * 10.0)];
     return *this;
 }
 
 PafColor &PafColor::makeHueOnlyAxmanesque(double field) {
-    color = 0xff000000 | g_nicecolorhsb[int((field - 1e-9) * 10.0)];
+    color = 0xff000000 | g_nicecolorhsb[static_cast<int>((field - 1e-9) * 10.0)];
     return *this;
 }
 
 // this makes a purple-orange scheme that is red-green colour-blind safe
 
 PafColor &PafColor::makePurpleOrange(double field) {
-    color = 0xff000000 | g_purpleorange[int((field - 1e-9) * 7.0)];
+    color = 0xff000000 | g_purpleorange[static_cast<int>((field - 1e-9) * 7.0)];
     return *this;
 }
 
 // this makes a blue-red scheme that is red-green colour-blind safe
 
 PafColor &PafColor::makeBlueRed(double field) {
-    color = 0xff000000 | g_bluered[int((field - 1e-9) * 7.0)];
+    color = 0xff000000 | g_bluered[static_cast<int>((field - 1e-9) * 7.0)];
     return *this;
 }
 
 // this makes a greyscale colour range
 
 PafColor &PafColor::makeGreyScale(double field) {
-    color = 0xff000000 | g_greyscale[int((field - 1e-9) * 7.0)];
+    color = 0xff000000 | g_greyscale[static_cast<int>((field - 1e-9) * 7.0)];
     return *this;
 }
 
@@ -174,14 +171,14 @@ PafColor &PafColor::makeDepthmapClassic(double field, double blue, double red) {
 #if defined(_MSC_VER)
         setb(unsigned char(0xFF));
 #else
-        setb((unsigned char)(0xFF));
+        setb(static_cast<unsigned char>(0xFF));
 #endif
     } else if (field >= blue && field < (green + blue) / 2.0) {
         // Quick mod - TV
 #if defined(_MSC_VER)
         setb(unsigned char(0xFF));
 #else
-        setb((unsigned char)(0xFF));
+        setb(static_cast<unsigned char>(0xFF));
 #endif
         setg(htmlByte((2.0 * (field - blue) / (green - blue)) * 1.0));
     } else if (field >= (green + blue) / 2.0 && field < green) {
@@ -190,14 +187,14 @@ PafColor &PafColor::makeDepthmapClassic(double field, double blue, double red) {
 #if defined(_MSC_VER)
         setg(unsigned char(0xFF));
 #else
-        setg((unsigned char)(0xFF));
+        setg(static_cast<unsigned char>(0xFF));
 #endif
     } else if (field >= green && field < (green + red) / 2.0) {
         // Quick mod - TV
 #if defined(_MSC_VER)
         setg(unsigned char(0xFF));
 #else
-        setg((unsigned char)(0xFF));
+        setg(static_cast<unsigned char>(0xFF));
 #endif
         setr(htmlByte((2.0 * (field - green) / (red - green)) * 1.0));
     } else if (field >= (green + red) / 2.0 && field < red) {
@@ -206,14 +203,14 @@ PafColor &PafColor::makeDepthmapClassic(double field, double blue, double red) {
 #if defined(_MSC_VER)
         setr(unsigned char(0xFF));
 #else
-        setr((unsigned char)(0xFF));
+        setr(static_cast<unsigned char>(0xFF));
 #endif
     } else if (field >= red) {
         // Quick mod - TV
 #if defined(_MSC_VER)
         setr(unsigned char(0xFF));
 #else
-        setr((unsigned char)(0xFF));
+        setr(static_cast<unsigned char>(0xFF));
 #endif
         setb(htmlByte(0.5 * (field - red) / (1.0 - red) * 1.0));
     }

@@ -4,18 +4,18 @@
 
 // Point data
 
-#include "pointmap.h"
+#include "pointmap.hpp"
 
-#include "attributetable.h"
-#include "ngraph.h"
-#include "parsers/mapinfodata.h" // for mapinfo interface
-#include "salashape.h"
-#include "shapemap.h"
+#include "attributetable.hpp"
+#include "ngraph.hpp"
+#include "parsers/mapinfodata.hpp" // for mapinfo interface
+#include "salashape.hpp"
+#include "shapemap.hpp"
 
-#include "genlib/comm.h" // for communicator
-#include "genlib/containerutils.h"
-#include "genlib/pflipper.h"
-#include "genlib/stringutils.h"
+#include "genlib/comm.hpp" // for communicator
+#include "genlib/containerutils.hpp"
+#include "genlib/pflipper.hpp"
+#include "genlib/stringutils.hpp"
 
 #include <cmath>
 #include <numeric>
@@ -23,12 +23,12 @@
 
 /////////////////////////////////////////////////////////////////////////////////
 
-PointMap::PointMap(const QtRegion &parentRegion, const std::string &name)
+PointMap::PointMap(Region4f region, const std::string &name)
     : AttributeMap(std::unique_ptr<AttributeTable>(new AttributeTable())), m_name(name),
-      m_parentRegion(&parentRegion), m_points(0, 0), m_filledPointCount(0), m_spacing(0.0),
-      m_initialised(false), m_blockedlines(false), m_processed(false), m_boundarygraph(false),
-      m_undocounter(0) {
-
+      m_points(0, 0), m_mergeLines(), m_spacing(0.0), m_offset(), m_bottomLeft(),
+      m_filledPointCount(0), m_undocounter(0), m_initialised(false), m_blockedlines(false),
+      m_processed(false), m_boundarygraph(false), _padding0(0) {
+    m_region = region;
     m_cols = 0;
     m_rows = 0;
 }
@@ -36,7 +36,6 @@ PointMap::PointMap(const QtRegion &parentRegion, const std::string &name)
 void PointMap::copy(const PointMap &sourcemap, bool copypoints, bool copyattributes) {
     m_name = sourcemap.getName();
     m_region = sourcemap.getRegion();
-    m_parentRegion = sourcemap.m_parentRegion;
 
     m_cols = sourcemap.getCols();
     m_rows = sourcemap.getRows();
@@ -101,8 +100,8 @@ void PointMap::communicate(time_t &atime, Communicator *comm, size_t record) {
 bool PointMap::setGrid(double spacing, const Point2f &offset) {
     m_spacing = spacing;
     // note, the internal offset is the offset from the bottom left
-    double xoffset = fmod(m_parentRegion->bottomLeft.x + offset.x, m_spacing);
-    double yoffset = fmod(m_parentRegion->bottomLeft.y + offset.y, m_spacing);
+    double xoffset = fmod(m_region.bottomLeft.x + offset.x, m_spacing);
+    double yoffset = fmod(m_region.bottomLeft.y + offset.y, m_spacing);
     if (xoffset < m_spacing / 2.0)
         xoffset += m_spacing;
     if (xoffset > m_spacing / 2.0)
@@ -121,15 +120,15 @@ bool PointMap::setGrid(double spacing, const Point2f &offset) {
                        // this you can't undo
 
     // A grid at the required spacing:
-    m_cols = static_cast<size_t>(floor((xoffset + m_parentRegion->width()) / m_spacing + 0.5) + 1);
-    m_rows = static_cast<size_t>(floor((yoffset + m_parentRegion->height()) / m_spacing + 0.5) + 1);
+    m_cols = static_cast<size_t>(floor((xoffset + m_region.width()) / m_spacing + 0.5) + 1);
+    m_rows = static_cast<size_t>(floor((yoffset + m_region.height()) / m_spacing + 0.5) + 1);
 
-    m_bottomLeft = Point2f(m_parentRegion->bottomLeft.x + m_offset.x,
-                           m_parentRegion->bottomLeft.y + m_offset.y);
+    m_bottomLeft = Point2f(m_region.bottomLeft.x + m_offset.x, m_region.bottomLeft.y + m_offset.y);
 
-    m_region = QtRegion(Point2f(m_bottomLeft.x - m_spacing / 2.0, m_bottomLeft.y - m_spacing / 2.0),
-                        Point2f(m_bottomLeft.x + double(m_cols - 1) * m_spacing + m_spacing / 2.0,
-                                m_bottomLeft.y + double(m_rows - 1) * m_spacing + m_spacing / 2.0));
+    m_region = Region4f(
+        Point2f(m_bottomLeft.x - m_spacing / 2.0, m_bottomLeft.y - m_spacing / 2.0),
+        Point2f(m_bottomLeft.x + static_cast<double>(m_cols - 1) * m_spacing + m_spacing / 2.0,
+                m_bottomLeft.y + static_cast<double>(m_rows - 1) * m_spacing + m_spacing / 2.0));
 
     m_points = depthmapX::ColumnMatrix<Point>(m_rows, m_cols);
     for (size_t j = 0; j < m_cols; j++) {
@@ -226,30 +225,30 @@ bool PointMap::undoPoints() {
 PixelRef PointMap::pixelate(const Point2f &p, bool constrain, int scalefactor) const {
     PixelRef ref;
 
-    double spacing = m_spacing / double(scalefactor);
+    double spacing = m_spacing / static_cast<double>(scalefactor);
     ref.x = static_cast<short>(floor((p.x - m_bottomLeft.x + (m_spacing / 2.0)) / spacing));
     ref.y = static_cast<short>(floor((p.y - m_bottomLeft.y + (m_spacing / 2.0)) / spacing));
 
     if (constrain) {
         if (ref.x < 0)
             ref.x = 0;
-        else if (ref.x >= static_cast<short>(m_cols * scalefactor))
-            ref.x = static_cast<short>(m_cols * scalefactor) - 1;
+        else if (ref.x >= static_cast<short>(m_cols * static_cast<size_t>(scalefactor)))
+            ref.x = static_cast<short>(m_cols * static_cast<size_t>(scalefactor)) - 1;
         if (ref.y < 0)
             ref.y = 0;
-        else if (ref.y >= static_cast<short>(m_rows * scalefactor))
-            ref.y = static_cast<short>(m_rows * scalefactor) - 1;
+        else if (ref.y >= static_cast<short>(m_rows * static_cast<size_t>(scalefactor)))
+            ref.y = static_cast<short>(m_rows * static_cast<size_t>(scalefactor)) - 1;
     }
 
     return ref;
 }
 
-void PointMap::addPointsInRegionToSet(const QtRegion &r, std::set<PixelRef> &selSet) {
+void PointMap::addPointsInRegionToSet(const Region4f &r, std::set<PixelRef> &selSet) {
     auto newSet = getPointsInRegion(r);
     selSet.insert(newSet.begin(), newSet.end());
 }
 
-std::set<PixelRef> PointMap::getPointsInRegion(const QtRegion &r) const {
+std::set<PixelRef> PointMap::getPointsInRegion(const Region4f &r) const {
     std::set<PixelRef> selSet;
     auto sBl = pixelate(r.bottomLeft, true);
     auto sTr = pixelate(r.topRight, true);
@@ -268,7 +267,7 @@ std::set<PixelRef> PointMap::getPointsInRegion(const QtRegion &r) const {
     return selSet;
 }
 
-void PointMap::fillLine(const Line &li) {
+void PointMap::fillLine(const Line4f &li) {
     PixelRefVector pixels = pixelateLine(li, 1);
     for (size_t j = 0; j < pixels.size(); j++) {
         if (getPoint(pixels[j]).empty()) {
@@ -278,7 +277,7 @@ void PointMap::fillLine(const Line &li) {
     }
 }
 
-bool PointMap::blockLines(std::vector<Line> &lines) {
+bool PointMap::blockLines(std::vector<Line4f> &lines) {
     if (!m_initialised || m_points.size() == 0) {
         return false;
     }
@@ -294,15 +293,15 @@ bool PointMap::blockLines(std::vector<Line> &lines) {
     // shaperef, so just switched to an integer key:
 
     for (const auto &line : lines) {
-        blockLine(Line(line.start(), line.end()));
+        blockLine(Line4f(line.start(), line.end()));
     }
 
     for (size_t i = 0; i < m_cols; i++) {
         for (size_t j = 0; j < m_rows; j++) {
             PixelRef curs = PixelRef(static_cast<short>(i), static_cast<short>(j));
             Point &pt = getPoint(curs);
-            QtRegion viewport = regionate(curs, 1e-10);
-            std::vector<Line>::iterator iter = pt.m_lines.begin(), end = pt.m_lines.end();
+            Region4f viewport = regionate(curs, 1e-10);
+            std::vector<Line4f>::iterator iter = pt.m_lines.begin(), end = pt.m_lines.end();
             for (; iter != end;) {
                 if (!iter->crop(viewport)) {
                     // the pixelation is fairly rough to make sure that no point is
@@ -321,7 +320,7 @@ bool PointMap::blockLines(std::vector<Line> &lines) {
     return true;
 }
 
-void PointMap::blockLine(const Line &li) {
+void PointMap::blockLine(const Line4f &li) {
     std::vector<PixelRef> pixels = pixelateLineTouching(li, 1e-10);
     // touching is generally better for ensuring lines pixelated completely,
     // although it may catch extra points...
@@ -390,9 +389,9 @@ bool PointMap::makePoints(const Point2f &seed, int fillType, Communicator *comm)
     }
 
     // check if seed point is actually visible from the centre of the cell
-    std::vector<Line> &linesTouching = getPoint(seedref).m_lines;
+    std::vector<Line4f> &linesTouching = getPoint(seedref).m_lines;
     for (const auto &line : linesTouching) {
-        if (intersect_line_no_touch(line, Line(seed, getPoint(seedref).m_location))) {
+        if (line.intersects_no_touch(Line4f(seed, getPoint(seedref).m_location))) {
             return false;
         }
     }
@@ -464,17 +463,17 @@ int PointMap::expand(const PixelRef p1, const PixelRef p2, PixelRefVector &list,
         // 2 = already filled
         return 2;
     }
-    Line l(depixelate(p1), depixelate(p2));
+    Line4f l(depixelate(p1), depixelate(p2));
     for (auto &line : getPoint(p1).m_lines) {
-        if (intersect_region(l, line, m_spacing * 1e-10) &&
-            intersect_line(l, line, m_spacing * 1e-10)) {
+        if (l.Region4f::intersects(line, m_spacing * 1e-10) &&
+            l.Line4f::intersects(line, m_spacing * 1e-10)) {
             // 4 = blocked
             return 4;
         }
     }
     for (auto &line : getPoint(p2).m_lines) {
-        if (intersect_region(l, line, m_spacing * 1e-10) &&
-            intersect_line(l, line, m_spacing * 1e-10)) {
+        if (l.Region4f::intersects(line, m_spacing * 1e-10) &&
+            l.Line4f::intersects(line, m_spacing * 1e-10)) {
             // 4 = blocked
             return 4;
         }
@@ -488,6 +487,7 @@ int PointMap::expand(const PixelRef p1, const PixelRef p2, PixelRefVector &list,
 }
 
 void PointMap::outputPoints(std::ostream &stream, char delim) {
+    auto const streamFlags = stream.flags();
     stream << "Ref" << delim << "x" << delim << "y" << std::endl;
     stream.precision(12);
 
@@ -503,19 +503,22 @@ void PointMap::outputPoints(std::ostream &stream, char delim) {
             }
         }
     }
+    stream.flags(streamFlags);
 }
 
 void PointMap::outputMergeLines(std::ostream &stream, char delim) {
+    auto const streamFlags = stream.flags();
     stream << "x1" << delim << "y1" << delim << "x2" << delim << "y2" << std::endl;
 
     stream.precision(12);
     for (size_t i = 0; i < m_mergeLines.size(); i++) {
 
-        Line li(depixelate(m_mergeLines[i].a), depixelate(m_mergeLines[i].b));
+        Line4f li(depixelate(m_mergeLines[i].a), depixelate(m_mergeLines[i].b));
 
         stream << li.start().x << delim << li.start().y << delim << li.end().x << delim
                << li.end().y << std::endl;
     }
+    stream.flags(streamFlags);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -536,7 +539,9 @@ void PointMap::outputSummary(std::ostream &myout, char delimiter) {
         myout << delimiter << m_attributes->getColumnName(idx);
     }
 
-    myout << std::endl;
+    auto const streamFlags = myout.flags();
+
+    myout << std::fixed << std::endl;
     myout.precision(8);
 
     for (auto iter = m_attributes->begin(); iter != m_attributes->end(); iter++) {
@@ -551,6 +556,7 @@ void PointMap::outputSummary(std::ostream &myout, char delimiter) {
             myout << std::endl;
         }
     }
+    myout.flags(streamFlags);
 }
 
 void PointMap::outputMif(std::ostream &miffile, std::ostream &midfile) {
@@ -591,8 +597,8 @@ void PointMap::outputNet(std::ostream &netfile) {
     for (auto &iter : graph) {
         PixelRefVector &list = iter.second;
         for (size_t m = 0; m < list.size(); m++) {
-            size_t n = depthmapX::findIndexFromKey(graph, list[m]);
-            if (static_cast<int>(n) != -1 && k < n) {
+            auto n = depthmapX::findIndexFromKey(graph, list[m]);
+            if (n != -1 && k < static_cast<size_t>(n)) {
                 netfile << (k + 1) << " " << (n + 1) << " 1" << std::endl;
             }
         }
@@ -761,9 +767,10 @@ bool PointMap::readMetadata(std::istream &stream) {
 
     stream.read(reinterpret_cast<char *>(&m_bottomLeft), sizeof(m_bottomLeft));
 
-    m_region = QtRegion(Point2f(m_bottomLeft.x - m_spacing / 2.0, m_bottomLeft.y - m_spacing / 2.0),
-                        Point2f(m_bottomLeft.x + double(m_cols - 1) * m_spacing + m_spacing / 2.0,
-                                m_bottomLeft.y + double(m_rows - 1) * m_spacing + m_spacing / 2.0));
+    m_region = Region4f(
+        Point2f(m_bottomLeft.x - m_spacing / 2.0, m_bottomLeft.y - m_spacing / 2.0),
+        Point2f(m_bottomLeft.x + static_cast<double>(m_cols - 1) * m_spacing + m_spacing / 2.0,
+                m_bottomLeft.y + static_cast<double>(m_rows - 1) * m_spacing + m_spacing / 2.0));
     return true;
 }
 
@@ -894,7 +901,7 @@ size_t PointMap::tagState(bool settag) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "sparksieve2.h"
+#include "sparksieve2.hpp"
 
 // The fast way to generate graphs... attempt 2
 // This uses the new points line segments to allow quick overlap comparisons
@@ -1070,7 +1077,7 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist) {
         // note regionate border must be greater than tolerance squared used in
         // interection testing later
         double border = m_spacing * 1e-10;
-        QtRegion viewport0 = regionate(curs, 1e-10);
+        Region4f viewport0 = regionate(curs, 1e-10);
         switch (q) {
         case 0:
             viewport0.topRight.x = centre0.x;
@@ -1105,9 +1112,9 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist) {
             viewport0.topRight.y = centre0.y;
             break;
         }
-        std::vector<Line> lines0;
-        for (const Line &line : getPoint(curs).m_lines) {
-            Line l = line;
+        std::vector<Line4f> lines0;
+        for (const Line4f &line : getPoint(curs).m_lines) {
+            Line4f l = line;
             if (l.crop(viewport0)) {
                 lines0.push_back(l);
             }
@@ -1133,7 +1140,7 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist) {
                         // appropriately
                         double thisDist = dist(addlist[n], curs) * m_spacing;
                         if (thisDist > farBinDists[bin]) {
-                            farBinDists[bin] = (float)thisDist;
+                            farBinDists[bin] = static_cast<float>(thisDist);
                         }
                         totalDist += thisDist;
                         totalDistSqr += thisDist * thisDist;
@@ -1157,9 +1164,9 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist) {
         pt.m_node->make(curs, binsB, farBinDists,
                         pt.m_processflag); // note: make clears bins!
         AttributeRow &row = m_attributes->getRow(AttributeKey(curs));
-        row.setValue(PointMap::Column::CONNECTIVITY, float(neighbourhoodSize));
-        row.setValue(PointMap::Column::POINT_FIRST_MOMENT, float(totalDist));
-        row.setValue(PointMap::Column::POINT_SECOND_MOMENT, float(totalDistSqr));
+        row.setValue(PointMap::Column::CONNECTIVITY, static_cast<float>(neighbourhoodSize));
+        row.setValue(PointMap::Column::POINT_FIRST_MOMENT, static_cast<float>(totalDist));
+        row.setValue(PointMap::Column::POINT_SECOND_MOMENT, static_cast<float>(totalDistSqr));
     } else {
         // Clear bins by hand if not using them to make
         for (int i = 0; i < 32; i++) {
@@ -1183,8 +1190,8 @@ bool PointMap::sieve2(sparkSieve2 &sieve, std::vector<PixelRef> &addlist, int q,
         if (iter->remove) {
             continue;
         }
-        for (int ind = (int)ceil(iter->start * (depth - 0.5) - 0.5);
-             ind <= (int)floor(iter->end * (depth + 0.5) + 0.5); ind++) {
+        for (int ind = static_cast<int>(ceil(iter->start * (depth - 0.5) - 0.5));
+             ind <= static_cast<int>(floor(iter->end * (depth + 0.5) + 0.5)); ind++) {
             if (ind < firstind) {
                 continue;
             }
@@ -1207,8 +1214,8 @@ bool PointMap::sieve2(sparkSieve2 &sieve, std::vector<PixelRef> &addlist, int q,
             if (includes(here)) {
                 hasgaps = true;
                 // centre gap checks to see if the point is blocked itself
-                bool centregap =
-                    (double(ind) >= (iter->start * depth) && double(ind) <= (iter->end * depth));
+                bool centregap = (static_cast<double>(ind) >= (iter->start * depth) &&
+                                  static_cast<double>(ind) <= (iter->end * depth));
 
                 if (centregap && (getPoint(here).m_state & Point::FILLED)) {
                     // don't repeat axes / diagonals
@@ -1243,9 +1250,9 @@ bool PointMap::binDisplay(Communicator *, std::set<int> &selSet) {
             Bin &b = p.m_node->bin(i);
             b.first();
             while (!b.is_tail()) {
-                // m_attributes->setValue( row, bindisplay_col, float((i % 8) + 1) );
+                // m_attributes->setValue( row, bindisplay_col, static_cast<float>((i % 8) + 1) );
                 m_attributes->getRow(AttributeKey(b.cursor()))
-                    .setValue(bindisplayCol, float(b.distance()));
+                    .setValue(bindisplayCol, static_cast<float>(b.distance()));
                 b.next();
             }
         }
@@ -1254,7 +1261,7 @@ bool PointMap::binDisplay(Communicator *, std::set<int> &selSet) {
     return true;
 }
 
-bool PointMap::mergePoints(const Point2f &p, QtRegion &firstPointsBounds,
+bool PointMap::mergePoints(const Point2f &p, Region4f &firstPointsBounds,
                            std::set<int> &firstPoints) {
 
     // note that in a multiple selection, the point p is adjusted by the selection
@@ -1266,7 +1273,7 @@ bool PointMap::mergePoints(const Point2f &p, QtRegion &firstPointsBounds,
     //
     for (auto &sel : firstPoints) {
         PixelRef a = sel;
-        PixelRef b = ((PixelRef)sel) + offset;
+        PixelRef b = static_cast<PixelRef>(sel) + offset;
         // check in limits:
         if (includes(b) && getPoint(b).filled()) {
             mergePixels(a, b);

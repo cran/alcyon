@@ -5,40 +5,38 @@
 
 // Quick OS land-line NTF parser
 
-#include "ntfp.h"
+#include "ntfp.hpp"
 
-#include "../genlib/comm.h" // for communicator
-#include "../genlib/containerutils.h"
-#include "../genlib/p2dpoly.h"
-#include "../genlib/stringutils.h"
+#include "../genlib/comm.hpp" // for communicator
+#include "../genlib/containerutils.hpp"
+#include "../genlib/stringutils.hpp"
 
 #include <fstream>
-#include <iostream>
 #include <sstream>
 
 ///////////////////////////////////////////////////////////////////////////////
 
 int NtfPoint::parse(const std::string &token, bool secondhalf /* = false */) {
     if (secondhalf) {
-        std::string second = token.substr(0, chars);
+        std::string second = token.substr(0, static_cast<size_t>(chars));
         b = stoi(second);
         if (chars == 5) {
             b *= 100;
         }
         return 2;
-    } else if ((int)token.length() < chars * 2) {
-        if ((int)token.length() < chars) {
+    } else if (static_cast<int>(token.length()) < chars * 2) {
+        if (static_cast<int>(token.length()) < chars) {
             return 0;
         }
-        std::string first = token.substr(0, chars);
+        std::string first = token.substr(0, static_cast<size_t>(chars));
         a = stoi(first);
         if (chars == 5) {
             a *= 100;
         }
         return 1;
     } else {
-        std::string first = token.substr(0, chars);
-        std::string second = token.substr(chars, chars);
+        std::string first = token.substr(0, static_cast<size_t>(chars));
+        std::string second = token.substr(static_cast<size_t>(chars), static_cast<size_t>(chars));
         a = stoi(first);
         b = stoi(second);
         if (chars == 5) {
@@ -49,16 +47,16 @@ int NtfPoint::parse(const std::string &token, bool secondhalf /* = false */) {
     return 2;
 }
 
-void NtfMap::fitBounds(const Line &li) {
+void NtfMap::fitBounds(const Line4f &li) {
     if (m_region.atZero()) {
         m_region = li;
     } else {
-        m_region = runion(m_region, li);
+        m_region = m_region.runion(li);
     }
 }
 
 void NtfMap::addGeom(size_t layerIdx, NtfGeometry &geom) {
-    m_lineCount += geom.lines.size();
+    m_lineCount += static_cast<int>(geom.lines.size());
     layers[layerIdx].m_lineCount += geom.lines.size();
     layers[layerIdx].geometries.push_back(geom);
     for (size_t i = 0; i < geom.lines.size(); i++) {
@@ -69,12 +67,12 @@ void NtfMap::addGeom(size_t layerIdx, NtfGeometry &geom) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-Line NtfMap::makeLine(const NtfPoint &a, const NtfPoint &b) {
+Line4f NtfMap::makeLine(const NtfPoint &a, const NtfPoint &b) {
     // In future requires offset
-    return Line(
-        Point2f(double(m_offset.a) + double(a.a) / 100.0, double(m_offset.b) + double(a.b) / 100.0),
-        Point2f(double(m_offset.a) + double(b.a) / 100.0,
-                double(m_offset.b) + double(b.b) / 100.0));
+    return Line4f(Point2f(static_cast<double>(m_offset.a) + static_cast<double>(a.a) / 100.0,
+                          static_cast<double>(m_offset.b) + static_cast<double>(a.b) / 100.0),
+                  Point2f(static_cast<double>(m_offset.a) + static_cast<double>(b.a) / 100.0,
+                          static_cast<double>(m_offset.b) + static_cast<double>(b.b) / 100.0));
 }
 
 void NtfMap::open(const std::vector<std::string> &fileset, Communicator *comm) {
@@ -102,7 +100,7 @@ void NtfMap::open(const std::vector<std::string> &fileset, Communicator *comm) {
             dXstring::safeGetline(stream, line);
             if (line.length() > 2) {
                 if (dXstring::beginsWith<std::string>(line, "02")) {
-                    std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+                    dXstring::toLower(line);
                     if (dXstring::beginsWith<std::string>(line, "02land-line")) {
                         filetype = NTF_LANDLINE;
                     } else if (dXstring::beginsWith<std::string>(line, "02meridian")) {
@@ -172,7 +170,7 @@ void NtfMap::open(const std::vector<std::string> &fileset, Communicator *comm) {
                         std::string featcodestr = line.substr(16, 4);
                         auto pos = std::find(featcodes.begin(), featcodes.end(), stoi(featcodestr));
                         if (pos != featcodes.end()) {
-                            layers[size_t(std::distance(featcodes.begin(), pos))]
+                            layers[static_cast<size_t>(std::distance(featcodes.begin(), pos))]
                                 .geometries.push_back(NtfGeometry());
                             parsing = 1;
                             currpos = pos;
@@ -219,15 +217,15 @@ void NtfMap::open(const std::vector<std::string> &fileset, Communicator *comm) {
                 if (parsing > 1) {
                     if (parsing == 2) { // hanging half point:
                         currpoint.parse(tokens[0], true);
-                        Line li = makeLine(lastpoint, currpoint);
+                        Line4f li = makeLine(lastpoint, currpoint);
                         geom.lines.push_back(li);
                         lastpoint = currpoint;
                         currtoken = 1;
                     }
-                    for (size_t i = currtoken; i < tokens.size(); i++) {
-                        int numbersparsed = currpoint.parse(tokens[i]);
+                    for (size_t j = static_cast<size_t>(currtoken); j < tokens.size(); j++) {
+                        int numbersparsed = currpoint.parse(tokens[j]);
                         if (numbersparsed == 2) {
-                            Line li = makeLine(lastpoint, currpoint);
+                            Line4f li = makeLine(lastpoint, currpoint);
                             geom.lines.push_back(li);
                             lastpoint = currpoint;
                         } else if (numbersparsed == 1) {

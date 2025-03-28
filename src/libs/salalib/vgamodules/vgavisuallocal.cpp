@@ -4,13 +4,14 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgavisuallocal.h"
+#include "vgavisuallocal.hpp"
 
 AnalysisResult VGAVisualLocal::run(Communicator *comm) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     AnalysisResult result({Column::VISUAL_CLUSTERING_COEFFICIENT, Column::VISUAL_CONTROL,
@@ -47,9 +48,9 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm) {
                 int cluster = 0;
                 float control = 0.0f;
 
-                for (size_t i = 0; i < neighbourhood.size(); i++) {
+                for (size_t nidx = 0; nidx < neighbourhood.size(); nidx++) {
                     int intersectSize = 0, retroSize = 0;
-                    auto &retpt = m_map.getPoint(neighbourhood[i]);
+                    auto &retpt = m_map.getPoint(neighbourhood[nidx]);
                     if (retpt.filled() && retpt.hasNode()) {
                         retpt.getNode().first();
                         while (!retpt.getNode().is_tail()) {
@@ -66,7 +67,9 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm) {
                             }
                             retpt.getNode().next();
                         }
-                        control += 1.0f / float(retroSize);
+                        if (retroSize > 0) {
+                            control += 1.0f / static_cast<float>(retroSize);
+                        }
                         cluster += intersectSize;
                     }
                 }
@@ -74,14 +77,16 @@ AnalysisResult VGAVisualLocal::run(Communicator *comm) {
                 if (neighbourhood.size() > 1) {
                     result.setValue(        //
                         refIdx, clusterCol, //
-                        float(cluster /
-                              double(neighbourhood.size() * (neighbourhood.size() - 1.0))));
+                        static_cast<float>(cluster /
+                                           static_cast<double>(neighbourhood.size() *
+                                                               (neighbourhood.size() - 1))));
                     result.setValue(        //
                         refIdx, controlCol, //
-                        float(control));
+                        static_cast<float>(control));
                     result.setValue(                //
                         refIdx, controllabilityCol, //
-                        float(double(neighbourhood.size()) / double(totalneighbourhood.size())));
+                        static_cast<float>(static_cast<double>(neighbourhood.size()) /
+                                           static_cast<double>(totalneighbourhood.size())));
                 } else {
                     result.setValue(refIdx, clusterCol, -1);
                     result.setValue(refIdx, controlCol, -1);

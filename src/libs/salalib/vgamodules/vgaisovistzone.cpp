@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgaisovistzone.h"
+#include "vgaisovistzone.hpp"
 
-#include "../salaprogram.h"
+#include "../salaprogram.hpp"
 
 AnalysisResult VGAIsovistZone::run(Communicator *) {
 
@@ -15,8 +15,7 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
     if (m_originPointSets.empty()) {
         return result;
     }
-    int zoneColumnIndex = -1;
-    for (auto originPointSet : m_originPointSets) {
+    for (const auto &originPointSet : m_originPointSets) {
         std::string originPointSetName = originPointSet.first;
 
         std::string zoneColumnName = getFormattedColumn( //
@@ -24,12 +23,12 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
         std::string inverseZoneColumnName = getFormattedColumn( //
             Column::ISOVIST_ZONE_INV_SQ_DISTANCE, originPointSetName, m_restrictDistance);
 
-        auto originPoints = originPointSet.second;
+        const auto &originPoints = originPointSet.second;
 
-        zoneColumnIndex = attributes.insertOrResetColumn(zoneColumnName);
+        auto zoneColumnIndex = attributes.insertOrResetColumn(zoneColumnName);
         result.addAttribute(zoneColumnName);
 
-        for (PixelRef ref : originPoints) {
+        for (const PixelRef ref : originPoints) {
             AttributeRow &row = attributes.getRow(AttributeKey(ref));
             row.setValue(zoneColumnIndex, 0);
             Point &lp = m_map.getPoint(ref);
@@ -38,7 +37,8 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
             for (auto &zonePixel : newPixels) {
                 auto *zonePixelRow = attributes.getRowPtr(AttributeKey(zonePixel.pixel));
                 if (zonePixelRow != nullptr) {
-                    double zoneLineDist = dist(ref, zonePixel.pixel) * m_map.getSpacing();
+                    auto zoneLineDist =
+                        static_cast<float>(dist(ref, zonePixel.pixel) * m_map.getSpacing());
                     float currZonePixelVal = zonePixelRow->getValue(zoneColumnIndex);
                     if ((currZonePixelVal == -1 || zoneLineDist < currZonePixelVal) &&
                         (m_restrictDistance <= 0 ||
@@ -48,10 +48,10 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
                 }
             }
         }
-        int inverseZoneColumnIndex = attributes.insertOrResetColumn(inverseZoneColumnName);
+        auto inverseZoneColumnIndex = attributes.insertOrResetColumn(inverseZoneColumnName);
         setColumnFormulaAndUpdate(m_map, inverseZoneColumnIndex,
                                   "1/((value(\"" + zoneColumnName + "\") + 1) ^ 2)", std::nullopt);
-        result.addAttribute(inverseZoneColumnName);
+        result.addAttribute(std::move(inverseZoneColumnName));
     }
 
     result.completed = true;
@@ -59,7 +59,7 @@ AnalysisResult VGAIsovistZone::run(Communicator *) {
     return result;
 }
 
-void VGAIsovistZone::extractMetric(Node n, std::set<MetricTriple> &pixels, PointMap &map,
+void VGAIsovistZone::extractMetric(Node &n, std::set<MetricTriple> &pixels, PointMap &map,
                                    const MetricTriple &curs) {
     for (int i = 0; i < 32; i++) {
         Bin &bin = n.bin(i);
@@ -75,7 +75,7 @@ void VGAIsovistZone::extractMetric(Node n, std::set<MetricTriple> &pixels, Point
     }
 }
 
-void VGAIsovistZone::setColumnFormulaAndUpdate(PointMap &pointmap, int columnIndex,
+void VGAIsovistZone::setColumnFormulaAndUpdate(PointMap &pointmap, size_t columnIndex,
                                                std::string formula,
                                                std::optional<const std::set<int>> selectionSet) {
     SalaObj programContext;
@@ -91,14 +91,15 @@ void VGAIsovistZone::setColumnFormulaAndUpdate(PointMap &pointmap, int columnInd
     } else {
         bool programCompleted;
         if (selectionSet.has_value()) {
-            programCompleted = proggy.runupdate(columnIndex, selectionSet.value());
+            programCompleted =
+                proggy.runupdate(static_cast<int>(columnIndex), selectionSet.value());
         } else {
-            programCompleted = proggy.runupdate(columnIndex);
+            programCompleted = proggy.runupdate(static_cast<int>(columnIndex));
         }
         if (!programCompleted) {
             throw depthmapX::RuntimeException("There was an error parsing your formula:\n\n" +
                                               proggy.getLastErrorMessage());
         }
     }
-    programContext.getTable()->getColumn(columnIndex).setFormula(formula);
+    programContext.getTable()->getColumn(columnIndex).setFormula(std::move(formula));
 }

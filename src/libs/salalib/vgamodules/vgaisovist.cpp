@@ -4,9 +4,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgaisovist.h"
+#include "vgaisovist.hpp"
 
-#include "../isovist.h"
+#include "../isovist.hpp"
 
 AnalysisResult VGAIsovist::run(Communicator *comm) {
 
@@ -23,11 +23,13 @@ AnalysisResult VGAIsovist::run(Communicator *comm) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
     size_t count = 0;
 
-    AnalysisResult result(createAttributes(m_simpleVersion), m_map.getFilledPointCount());
+    AnalysisResult result(createAttributes(m_simpleVersion),
+                          static_cast<size_t>(m_map.getFilledPointCount()));
 
     for (size_t i = 0; i < m_map.getCols(); i++) {
         for (size_t j = 0; j < m_map.getRows(); j++) {
@@ -131,10 +133,10 @@ std::set<std::string> VGAIsovist::setData(Isovist &isovist, size_t &index, Analy
 
 BSPNode VGAIsovist::makeBSPtree(Communicator *communicator,
                                 const std::vector<SalaShape> &boundaryShapes) const {
-    std::vector<Line> partitionlines;
+    std::vector<Line4f> partitionlines;
     for (const auto &shape : boundaryShapes) {
-        std::vector<Line> newLines = shape.getAsLines();
-        for (const Line &line : newLines) {
+        std::vector<Line4f> newLines = shape.getAsLines();
+        for (const Line4f &line : newLines) {
             if (line.length() > 0.0) {
                 partitionlines.push_back(line);
             }
@@ -147,7 +149,7 @@ BSPNode VGAIsovist::makeBSPtree(Communicator *communicator,
         time_t atime = 0;
         if (communicator) {
             communicator->CommPostMessage(Communicator::NUM_RECORDS,
-                                          static_cast<int>(partitionlines.size()));
+                                          static_cast<size_t>(partitionlines.size()));
             qtimer(atime, 0);
         }
 

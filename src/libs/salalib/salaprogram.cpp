@@ -20,11 +20,11 @@
 // User defined functions are not included yet, but should be fairly easy using
 // a global function stack alongside the global variable stack
 
-#include "salaprogram.h"
-#include "connector.h"
-#include "ngraph.h"
-#include "pointmap.h"
-#include "shapemap.h"
+#include "salaprogram.hpp"
+#include "connector.hpp"
+#include "ngraph.hpp"
+#include "pointmap.hpp"
+#include "shapemap.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -33,88 +33,93 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 // Assign and list access rather incongruently in math ops, but never mind:
+namespace {
+    bool g_sala_loaded = false;
 
-bool g_sala_loaded = false;
+    std::vector<SalaFuncLabel> g_sala_math_ops;
+    std::vector<SalaFuncLabel> g_sala_comp_ops;
+    std::vector<SalaFuncLabel> g_sala_logical_ops;
+    std::vector<SalaFuncLabel> g_sala_global_funcs;
+    std::vector<SalaMemberFuncLabel> g_sala_member_funcs;
 
-std::vector<SalaFuncLabel> g_sala_math_ops;
-std::vector<SalaFuncLabel> g_sala_comp_ops;
-std::vector<SalaFuncLabel> g_sala_logical_ops;
-std::vector<SalaFuncLabel> g_sala_global_funcs;
-std::vector<SalaMemberFuncLabel> g_sala_member_funcs;
+    void loadSalaProgram() {
+        // math ops
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_ADD, "+", "add"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_SUBTRACT, "-", "subtract"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MINUS, "-", "negative"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_PLUS, "+", "positive"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MULTIPLY, "*", "multiply"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_DIVIDE, "/", "divide"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MODULO, "%", "modulo"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_POWER, "^", "power"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_ASSIGN, "=", "assignment"));
+        g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_LIST_ACCESS, "[]",
+                                                "list access")); // list access included even though
+                                                                 // not parsed directly like this
 
-void loadSalaProgram() {
-    // math ops
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_ADD, "+", "add"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_SUBTRACT, "-", "subtract"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MINUS, "-", "negative"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_PLUS, "+", "positive"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MULTIPLY, "*", "multiply"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_DIVIDE, "/", "divide"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_MODULO, "%", "modulo"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_POWER, "^", "power"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_ASSIGN, "=", "assignment"));
-    g_sala_math_ops.push_back(SalaFuncLabel(SalaObj::S_LIST_ACCESS, "[]",
-                                            "list access")); // list access included even though not
-                                                             // parsed directly like this
+        // comp ops
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_GT, ">", "greater than"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_LT, "<", "less than"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_GEQ, ">=", "greater than or equal to"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_LEQ, "<=", "less than or equal to"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_NEQ, "!=", "not equal to"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_EQ, "==", "equal to"));
+        g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_IS, "is", "is the same object as"));
 
-    // comp ops
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_GT, ">", "greater than"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_LT, "<", "less than"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_GEQ, ">=", "greater than or equal to"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_LEQ, "<=", "less than or equal to"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_NEQ, "!=", "not equal to"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_EQ, "==", "equal to"));
-    g_sala_comp_ops.push_back(SalaFuncLabel(SalaObj::S_IS, "is", "is the same object as"));
+        // logical ops
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_NOT, "not", "logical not"));
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_NOT, "!", "logical not"));
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_AND, "and", "logical and"));
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_AND, "&&", "logical and"));
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_OR, "or", "logical or"));
+        g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_OR, "||", "logical or"));
 
-    // logical ops
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_NOT, "not", "logical not"));
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_NOT, "!", "logical not"));
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_AND, "and", "logical and"));
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_AND, "&&", "logical and"));
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_OR, "or", "logical or"));
-    g_sala_logical_ops.push_back(SalaFuncLabel(SalaObj::S_OR, "||", "logical or"));
+        // global functions
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_SQRT, "sqrt", "square root"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_LOG, "log", "log base 10"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_LN, "ln", "natural logarithm"));
+        g_sala_global_funcs.push_back(
+            SalaFuncLabel(SalaObj::S_RAND, "random", "random number (0.0 to 1.0)"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_SIN, "sin", "sine"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_COS, "cos", "cosine"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_TAN, "tan", "tangent"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ASIN, "asin", "inverse sine"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ACOS, "acos", "inverse cosine"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ATAN, "atan", "inverse tangent"));
+        g_sala_global_funcs.push_back(
+            SalaFuncLabel(SalaObj::S_LEN, "len", "array or string length"));
+        g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_RANGE, "range", "set of integers"));
 
-    // global functions
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_SQRT, "sqrt", "square root"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_LOG, "log", "log base 10"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_LN, "ln", "natural logarithm"));
-    g_sala_global_funcs.push_back(
-        SalaFuncLabel(SalaObj::S_RAND, "random", "random number (0.0 to 1.0)"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_SIN, "sin", "sine"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_COS, "cos", "cosine"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_TAN, "tan", "tangent"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ASIN, "asin", "inverse sine"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ACOS, "acos", "inverse cosine"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_ATAN, "atan", "inverse tangent"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_LEN, "len", "array or string length"));
-    g_sala_global_funcs.push_back(SalaFuncLabel(SalaObj::S_RANGE, "range", "set of integers"));
+        // member functions
+        g_sala_member_funcs.push_back(
+            SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FAPPEND, "append", "append item"));
+        g_sala_member_funcs.push_back(
+            SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FEXTEND, "extend", "extend by list"));
+        g_sala_member_funcs.push_back(
+            SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FPOP, "pop", "pop (last) item"));
+        g_sala_member_funcs.push_back(
+            SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FCLEAR, "clear", "clear contents"));
+        g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FVALUE,
+                                                          "value", "get attribute value"));
+        g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FSETVALUE,
+                                                          "setvalue", "set attribute value"));
+        g_sala_member_funcs.push_back(
+            SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FMARK, "mark", "get node mark"));
+        g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FSETMARK,
+                                                          "setmark", "set node mark"));
+        g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ,
+                                                          SalaObj::S_FCONNECTIONS, "connections",
+                                                          "get list of connections"));
 
-    // member functions
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FAPPEND, "append", "append item"));
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FEXTEND, "extend", "extend by list"));
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FPOP, "pop", "pop (last) item"));
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_LIST, SalaObj::S_FCLEAR, "clear", "clear contents"));
-    g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FVALUE,
-                                                      "value", "get attribute value"));
-    g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FSETVALUE,
-                                                      "setvalue", "set attribute value"));
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FMARK, "mark", "get node mark"));
-    g_sala_member_funcs.push_back(
-        SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FSETMARK, "setmark", "set node mark"));
-    g_sala_member_funcs.push_back(SalaMemberFuncLabel(SalaObj::S_GRAPHOBJ, SalaObj::S_FCONNECTIONS,
-                                                      "connections", "get list of connections"));
-
-    g_sala_loaded = true;
-}
+        g_sala_loaded = true;
+    }
+} // namespace
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-SalaProgram::SalaProgram(SalaObj context) {
+SalaProgram::SalaProgram(SalaObj context)
+    : m_rootCommand(), m_varStack(), m_errorStack(), m_col(), m_marked(false), _padding0(0),
+      m_thisobj(), m_marks() {
     if (!g_sala_loaded) {
         loadSalaProgram();
     }
@@ -151,7 +156,7 @@ bool SalaProgram::parse(std::istream &program) {
         while (!endloop) {
             std::istream::traits_type::int_type c = program.peek();
             if (c == std::istream::traits_type::eof()) {
-                program.get(); // actually shift onto the eof character
+                read(program); // actually shift onto the eof character
                 break;
             }
             auto ch = std::istream::traits_type::to_char_type(c);
@@ -168,7 +173,7 @@ bool SalaProgram::parse(std::istream &program) {
             case '#':
                 // hit comment, read to end of line:
                 while (std::istream::traits_type::not_eof(c) && ch != '\n') {
-                    program.get();
+                    read(program);
                     c = program.peek();
                     ch = std::istream::traits_type::to_char_type(c);
                 }
@@ -177,7 +182,7 @@ bool SalaProgram::parse(std::istream &program) {
             case '\\':
                 // hit line continuation, ignore everything after it:
                 while (std::istream::traits_type::not_eof(c) && ch != '\n') {
-                    program.get();
+                    read(program);
                     c = program.peek();
                     ch = std::istream::traits_type::to_char_type(c);
                 }
@@ -188,7 +193,7 @@ bool SalaProgram::parse(std::istream &program) {
                 break;
             }
             if (!endloop) {
-                program.get();
+                read(program);
             }
         }
 
@@ -200,6 +205,11 @@ bool SalaProgram::parse(std::istream &program) {
 
             parent->m_children.push_back(SalaCommand(this, parent, indent));
 
+            // TODO (PK): Coverity here suggests that .back() creates a use-after-free
+            // issue because the above push_back invalidates m_children. Since this is a
+            // neglacted piece of code, we'll disable the warning until a closer look is
+            // taken on all of salapgrogam.hpp/.cpp
+            /* coverity[use_after_free] */
             SalaCommand &thiscommand = parent->m_children.back();
 
             try {
@@ -207,7 +217,7 @@ bool SalaProgram::parse(std::istream &program) {
             } catch (SalaError e) {
                 if (e.lineno == -1)
                     e.lineno = line;
-                m_errorStack.push_back(e);
+                m_errorStack.push_back(std::move(e));
                 return false;
             }
 
@@ -289,12 +299,12 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset) {
             row = sel;
             try {
                 SalaObj val = evaluate();
-                float v = (float)val.toDouble(); // note, toDouble will type check and
-                                                 // throw if there's a problem
+                float v = static_cast<float>(val.toDouble()); // note, toDouble will type check and
+                                                              // throw if there's a problem
                 if (!std::isfinite(v)) {
                     v = -1.0f;
                 }
-                table->getRow(AttributeKey(sel)).setValue(m_col, v);
+                table->getRow(AttributeKey(sel)).setValue(static_cast<size_t>(m_col), v);
             } catch (SalaError e) {
                 // error
                 m_errorStack.push_back(e);
@@ -306,12 +316,12 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset) {
             row = iter->getKey().value;
             try {
                 SalaObj val = evaluate();
-                float v = (float)val.toDouble(); // note, toDouble will type check and
-                                                 // throw if there's a problem
+                float v = static_cast<float>(val.toDouble()); // note, toDouble will type check and
+                                                              // throw if there's a problem
                 if (!std::isfinite(v)) {
                     v = -1.0f;
                 }
-                iter->getRow().setValue(m_col, v);
+                iter->getRow().setValue(static_cast<size_t>(m_col), v);
             } catch (SalaError e) {
                 // error
                 m_errorStack.push_back(e);
@@ -375,7 +385,9 @@ std::string SalaProgram::getLastErrorMessage() const {
 ////////////////////////////////////////////////////////////////////////////
 
 SalaCommand::SalaCommand(SalaProgram *program, SalaCommand *parent, int indent, Command command)
-    : m_program(program), m_parent(parent), m_command(command), m_indent(indent), m_line(0) {}
+    : m_program(program), m_parent(parent), m_children(), m_varNames(), m_command(command),
+      m_indent(indent), m_evalStack(), m_funcStack(), m_forIter(), _padding0(0), m_line(0),
+      m_lastString() {}
 
 int SalaCommand::parse(std::istream &program, int line) {
     m_funcStack.clear();
@@ -394,7 +406,7 @@ int SalaCommand::parse(std::istream &program, int line) {
     char cache = ' ';
     //
     while (!endloop && !program.eof()) {
-        char alpha = program.get();
+        char alpha = read(program);
         switch (alpha) {
         // string constant
         case '\"':
@@ -409,7 +421,7 @@ int SalaCommand::parse(std::istream &program, int line) {
                 char beta = std::istream::traits_type::to_char_type(b);
                 while (std::istream::traits_type::not_eof(b) && beta != '\n' &&
                        (beta != delim || alpha == '\\')) {
-                    alpha = program.get();
+                    alpha = read(program);
                     b = program.peek();
                     beta = std::istream::traits_type::to_char_type(b);
                     buffer.add(alpha);
@@ -417,7 +429,7 @@ int SalaCommand::parse(std::istream &program, int line) {
                 if (b == std::istream::traits_type::eof() || beta == '\n') {
                     throw SalaError("No closing quote", m_line);
                 } else {
-                    program.get(); // take off closing quote and discard
+                    read(program); // take off closing quote and discard
                 }
                 // add even if the string constant is empty:
                 m_evalStack.push_back(std::string(buffer));
@@ -506,12 +518,12 @@ int SalaCommand::parse(std::istream &program, int line) {
                 std::istream::traits_type::int_type b = program.peek();
                 char beta = std::istream::traits_type::to_char_type(b);
                 while (std::istream::traits_type::not_eof(b) && beta == ' ') {
-                    alpha = program.get();
+                    alpha = read(program);
                     b = program.peek();
                     beta = std::istream::traits_type::to_char_type(b);
                 }
                 if (beta == ')') {
-                    alpha = program.get();
+                    alpha = read(program);
                     m_evalStack.push_back(SalaObj());
                     last = SP_DATA;
                 } else {
@@ -540,12 +552,12 @@ int SalaCommand::parse(std::istream &program, int line) {
                 std::istream::traits_type::int_type b = program.peek();
                 char beta = std::istream::traits_type::to_char_type(b);
                 while (std::istream::traits_type::not_eof(b) && beta == ' ') {
-                    alpha = program.get();
+                    alpha = read(program);
                     b = program.peek();
                     beta = std::istream::traits_type::to_char_type(b);
                 }
                 if (beta == ']') {
-                    alpha = program.get();
+                    alpha = read(program);
                     if (last == SP_DATA) {
                         throw SalaError("Accessor operator ('[]') requires a parameter", m_line);
                     } else {
@@ -592,7 +604,7 @@ int SalaCommand::parse(std::istream &program, int line) {
             if (m_command == SC_FOR || m_command == SC_WHILE || m_command == SC_IF ||
                 m_command == SC_ELIF || m_command == SC_ELSE) {
                 bool commentfound = false;
-                alpha = program.get();
+                alpha = read(program);
                 while (!program.eof() && alpha != '\n') {
                     // continue to end of line, only comments allowed though!
                     if (!commentfound) {
@@ -606,7 +618,7 @@ int SalaCommand::parse(std::istream &program, int line) {
                                             m_line);
                         }
                     }
-                    alpha = program.get();
+                    alpha = read(program);
                 }
                 line++;
                 endloop = true;
@@ -662,7 +674,6 @@ int SalaCommand::parse(std::istream &program, int line) {
             break;
         case '\t':
             throw SalaError("Tab character found: please use only spaces to indent lines", m_line);
-            break;
         default:
             if (strchr("<>=!", cache)) {
                 // >, <, = and ! are held as next step operators
@@ -689,28 +700,28 @@ int SalaCommand::parse(std::istream &program, int line) {
         if (last == SP_COMMAND) {
             if (m_command == SC_FOR) {
                 // check the name of the for variable:
-                alpha = program.get();
+                alpha = read(program);
                 while (alpha == ' ') {
-                    alpha = program.get();
+                    alpha = read(program);
                 }
                 if (!isalpha_(alpha)) {
                     throw SalaError("'For' command expecting variable name", m_line);
                 }
                 while (isalphanum_(alpha)) {
                     buffer.add(alpha);
-                    alpha = program.get();
+                    alpha = read(program);
                 }
                 if (alpha != ' ') {
                     throw SalaError("Command expecting syntax 'for xyz in'...", m_line);
                 }
                 // add the for iterator variable:
                 m_program->m_varStack.push_back(SalaObj());
-                int x = m_program->m_varStack.size() - 1;
+                int x = static_cast<int>(m_program->m_varStack.size() - 1);
                 m_varNames.insert(std::make_pair(buffer, x));
                 m_forIter = SalaObj(SalaObj::S_VAR, x);
                 // now check for 'in'
                 while (alpha == ' ') {
-                    alpha = program.get();
+                    alpha = read(program);
                 }
                 if (alpha != 'i' || program.get() != 'n') {
                     throw SalaError("Command expecting syntax 'for xyz in'...", m_line);
@@ -768,7 +779,7 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
     }
     if (retvar == SP_COMMAND) {
         //
-        m_lastString = string; // make a copy for debugging purposes
+        m_lastString = std::move(string); // make a copy for debugging purposes
         return retvar;
     }
 
@@ -777,7 +788,7 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
         if (string[string.length() - 1] == 'e') {
             // handle later... at the moment we have hit + or - in 9.999e+99
             // or 9.999e-99
-            m_lastString = string; // make a copy for debugging purposes
+            m_lastString = std::move(string); // make a copy for debugging purposes
             return SP_NUMBER;
         }
         if (string.find_first_of('.') != std::string::npos ||
@@ -853,14 +864,14 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
     }
 
     if (retvar == SP_NONE) {
-        size_t n = string.find_first_of(".");
-        if (n != std::string::npos) {
-            if (n > 0) {
-                decode(string.substr(0, n));
+        size_t ndot = string.find_first_of(".");
+        if (ndot != std::string::npos) {
+            if (ndot > 0) {
+                decode(string.substr(0, ndot));
             }
-            if (decode_member(string.substr(n + 1), false) == SP_NONE) {
-                throw SalaError("There is no known member function called " + string.substr(n + 1),
-                                m_line);
+            if (decode_member(string.substr(ndot + 1), false) == SP_NONE) {
+                throw SalaError(
+                    "There is no known member function called " + string.substr(ndot + 1), m_line);
             }
             retvar = SP_FUNCTION;
         } else {
@@ -886,7 +897,7 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
                     retvar = SP_DATA;
                 } else {
                     m_program->m_varStack.push_back(SalaObj());
-                    x = m_program->m_varStack.size() - 1;
+                    x = static_cast<int>(m_program->m_varStack.size() - 1);
                     // note: attach simply to your m_parent, not parent variable, which
                     // has walked up the stack
                     m_parent->m_varNames.insert(std::make_pair(string, x));
@@ -906,7 +917,7 @@ int SalaCommand::decode(std::string string) // string copied as makelower applie
         m_command = SC_EXPR;
     }
 
-    m_lastString = string; // make a copy for debugging purposes
+    m_lastString = std::move(string); // make a copy for debugging purposes
 
     return retvar;
 }
@@ -998,7 +1009,7 @@ void SalaCommand::pushFunc(const SalaObj &func) {
 }
 
 void SalaCommand::evaluate(SalaObj &obj, bool &ret, bool &ifhandled) {
-    int begin = m_evalStack.size() - 1;
+    int begin = static_cast<int>(m_evalStack.size() - 1);
     SalaObj *pObj = nullptr;
     switch (m_command) {
     case SC_EXPR:
@@ -1055,14 +1066,15 @@ void SalaCommand::evaluate(SalaObj &obj, bool &ret, bool &ifhandled) {
         // constructing a list each time
         SalaObj list = evaluate(begin, pObj);
         if (list.m_type == SalaObj::S_LIST) {
-            int len = list.m_data.list.list->size();
+            size_t len = list.m_data.list.list->size();
             if (len != 0) {
-                for (int i = 0; i < len; i++) {
+                for (size_t i = 0; i < len; i++) {
                     // reset all my stack (actually, all parent functions should do this!)
                     for (const auto &varName : m_varNames) {
-                        m_program->m_varStack[varName.second].uninit();
+                        m_program->m_varStack[static_cast<size_t>(varName.second)].uninit();
                     }
-                    m_program->m_varStack[m_forIter.m_data.var] = list.m_data.list.list->at(i);
+                    m_program->m_varStack[static_cast<size_t>(m_forIter.m_data.var)] =
+                        list.m_data.list.list->at(i);
                     for (size_t k = 0; k < m_children.size(); k++) {
                         m_children[k].evaluate(obj, ret, ifhandled);
                         if (ret)
@@ -1092,7 +1104,7 @@ void SalaCommand::evaluate(SalaObj &obj, bool &ret, bool &ifhandled) {
             if (++counter == 0x04000000) { // <- an arbitrary big number
                 throw SalaError("Infinite loop", m_line);
             }
-            begin = m_evalStack.size() - 1;
+            begin = static_cast<int>(m_evalStack.size() - 1);
         }
         if (counter) {
             ifhandled = true;
@@ -1102,7 +1114,6 @@ void SalaCommand::evaluate(SalaObj &obj, bool &ret, bool &ifhandled) {
     } break;
     default:
         throw SalaError("Unknown command", m_line);
-        break;
     }
 }
 
@@ -1110,89 +1121,54 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
     if (pointer < 0) {
         throw SalaError("Missing argument", m_line);
     }
-    SalaObj data = m_evalStack[pointer];
+    SalaObj data = m_evalStack[static_cast<size_t>(pointer)];
     pointer--;
     if (data.m_type == SalaObj::S_FUNCTION) {
         SalaObj::Func func = data.m_data.func;
-        int group = (func & SalaObj::S_GROUP);
+        int group = static_cast<int>(func & SalaObj::S_GROUP);
         if (group == SalaObj::S_MATH_OPS) {
             try {
                 switch (func) {
-                case SalaObj::S_ADD:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) + evaluate(pointer, pObj);
-#else
-                {
+                case SalaObj::S_ADD: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = tmp1 + tmp2;
-                }
-#endif
                     break;
-                case SalaObj::S_SUBTRACT:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) - evaluate(pointer, pObj);
-#else
-                {
+                }
+                case SalaObj::S_SUBTRACT: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = tmp1 - tmp2;
-                }
-#endif
                     break;
+                }
                 case SalaObj::S_PLUS:
                     data = evaluate(pointer, pObj); // just ignore it
                     break;
-                case SalaObj::S_MINUS:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = -evaluate(pointer, pObj);
-#else
-                {
+                case SalaObj::S_MINUS: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     data = -tmp1;
-                }
-#endif
                     break;
-                case SalaObj::S_MULTIPLY:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) * evaluate(pointer, pObj);
-#else
-                {
+                }
+                case SalaObj::S_MULTIPLY: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = tmp1 * tmp2;
-                }
-#endif
                     break;
-                case SalaObj::S_DIVIDE:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) / evaluate(pointer, pObj);
-#else
-                {
+                }
+                case SalaObj::S_DIVIDE: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = tmp2 / tmp1;
-                }
-#endif
                     break;
-                case SalaObj::S_MODULO:
+                }
+                case SalaObj::S_MODULO: {
                     data = evaluate(pointer, pObj);
-
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) % data; // reverse order
-#else
                     {
                         SalaObj tmp1 = evaluate(pointer, pObj);
                         data = tmp1 % data;
                     }
-#endif
                     break;
+                }
                 case SalaObj::S_POWER:
                     data = evaluate(pointer, pObj); // reverse order
                     data = pow(evaluate(pointer, pObj).toDouble(), data.toDouble());
@@ -1222,7 +1198,7 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                         throw SalaError("Cannot be applied to " + data.getTypeIndefArt() +
                                             data.getTypeStr(),
                                         m_line);
-                } break;
+                }
                 default:
                     break;
                 }
@@ -1255,92 +1231,58 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                 case SalaObj::S_NOT:
                     data = !evaluate(pointer, pObj).toBool();
                     break;
-                case SalaObj::S_EQ:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) == evaluate(pointer, pObj);
-#else
-                {
+                case SalaObj::S_EQ: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = (tmp1 == tmp2);
-                }
-#endif
                     break;
-                case SalaObj::S_IS:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = op_is(evaluate(pointer, pObj), evaluate(pointer, pObj));
-#else
-                {
+                }
+                case SalaObj::S_IS: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = op_is(tmp1, tmp2);
-                }
-#endif
                     break;
-                case SalaObj::S_NEQ:
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) != evaluate(pointer, pObj);
-#else
-                {
+                }
+                case SalaObj::S_NEQ: {
                     SalaObj tmp1 = evaluate(pointer, pObj);
                     SalaObj tmp2 = evaluate(pointer, pObj);
                     data = (tmp1 != tmp2);
-                }
-#endif
                     break;
-                case SalaObj::S_GT:
+                }
+                case SalaObj::S_GT: {
                     data = evaluate(pointer, pObj);
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) > data; // revese order
-#else
                     {
                         SalaObj tmp1 = evaluate(pointer, pObj);
                         data = (tmp1 > data);
                     }
-#endif
                     break;
-                case SalaObj::S_LT:
+                }
+                case SalaObj::S_LT: {
                     data = evaluate(pointer, pObj);
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) < data; // revese order
-#else
                     {
                         SalaObj tmp1 = evaluate(pointer, pObj);
                         data = (tmp1 < data);
                     }
-#endif
-                    break;
-                case SalaObj::S_GEQ:
-                    data = evaluate(pointer, pObj);
 
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) >= data; // revese order
-#else
+                    break;
+                }
+                case SalaObj::S_GEQ: {
+                    data = evaluate(pointer, pObj);
                     {
                         SalaObj tmp1 = evaluate(pointer, pObj);
                         data = (tmp1 >= data);
                     }
-#endif
                     break;
-                case SalaObj::S_LEQ:
+                }
+                case SalaObj::S_LEQ: {
                     data = evaluate(pointer, pObj);
-
-                    // Quick mod - TV
-#if defined(_MSC_VER)
-                    data = evaluate(pointer, pObj) <= data; // revese order
-#else
                     {
                         SalaObj tmp1 = evaluate(pointer, pObj);
                         data = (tmp1 <= data);
                     }
-#endif
+
                     break;
+                }
                 default:
                     break;
                 }
@@ -1382,13 +1324,14 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                         if (step == 0) {
                             throw SalaError("Range cannot have a step of 0", m_line);
                         }
-                        int listlen = (int)ceil(float(end - start) / float(step));
+                        auto listlen = static_cast<int>(
+                            ceil(static_cast<float>(end - start) / static_cast<float>(step)));
                         if (listlen <= 0) {
                             data = SalaObj(SalaObj::S_LIST);
                         } else {
                             data = SalaObj(SalaObj::S_LIST, listlen);
                             for (int i = start, j = 0; i < end; i += step, j++) {
-                                data.m_data.list.list->at(j) = i;
+                                data.m_data.list.list->at(static_cast<size_t>(j)) = i;
                             }
                         }
                     }
@@ -1454,8 +1397,8 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                         break;
                     case SalaObj::S_FEXTEND:
                         if (param.m_type & SalaObj::S_LIST) {
-                            int count = param.m_data.list.list->size();
-                            for (int i = 0; i < count; i++) {
+                            size_t count = param.m_data.list.list->size();
+                            for (size_t i = 0; i < count; i++) {
                                 obj.m_data.list.list->push_back(param.m_data.list.list->at(i));
                             }
                         } else {
@@ -1476,10 +1419,10 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                             std::vector<SalaObj> &list = *(obj.m_data.list.list);
                             int i = param.toInt();
                             if (i < 0)
-                                i += list.size();
-                            if (i < 0 || i >= (int)list.size())
+                                i += static_cast<int>(list.size());
+                            if (i < 0 || i >= static_cast<int>(list.size()))
                                 throw SalaError("Index out of range");
-                            data = list[i];
+                            data = list[static_cast<size_t>(i)];
                             list.erase(list.begin() + i);
                         }
                         break;
@@ -1513,18 +1456,19 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
                             throw SalaError("Function takes 2 parameters");
                         }
                         const std::string &str = param.list_at(0).toStringRef();
-                        float val = (float)param.list_at(1).toDouble();
+                        auto val = static_cast<float>(param.list_at(1).toDouble());
                         AttributeTable *table = obj.getTable();
                         int col = -1;
                         if (str != "Ref Number") {
                             if (!table->hasColumn(str)) {
                                 throw SalaError(str + " is an unknown column", m_line);
                             }
-                            col = table->getColumnIndex(str);
+                            col = static_cast<int>(table->getColumnIndex(str));
                         } else {
                             throw SalaError("The reference number can not be changed", m_line);
                         }
-                        table->getRow(AttributeKey(obj.m_data.graph.node)).setValue(col, val);
+                        table->getRow(AttributeKey(obj.m_data.graph.node))
+                            .setValue(static_cast<size_t>(col), val);
                         data = SalaObj(); // returns none
                     } break;
                     case SalaObj::S_FCONNECTIONS: {
@@ -1567,7 +1511,7 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
     } else if (data.m_type & SalaObj::S_VAR) {
         // retrieve value from variable stack (keeping in a variable stack means it
         // can be reassigned dynamically)
-        pObj = &(m_program->m_varStack[data.m_data.var]);
+        pObj = &(m_program->m_varStack[static_cast<size_t>(data.m_data.var)]);
         return *pObj;
     } else if (data.m_type & SalaObj::S_CONST_LIST) {
         // build an list from either a const tuple or const list:
@@ -1575,7 +1519,7 @@ SalaObj SalaCommand::evaluate(int &pointer, SalaObj *&pObj) {
         data =
             SalaObj((data.m_type == SalaObj::S_CONST_LIST) ? SalaObj::S_LIST : SalaObj::S_TUPLE, x);
         for (--x; x >= 0; x--) {
-            data.m_data.list.list->at(x) =
+            data.m_data.list.list->at(static_cast<size_t>(x)) =
                 evaluate(pointer, pObj); // n.b., direct access to the list
         }
     }
@@ -1600,7 +1544,7 @@ SalaObj SalaCommand::connections(SalaObj graphobj, SalaObj param) {
             int count = node.count();
             list = SalaObj(SalaObj::S_LIST, count);
             node.first();
-            for (int i = 0; i < count; i++) {
+            for (size_t i = 0; i < static_cast<size_t>(count); i++) {
                 graphobj.m_data.graph.node = node.cursor();
                 list.m_data.list.list->at(i) = graphobj;
                 node.next();
@@ -1614,16 +1558,16 @@ SalaObj SalaCommand::connections(SalaObj graphobj, SalaObj param) {
             int count = bin.count();
             list = SalaObj(SalaObj::S_LIST, count);
             bin.first();
-            for (int i = 0; i < count; i++) {
+            for (size_t i = 0; i < static_cast<size_t>(count); i++) {
                 graphobj.m_data.graph.node = bin.cursor();
                 list.m_data.list.list->at(i) = graphobj;
                 bin.next();
             }
         }
     } else {
-        int idx = std::distance(
+        size_t idx = static_cast<size_t>(std::distance(
             graphobj.m_data.graph.map.shape->getAllShapes().begin(),
-            graphobj.m_data.graph.map.shape->getAllShapes().find(graphobj.m_data.graph.node));
+            graphobj.m_data.graph.map.shape->getAllShapes().find(graphobj.m_data.graph.node)));
         const Connector &connector = graphobj.m_data.graph.map.shape->getConnections()[idx];
         int mode = Connector::CONN_ALL;
         if (graphobj.m_data.graph.map.shape->isSegmentMap()) {
@@ -1638,17 +1582,19 @@ SalaObj SalaCommand::connections(SalaObj graphobj, SalaObj param) {
         } else {
             param.ensureNone();
         }
-        int count = connector.count(mode);
+        int count = static_cast<int>(connector.count(mode));
         list = SalaObj(SalaObj::S_LIST, count);
         int cursor = 0;
-        for (int i = 0; i < count; i++) {
+        for (size_t i = 0; i < static_cast<size_t>(count); i++) {
             int connectedIndex = connector.getConnectedRef(cursor, mode);
             if (connectedIndex == -1) {
                 cursor = -1;
                 graphobj.m_data.graph.node = -1;
             } else {
                 graphobj.m_data.graph.node =
-                    graphobj.m_data.graph.map.shape->getShapeRefFromIndex(connectedIndex)->first;
+                    graphobj.m_data.graph.map.shape
+                        ->getShapeRefFromIndex(static_cast<size_t>(connectedIndex))
+                        ->first;
             }
             list.m_data.list.list->at(i) = graphobj;
             cursor++;

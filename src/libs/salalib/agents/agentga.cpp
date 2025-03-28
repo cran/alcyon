@@ -4,35 +4,33 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "agentga.h"
+#include "agentga.hpp"
 
-#include "../genlib/pafmath.h"
-
-int thisrun = 0;
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-static int rankselect(int popsize) {
-    int num = int(pafmath::prandom() * popsize * (popsize + 1) * 0.5);
-    for (int i = 0; i < popsize; i++) {
-        if (num < (popsize - i)) {
-            return i;
+#include "../genlib/pafmath.hpp"
+namespace {
+    static int rankselect(int popsize) {
+        auto num = static_cast<int>(pafmath::prandom() * popsize * (popsize + 1) * 0.5);
+        for (int i = 0; i < popsize; i++) {
+            if (num < (popsize - i)) {
+                return i;
+            }
+            num -= (popsize - i);
         }
-        num -= (popsize - i);
+        return 0; // <- this shouldn't happen
     }
-    return 0; // <- this shouldn't happen
-}
 
-// note: this is tested and right: higher fitness, lower rank (so population[0] is best)
-int progcompare(const void *a, const void *b) {
-    double test = (((AgentProgram *)a)->fitness - ((AgentProgram *)b)->fitness);
-    if (test < 0.0) {
-        return 1;
-    } else if (test > 0.0) {
-        return -1;
+    // note: this is tested and right: higher fitness, lower rank (so population[0] is best)
+    int progcompare(const void *a, const void *b) {
+        double test = ((static_cast<const AgentProgram *>(a))->fitness -
+                       (static_cast<const AgentProgram *>(b))->fitness);
+        if (test < 0.0) {
+            return 1;
+        } else if (test > 0.0) {
+            return -1;
+        }
+        return 0;
     }
-    return 0;
-}
+} // namespace
 
 AgentProgram *ProgramPopulation::makeChild() {
     int a = rankselect(POPSIZE);

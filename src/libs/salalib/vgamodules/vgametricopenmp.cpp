@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgametricopenmp.h"
+#include "vgametricopenmp.hpp"
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -13,7 +13,8 @@
 AnalysisResult VGAMetricOpenMP::run(Communicator *comm) {
 
 #if !defined(_OPENMP)
-    std::cerr << "OpenMP NOT available, only running on a single core" << std::endl;
+    if (comm)
+        comm->logWarning("OpenMP NOT available, only running on a single core");
     m_forceCommUpdatesMasterThread = false;
 #else
     if (m_limitToThreads.has_value()) {
@@ -27,21 +28,22 @@ AnalysisResult VGAMetricOpenMP::run(Communicator *comm) {
 
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     const auto refs = getRefVector(attributes);
 
-    int count = 0;
+    size_t count = 0;
 
     std::vector<DataPoint> colData(attributes.getNumRows());
 
-    int i, n = int(attributes.getNumRows());
+    auto n = static_cast<int>(attributes.getNumRows());
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+#pragma omp parallel for default(shared) schedule(dynamic)
 #endif
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         if (m_gatesOnly) {
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -50,12 +52,12 @@ AnalysisResult VGAMetricOpenMP::run(Communicator *comm) {
             continue;
         }
 
-        DataPoint &dp = colData[i];
+        DataPoint &dp = colData[static_cast<size_t>(i)];
 
         std::vector<AnalysisData> analysisData = getAnalysisData(attributes);
         const auto graph = getGraph(analysisData, refs, false);
 
-        auto &ad0 = analysisData.at(i);
+        auto &ad0 = analysisData.at(static_cast<size_t>(i));
 
         auto [totalDepth, totalAngle, euclidDepth, totalNodes] =
             traverseSum(analysisData, graph, refs, m_radius, ad0);
@@ -67,10 +69,13 @@ AnalysisResult VGAMetricOpenMP::run(Communicator *comm) {
             ad0.point.dummyCumangle = ad0.cumAngle;
         }
 
-        dp.mspa = float(double(totalAngle) / double(totalNodes));
-        dp.mspl = float(double(totalDepth) / double(totalNodes));
-        dp.dist = float(double(euclidDepth) / double(totalNodes));
-        dp.count = float(totalNodes);
+        dp.mspa =
+            static_cast<float>(static_cast<double>(totalAngle) / static_cast<double>(totalNodes));
+        dp.mspl =
+            static_cast<float>(static_cast<double>(totalDepth) / static_cast<double>(totalNodes));
+        dp.dist =
+            static_cast<float>(static_cast<double>(euclidDepth) / static_cast<double>(totalNodes));
+        dp.count = static_cast<float>(totalNodes);
 
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -103,17 +108,17 @@ AnalysisResult VGAMetricOpenMP::run(Communicator *comm) {
     AnalysisResult result({mspaColText, msplColText, distColText, countColText},
                           attributes.getNumRows());
 
-    int mspaCol = result.getColumnIndex(mspaColText);
-    int msplCol = result.getColumnIndex(msplColText);
-    int distCol = result.getColumnIndex(distColText);
-    int countCol = result.getColumnIndex(countColText);
+    auto mspaCol = result.getColumnIndex(mspaColText);
+    auto msplCol = result.getColumnIndex(msplColText);
+    auto distCol = result.getColumnIndex(distColText);
+    auto countCol = result.getColumnIndex(countColText);
 
     auto dataIter = colData.begin();
-    for (size_t i = 0; i < attributes.getNumRows(); i++) {
-        result.setValue(i, mspaCol, dataIter->mspa);
-        result.setValue(i, msplCol, dataIter->mspl);
-        result.setValue(i, distCol, dataIter->dist);
-        result.setValue(i, countCol, dataIter->count);
+    for (size_t ridx = 0; ridx < attributes.getNumRows(); ridx++) {
+        result.setValue(ridx, mspaCol, dataIter->mspa);
+        result.setValue(ridx, msplCol, dataIter->mspl);
+        result.setValue(ridx, distCol, dataIter->dist);
+        result.setValue(ridx, countCol, dataIter->count);
         dataIter++;
     }
 

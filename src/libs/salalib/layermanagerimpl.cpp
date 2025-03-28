@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "layermanagerimpl.h"
+#include "layermanagerimpl.hpp"
 
-#include "genlib/stringutils.h"
+#include "genlib/stringutils.hpp"
 
-LayerManagerImpl::LayerManagerImpl() : m_visibleLayers(1) {
+LayerManagerImpl::LayerManagerImpl() : m_visibleLayers(1), m_layers(), m_layerLookup() {
     m_layers.push_back("Everything");
     m_layerLookup["Everything"] = 0;
 }
@@ -45,7 +45,7 @@ void LayerManagerImpl::setLayerVisible(size_t layerIndex, bool visible) {
         m_visibleLayers = visible ? 1 : 0;
         return;
     }
-    int64_t layerValue = ((KeyType)1) << layerIndex;
+    int64_t layerValue = (static_cast<KeyType>(1)) << layerIndex;
 
     // if visible, switch on this layer and switch everything layer off, else just
     // switch off this layer
@@ -71,7 +71,7 @@ void LayerManagerImpl::read(std::istream &stream) {
     stream.read(reinterpret_cast<char *>(&m_visibleLayers), sizeof(m_visibleLayers));
     int count;
     stream.read(reinterpret_cast<char *>(&count), sizeof(int));
-    for (int i = 0; i < count; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(count); ++i) {
         stream.read(reinterpret_cast<char *>(&dummy), sizeof(dummy));
         m_layers.push_back(dXstring::readString(stream));
         m_layerLookup[m_layers.back()] = i;
@@ -105,20 +105,20 @@ void LayerManagerImpl::write(std::ostream &stream) const {
             // too many layers -- maximum 64
             throw OutOfLayersException();
         }
-        int64_t newlayer = 0x1 << loc;
+        int64_t newlayer = static_cast<int64_t>(0x1) << static_cast<int64_t>(loc);
         // now layer has been found, eliminate from available layers
         // and add a lookup for the name
         availableLayers = (availableLayers & (~newlayer));
     }
 
-    stream.write((const char *)&availableLayers, sizeof(KeyType));
-    stream.write((const char *)&m_visibleLayers, sizeof(KeyType));
-    int sizeAsInt = (int)m_layers.size();
-    stream.write((const char *)&sizeAsInt, sizeof(int));
+    stream.write(reinterpret_cast<const char *>(&availableLayers), sizeof(KeyType));
+    stream.write(reinterpret_cast<const char *>(&m_visibleLayers), sizeof(KeyType));
+    auto sizeAsInt = static_cast<int>(m_layers.size());
+    stream.write(reinterpret_cast<const char *>(&sizeAsInt), sizeof(int));
 
     availableLayers = 0xffffffff << (32 + 0xfffffffe);
     int64_t newlayer = 0x1;
-    stream.write((const char *)&newlayer, sizeof(KeyType));
+    stream.write(reinterpret_cast<const char *>(&newlayer), sizeof(KeyType));
     dXstring::writeString(stream, m_layers[0]);
     for (size_t i = 1; i < m_layers.size(); ++i) {
         // again keeping binary comatibility
@@ -134,14 +134,14 @@ void LayerManagerImpl::write(std::ostream &stream) const {
             // too many layers -- maximum 64
             throw OutOfLayersException();
         }
-        newlayer = 0x1 << loc;
-        stream.write((const char *)&newlayer, sizeof(KeyType));
+        newlayer = static_cast<int64_t>(0x1) << static_cast<int64_t>(loc);
+        stream.write(reinterpret_cast<const char *>(&newlayer), sizeof(KeyType));
         dXstring::writeString(stream, m_layers[i]);
     }
 }
 
 LayerManager::KeyType LayerManagerImpl::getKey(size_t layerIndex) const {
-    return ((int64_t)1) << layerIndex;
+    return (static_cast<int64_t>(1)) << layerIndex;
 }
 
 void LayerManagerImpl::checkIndex(size_t index) const {

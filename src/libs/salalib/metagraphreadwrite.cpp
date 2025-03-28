@@ -4,14 +4,14 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "metagraphreadwrite.h"
+#include "metagraphreadwrite.hpp"
 
-#include "alllinemap.h"
-#include "mgraph_consts.h"
-#include "shapemapgroupdata.h"
+#include "alllinemap.hpp"
+#include "mgraph_consts.hpp"
+#include "shapemapgroupdata.hpp"
 
-#include "genlib/readwritehelpers.h"
-#include "genlib/stringutils.h"
+#include "genlib/readwritehelpers.hpp"
+#include "genlib/stringutils.hpp"
 
 #include <fstream>
 
@@ -19,32 +19,14 @@ namespace {
     // old depthmapX display information, left here to allow reading
     // metagraph files
     enum {
-        NONE = 0x0000,
-        POINTMAPS = 0x0002,
-        LINEDATA = 0x0004,
-        ANGULARGRAPH = 0x0010,
-        DATAMAPS = 0x0020,
-        AXIALLINES = 0x0040,
-        SHAPEGRAPHS = 0x0100,
-        BUGGY = 0x8000
-    };
-    enum {
-        SHOWHIDEVGA = 0x0100,
-        SHOWVGATOP = 0x0200,
-        SHOWHIDEAXIAL = 0x0400,
-        SHOWAXIALTOP = 0x0800,
-        SHOWHIDESHAPE = 0x1000,
-        SHOWSHAPETOP = 0x2000
-    };
-    enum {
-        VIEWNONE = 0x00,
-        VIEWVGA = 0x01,
-        VIEWBACKVGA = 0x02,
-        VIEWAXIAL = 0x04,
-        VIEWBACKAXIAL = 0x08,
-        VIEWDATA = 0x20,
-        VIEWBACKDATA = 0x40,
-        VIEWFRONT = 0x25
+        MG_State_NONE = 0x0000,
+        MG_State_POINTMAPS = 0x0002,
+        MG_State_LINEDATA = 0x0004,
+        MG_State_ANGULARGRAPH = 0x0010,
+        MG_State_DATAMAPS = 0x0020,
+        MG_State_AXIALLINES = 0x0040,
+        MG_State_SHAPEGRAPHS = 0x0100,
+        MG_State_BUGGY = 0x8000
     };
 
     // These allow for the functions below to accept both maps (PointMap, Shapemap etc)
@@ -77,8 +59,8 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromFile(const std::st
     return result;
 }
 
-QtRegion MetaGraphReadWrite::readRegion(std::istream &stream) {
-    QtRegion region;
+Region4f MetaGraphReadWrite::readRegion(std::istream &stream) {
+    Region4f region;
     stream.read(reinterpret_cast<char *>(&region), sizeof(region));
     return region;
 }
@@ -88,10 +70,11 @@ std::tuple<std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMap>>>,
 MetaGraphReadWrite::readDrawingFiles(std::istream &stream) {
     int count;
     stream.read(reinterpret_cast<char *>(&count), sizeof(count));
+    auto ucount = static_cast<size_t>(count);
 
-    std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMap>>> drawingFiles(count);
-    std::vector<std::vector<std::tuple<bool, bool, int>>> displayData(count);
-    for (int i = 0; i < count; i++) {
+    std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMap>>> drawingFiles(ucount);
+    std::vector<std::vector<std::tuple<bool, bool, int>>> displayData(ucount);
+    for (size_t i = 0; i < ucount; i++) {
         drawingFiles[i].first.readInNameAndRegion(stream);
 
         std::tie(drawingFiles[i].second, displayData[i]) =
@@ -108,17 +91,17 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
     char header[3];
     stream.read(header, 3);
     if (stream.fail() || header[0] != 'g' || header[1] != 'r' || header[2] != 'f') {
-        mgd.readStatus = ReadStatus::NOT_A_GRAPH;
+        mgd.readWriteStatus = ReadWriteStatus::NOT_A_GRAPH;
         return mgd;
     }
 
     stream.read(reinterpret_cast<char *>(&mgd.version), sizeof(mgd.version));
     if (mgd.version > METAGRAPH_VERSION) {
-        mgd.readStatus = ReadStatus::NEWER_VERSION;
+        mgd.readWriteStatus = ReadWriteStatus::NEWER_VERSION;
         return mgd;
     }
     if (mgd.version < METAGRAPH_VERSION) {
-        mgd.readStatus = ReadStatus::DEPRECATED_VERSION;
+        mgd.readWriteStatus = ReadWriteStatus::DEPRECATED_VERSION;
         return mgd;
     }
 
@@ -144,14 +127,14 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
     if (type == 'd') {
         // contains deprecated datalayers. depthmapX should be able to
         // convert them into shapemaps
-        mgd.readStatus = ReadStatus::DEPRECATED_VERSION;
+        mgd.readWriteStatus = ReadWriteStatus::DEPRECATED_VERSION;
         return mgd;
     }
     if (type == 'x') {
         mgd.metaGraph.fileProperties.read(stream);
         if (stream.eof()) {
             // erk... this shouldn't happen
-            mgd.readStatus = ReadStatus::DAMAGED_FILE;
+            mgd.readWriteStatus = ReadWriteStatus::DAMAGED_FILE;
             return mgd;
         } else if (!stream.eof()) {
             stream.read(&type, 1);
@@ -170,7 +153,7 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
 
         if (stream.eof()) {
             // erk... this shouldn't happen
-            mgd.readStatus = ReadStatus::DAMAGED_FILE;
+            mgd.readWriteStatus = ReadWriteStatus::DAMAGED_FILE;
             return mgd;
         } else if (!stream.eof()) {
             stream.read(&type, 1);
@@ -183,20 +166,20 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
         }
         mgd.metaGraph.region = readRegion(stream);
         std::tie(mgd.drawingFiles, mgd.displayData.perDrawingMap) = readDrawingFiles(stream);
-        tempState |= LINEDATA;
+        tempState |= MG_State_LINEDATA;
         if (!stream.eof()) {
             stream.read(&type, 1);
         }
         if (!stream.eof() && !stream.good()) {
             // erk... this shouldn't happen
-            mgd.readStatus = ReadStatus::DAMAGED_FILE;
+            mgd.readWriteStatus = ReadWriteStatus::DAMAGED_FILE;
             return mgd;
         }
     }
     if (type == 'p') {
         std::tie(mgd.pointMaps, mgd.displayData.perPointMap, mgd.displayData.displayedPointMap) =
             MetaGraphReadWrite::readPointMaps(stream, mgd.metaGraph.region);
-        tempState |= POINTMAPS;
+        tempState |= MG_State_POINTMAPS;
         if (!stream.eof()) {
             stream.read(&type, 1);
         }
@@ -210,7 +193,7 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
         }
     }
     if (type == 'a') {
-        tempState |= ANGULARGRAPH;
+        tempState |= MG_State_ANGULARGRAPH;
         if (!stream.eof()) {
             stream.read(&type, 1);
         }
@@ -218,7 +201,7 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
     if (type == 'x') {
         std::tie(mgd.shapeGraphs, mgd.allLineMapData, mgd.displayData.perShapeGraph,
                  mgd.displayData.displayedShapeGraph) = MetaGraphReadWrite::readShapeGraphs(stream);
-        tempState |= SHAPEGRAPHS;
+        tempState |= MG_State_SHAPEGRAPHS;
         if (!stream.eof()) {
             stream.read(&type, 1);
         }
@@ -226,18 +209,19 @@ MetaGraphReadWrite::MetaGraphData MetaGraphReadWrite::readFromStream(std::istrea
     if (type == 's') {
         std::tie(mgd.dataMaps, mgd.displayData.perDataMap, mgd.displayData.displayedDataMap) =
             readDataMaps(stream);
-        tempState |= DATAMAPS;
+        tempState |= MG_State_DATAMAPS;
         if (!stream.eof()) {
             stream.read(&type, 1);
         }
     }
     mgd.displayData.state = tempState;
 
-    mgd.readStatus = ReadStatus::OK;
+    mgd.readWriteStatus = ReadWriteStatus::OK;
     return mgd;
 }
 
-int MetaGraphReadWrite::writeToFile(const std::string &filename, const MetaGraphData &mgd) {
+MetaGraphReadWrite::ReadWriteStatus MetaGraphReadWrite::writeToFile(const std::string &filename,
+                                                                    const MetaGraphData &mgd) {
     auto &dd = mgd.displayData;
     return MetaGraphReadWrite::writeToFile(
         filename,
@@ -250,7 +234,8 @@ int MetaGraphReadWrite::writeToFile(const std::string &filename, const MetaGraph
         dd.perShapeGraph);
 }
 
-int MetaGraphReadWrite::writeToStream(std::ostream &stream, const MetaGraphData &mgd) {
+MetaGraphReadWrite::ReadWriteStatus MetaGraphReadWrite::writeToStream(std::ostream &stream,
+                                                                      const MetaGraphData &mgd) {
     auto &dd = mgd.displayData;
     return MetaGraphReadWrite::writeToStream(
         stream,
@@ -273,14 +258,15 @@ std::streampos MetaGraphReadWrite::skipVirtualMem(std::istream &stream) {
     for (int i = 0; i < nodes; i++) {
         int connections;
         stream.read(reinterpret_cast<char *>(&connections), sizeof(connections));
-        stream.seekg(stream.tellg() + std::streamoff(connections * sizeof(connections)));
+        stream.seekg(stream.tellg() +
+                     std::streamoff(static_cast<size_t>(connections) * sizeof(connections)));
     }
     return (stream.tellg());
 }
 
-std::tuple<std::vector<PointMap>, std::vector<int>, unsigned int>
-MetaGraphReadWrite::readPointMaps(std::istream &stream, QtRegion defaultRegion) {
-    unsigned int displayedMap;
+std::tuple<std::vector<PointMap>, std::vector<int>, std::optional<unsigned int>>
+MetaGraphReadWrite::readPointMaps(std::istream &stream, Region4f defaultRegion) {
+    int displayedMap = -1;
     stream.read(reinterpret_cast<char *>(&displayedMap), sizeof(displayedMap));
     std::vector<PointMap> pointMaps;
     std::vector<int> displayAttributes;
@@ -291,16 +277,18 @@ MetaGraphReadWrite::readPointMaps(std::istream &stream, QtRegion defaultRegion) 
         auto [completed, displayedAttribute] = pointMaps.back().read(stream);
         displayAttributes.push_back(displayedAttribute);
     }
-    return std::make_tuple(std::move(pointMaps), std::move(displayAttributes), displayedMap);
+    return std::make_tuple(std::move(pointMaps), std::move(displayAttributes),
+                           displayedMap < 0
+                               ? std::nullopt
+                               : std::make_optional(static_cast<unsigned int>(displayedMap)));
 }
 
 template <typename PointMapOrRef>
 bool MetaGraphReadWrite::writePointMaps(std::ostream &stream,
                                         const std::vector<PointMapOrRef> &pointMaps,
-                                        const std::vector<int> displayData,
-                                        const std::optional<unsigned int> displayedMap) {
-    unsigned int displayedPointmap =
-        displayedMap.has_value() ? *displayedMap : static_cast<unsigned int>(-1);
+                                        const std::vector<int> &displayData,
+                                        const std::optional<unsigned int> &displayedMap) {
+    int displayedPointmap = displayedMap.has_value() ? static_cast<int>(*displayedMap) : -1;
     stream.write(reinterpret_cast<const char *>(&displayedPointmap), sizeof(displayedPointmap));
     auto count = pointMaps.size();
     stream.write(reinterpret_cast<const char *>(&count), sizeof(static_cast<int>(count)));
@@ -314,13 +302,14 @@ bool MetaGraphReadWrite::writePointMaps(std::ostream &stream,
     return true;
 }
 
-std::tuple<std::vector<ShapeMap>, std::vector<std::tuple<bool, bool, int>>, unsigned int>
+std::tuple<std::vector<ShapeMap>, std::vector<std::tuple<bool, bool, int>>,
+           std::optional<unsigned int>>
 MetaGraphReadWrite::readDataMaps(std::istream &stream) {
     std::vector<ShapeMap> dataMaps;
     std::vector<std::tuple<bool, bool, int>> displayData;
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int displayedMap;
+    int displayedMap = -1;
     stream.read(reinterpret_cast<char *>(&displayedMap), sizeof(displayedMap));
     // read maps
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
@@ -328,28 +317,30 @@ MetaGraphReadWrite::readDataMaps(std::istream &stream) {
     unsigned int count = 0;
     stream.read(reinterpret_cast<char *>(&count), sizeof(count));
 
-    for (size_t j = 0; j < size_t(count); j++) {
+    for (size_t j = 0; j < static_cast<size_t>(count); j++) {
         dataMaps.emplace_back();
         auto [completed, editable, show, displayedAttribute] = dataMaps.back().read(stream);
         displayData.emplace_back(editable, show, displayedAttribute);
     }
-    return std::make_tuple(std::move(dataMaps), std::move(displayData), displayedMap);
+    return std::make_tuple(std::move(dataMaps), std::move(displayData),
+                           displayedMap < 0
+                               ? std::nullopt
+                               : std::make_optional(static_cast<unsigned int>(displayedMap)));
 }
 
 template <typename ShapeMapOrRef>
 bool MetaGraphReadWrite::writeDataMaps(std::ostream &stream,
                                        const std::vector<ShapeMapOrRef> &dataMaps,
-                                       const std::vector<ShapeMapDisplayData> displayData,
-                                       const std::optional<unsigned int> displayedMap) {
+                                       const std::vector<ShapeMapDisplayData> &displayData,
+                                       const std::optional<unsigned int> &displayedMap) {
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int displayedDataMap =
-        displayedMap.has_value() ? *displayedMap : static_cast<unsigned int>(-1);
+    int displayedDataMap = displayedMap.has_value() ? static_cast<int>(*displayedMap) : -1;
     stream.write(reinterpret_cast<const char *>(&displayedDataMap), sizeof(displayedDataMap));
     // write maps
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int count = (unsigned int)dataMaps.size();
+    auto count = static_cast<unsigned int>(dataMaps.size());
     stream.write(reinterpret_cast<const char *>(&count), sizeof(count));
     auto it = displayData.begin();
     for (auto &dataMap : dataMaps) {
@@ -364,9 +355,9 @@ bool MetaGraphReadWrite::writeDataMaps(std::ostream &stream,
 template <typename ShapeMapOrRef>
 bool MetaGraphReadWrite::writeSpacePixels(
     std::ostream &stream, const std::vector<ShapeMapOrRef> &spacePixels,
-    const std::vector<std::tuple<bool, bool, int>> displayData) {
+    const std::vector<std::tuple<bool, bool, int>> &displayData) {
 
-    int count = spacePixels.size();
+    int count = static_cast<int>(spacePixels.size());
     stream.write(reinterpret_cast<const char *>(&count), sizeof(count));
     auto it = displayData.begin();
     for (auto &spacePixel : spacePixels) {
@@ -380,13 +371,13 @@ bool MetaGraphReadWrite::writeSpacePixels(
 }
 
 std::tuple<std::vector<ShapeGraph>, std::optional<AllLine::MapData>,
-           std::vector<MetaGraphReadWrite::ShapeMapDisplayData>, unsigned int>
+           std::vector<MetaGraphReadWrite::ShapeMapDisplayData>, std::optional<unsigned int>>
 MetaGraphReadWrite::readShapeGraphs(std::istream &stream) {
     std::vector<ShapeGraph> shapeGraphs;
     std::vector<std::tuple<bool, bool, int>> displayData;
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int displayedMap;
+    int displayedMap = -1;
     stream.read(reinterpret_cast<char *>(&displayedMap), sizeof(displayedMap));
     // read maps
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
@@ -394,7 +385,7 @@ MetaGraphReadWrite::readShapeGraphs(std::istream &stream) {
     unsigned int count = 0;
     stream.read(reinterpret_cast<char *>(&count), sizeof(count));
 
-    for (size_t j = 0; j < size_t(count); j++) {
+    for (size_t j = 0; j < static_cast<size_t>(count); j++) {
         shapeGraphs.emplace_back();
         auto [completed, editable, show, displayedAttribute] = shapeGraphs.back().read(stream);
         displayData.emplace_back(editable, show, displayedAttribute);
@@ -436,25 +427,26 @@ MetaGraphReadWrite::readShapeGraphs(std::istream &stream) {
         stream.read(reinterpret_cast<char *>(&length), sizeof(unsigned int));
         stream.read(reinterpret_cast<char *>(&length), sizeof(unsigned int));
     }
-    return std::make_tuple(std::move(shapeGraphs), allLineMapData, std::move(displayData),
-                           displayedMap);
+    return std::make_tuple(
+        std::move(shapeGraphs), std::move(allLineMapData), std::move(displayData),
+        displayedMap < 0 ? std::nullopt
+                         : std::make_optional(static_cast<unsigned int>(displayedMap)));
 }
 
 template <typename ShapeGraphOrRef>
 bool MetaGraphReadWrite::writeShapeGraphs(
     std::ostream &stream, const std::vector<ShapeGraphOrRef> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
-    const std::vector<std::tuple<bool, bool, int>> displayData,
-    const std::optional<unsigned int> displayedMap) {
+    const std::optional<AllLine::MapData> &allLineMapData,
+    const std::vector<std::tuple<bool, bool, int>> &displayData,
+    const std::optional<unsigned int> &displayedMap) {
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int displayedShapeGraph =
-        displayedMap.has_value() ? *displayedMap : static_cast<unsigned int>(-1);
+    int displayedShapeGraph = displayedMap.has_value() ? static_cast<int>(*displayedMap) : -1;
     stream.write(reinterpret_cast<const char *>(&displayedShapeGraph), sizeof(displayedShapeGraph));
     // write maps
     // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion
     // problems
-    unsigned int count = (unsigned int)shapeGraphs.size();
+    auto count = static_cast<unsigned int>(shapeGraphs.size());
     stream.write(reinterpret_cast<const char *>(&count), sizeof(count));
     auto it = displayData.begin();
     for (auto &shapeGraphPtr : shapeGraphs) {
@@ -478,34 +470,23 @@ bool MetaGraphReadWrite::writeShapeGraphs(
 }
 
 template <typename PointMapOrRef, typename ShapeMapOrRef, typename ShapeGraphOrRef>
-int MetaGraphReadWrite::writeToFile(
+MetaGraphReadWrite::ReadWriteStatus MetaGraphReadWrite::writeToFile(
     const std::string &filename,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMapOrRef>>> &drawingFiles,
     const std::vector<PointMapOrRef> &pointMaps, const std::vector<ShapeMapOrRef> &dataMaps,
     const std::vector<ShapeGraphOrRef> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph) {
-
-    enum {
-        OK,
-        WARN_BUGGY_VERSION,
-        WARN_CONVERTED,
-        NOT_A_GRAPH,
-        DAMAGED_FILE,
-        DISK_ERROR,
-        NEWER_VERSION,
-        DEPRECATED_VERSION
-    };
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph) {
 
     std::ofstream stream;
 
@@ -515,7 +496,7 @@ int MetaGraphReadWrite::writeToFile(
         if (stream.rdbuf()->is_open()) {
             stream.close();
         }
-        return DISK_ERROR;
+        return ReadWriteStatus::DISK_ERROR;
     }
     auto result = writeToStream(stream,
                                 // MetaGraph Data
@@ -531,44 +512,23 @@ int MetaGraphReadWrite::writeToFile(
 }
 
 template <typename PointMapOrRef, typename ShapeMapOrRef, typename ShapeGraphOrRef>
-int MetaGraphReadWrite::writeToStream(
+MetaGraphReadWrite::ReadWriteStatus MetaGraphReadWrite::writeToStream(
     std::ostream &stream,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMapOrRef>>> &drawingFiles,
     const std::vector<PointMapOrRef> &pointMaps, const std::vector<ShapeMapOrRef> &dataMaps,
     const std::vector<ShapeGraphOrRef> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph) {
-
-    enum {
-        OK,
-        WARN_BUGGY_VERSION,
-        WARN_CONVERTED,
-        NOT_A_GRAPH,
-        DAMAGED_FILE,
-        DISK_ERROR,
-        NEWER_VERSION,
-        DEPRECATED_VERSION
-    };
-    enum {
-        NONE = 0x0000,
-        POINTMAPS = 0x0002,
-        LINEDATA = 0x0004,
-        ANGULARGRAPH = 0x0010,
-        DATAMAPS = 0x0020,
-        AXIALLINES = 0x0040,
-        SHAPEGRAPHS = 0x0100,
-        BUGGY = 0x8000
-    };
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph) {
 
     char type;
 
@@ -585,7 +545,7 @@ int MetaGraphReadWrite::writeToStream(
     stream.write(&type, 1);
     fileProperties.write(stream);
 
-    if (state & LINEDATA) {
+    if (!drawingFiles.empty()) {
         type = 'l';
         stream.write(&type, 1);
         dXstring::writeString(stream, name);
@@ -593,133 +553,175 @@ int MetaGraphReadWrite::writeToStream(
 
         int count = static_cast<int>(drawingFiles.size());
         stream.write(reinterpret_cast<const char *>(&count), sizeof(count));
-        auto it = perDrawingMap.begin();
-        for (auto &spacePixel : drawingFiles) {
-            spacePixel.first.writeOutNameAndRegion(stream);
-            writeSpacePixels(stream, spacePixel.second, *it);
-            it++;
+        if (perDrawingMap.empty()) {
+            for (auto &spacePixel : drawingFiles) {
+                spacePixel.first.writeOutNameAndRegion(stream);
+                std::vector<ShapeMapDisplayData> displayData(spacePixel.second.size());
+                for (auto &dd : displayData) {
+                    std::get<0>(dd) = true;
+                    std::get<1>(dd) = true;
+                    std::get<2>(dd) = -1;
+                }
+                writeSpacePixels(stream, spacePixel.second, displayData);
+            }
+        } else {
+            auto it = perDrawingMap.begin();
+            for (auto &spacePixel : drawingFiles) {
+                spacePixel.first.writeOutNameAndRegion(stream);
+                writeSpacePixels(stream, spacePixel.second, *it);
+                it++;
+            }
         }
     }
-    if (state & POINTMAPS) {
+    if (!pointMaps.empty()) {
         type = 'p';
         stream.write(&type, 1);
-        writePointMaps(stream, pointMaps, perPointMap, displayedPointMap);
+        if (perPointMap.empty()) {
+            std::vector<int> displayData(pointMaps.size(), -1);
+            writePointMaps(stream, pointMaps, displayData, displayedPointMap);
+        } else {
+            writePointMaps(stream, pointMaps, perPointMap, displayedPointMap);
+        }
     }
-    if (state & SHAPEGRAPHS) {
+    if (!shapeGraphs.empty()) {
         type = 'x';
         stream.write(&type, 1);
-        writeShapeGraphs(stream, shapeGraphs, allLineMapData, perShapeGraph, displayedShapeGraph);
+        if (perShapeGraph.empty()) {
+            std::vector<ShapeMapDisplayData> displayData(shapeGraphs.size());
+            for (auto &dd : displayData) {
+                std::get<0>(dd) = true;
+                std::get<1>(dd) = true;
+                std::get<2>(dd) = -1;
+            }
+            writeShapeGraphs(stream, shapeGraphs, allLineMapData, displayData, displayedShapeGraph);
+        } else {
+            writeShapeGraphs(stream, shapeGraphs, allLineMapData, perShapeGraph,
+                             displayedShapeGraph);
+        }
     }
-    if (state & DATAMAPS) {
+    if (!dataMaps.empty()) {
         type = 's';
         stream.write(&type, 1);
-        writeDataMaps(stream, dataMaps, perDataMap, displayedDataMap);
+        if (perDataMap.empty()) {
+            std::vector<ShapeMapDisplayData> displayData(dataMaps.size());
+            for (auto &dd : displayData) {
+                std::get<0>(dd) = true;
+                std::get<1>(dd) = true;
+                std::get<2>(dd) = -1;
+            }
+            writeDataMaps(stream, dataMaps, displayData, std::nullopt);
+        } else {
+            writeDataMaps(stream, dataMaps, perDataMap, displayedDataMap);
+        }
     }
 
-    return OK;
+    return ReadWriteStatus::OK;
 }
 
 // these are just explicit instantiations of the write function to allow the linker
 // to find them when required
-template int MetaGraphReadWrite::writeToFile<PointMap, ShapeMap, ShapeGraph>(
+template MetaGraphReadWrite::ReadWriteStatus
+MetaGraphReadWrite::writeToFile<PointMap, ShapeMap, ShapeGraph>(
     const std::string &filename,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMap>>> &drawingFiles,
     const std::vector<PointMap> &pointMaps, const std::vector<ShapeMap> &dataMaps,
     const std::vector<ShapeGraph> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph);
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph);
 
-template int
+template MetaGraphReadWrite::ReadWriteStatus
 MetaGraphReadWrite::writeToFile<std::reference_wrapper<PointMap>, std::reference_wrapper<ShapeMap>,
                                 std::reference_wrapper<ShapeGraph>>(
     const std::string &filename,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<std::reference_wrapper<ShapeMap>>>>
         &drawingFiles,
     const std::vector<std::reference_wrapper<PointMap>> &pointMaps,
     const std::vector<std::reference_wrapper<ShapeMap>> &dataMaps,
     const std::vector<std::reference_wrapper<ShapeGraph>> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph);
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph);
 
-template int MetaGraphReadWrite::writeToStream<PointMap, ShapeMap, ShapeGraph>(
+template MetaGraphReadWrite::ReadWriteStatus
+MetaGraphReadWrite::writeToStream<PointMap, ShapeMap, ShapeGraph>(
     std::ostream &stream,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<ShapeMap>>> &drawingFiles,
     const std::vector<PointMap> &pointMaps, const std::vector<ShapeMap> &dataMaps,
     const std::vector<ShapeGraph> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph);
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph);
 
-template int MetaGraphReadWrite::writeToStream<std::reference_wrapper<PointMap>,
-                                               std::reference_wrapper<ShapeMap>,
-                                               std::reference_wrapper<ShapeGraph>>(
+template MetaGraphReadWrite::ReadWriteStatus
+MetaGraphReadWrite::writeToStream<std::reference_wrapper<PointMap>,
+                                  std::reference_wrapper<ShapeMap>,
+                                  std::reference_wrapper<ShapeGraph>>(
     std::ostream &stream,
     // MetaGraph Data
-    const int version, const std::string &name, const QtRegion &region,
+    const int version, const std::string &name, const Region4f &region,
     const FileProperties &fileProperties,
     const std::vector<std::pair<ShapeMapGroupData, std::vector<std::reference_wrapper<ShapeMap>>>>
         &drawingFiles,
     const std::vector<std::reference_wrapper<PointMap>> &pointMaps,
     const std::vector<std::reference_wrapper<ShapeMap>> &dataMaps,
     const std::vector<std::reference_wrapper<ShapeGraph>> &shapeGraphs,
-    const std::optional<AllLine::MapData> allLineMapData,
+    const std::optional<AllLine::MapData> &allLineMapData,
     // display data
     const int state, const int viewClass, const bool showGrid, const bool showText,
-    const std::vector<std::vector<ShapeMapDisplayData>> perDrawingMap,
-    const std::optional<unsigned int> displayedPointMap, const std::vector<int> perPointMap,
-    const std::optional<unsigned int> displayedDataMap,
-    const std::vector<ShapeMapDisplayData> perDataMap,
-    const std::optional<unsigned int> displayedShapeGraph,
-    const std::vector<ShapeMapDisplayData> perShapeGraph);
+    const std::vector<std::vector<ShapeMapDisplayData>> &perDrawingMap,
+    const std::optional<unsigned int> &displayedPointMap, const std::vector<int> &perPointMap,
+    const std::optional<unsigned int> &displayedDataMap,
+    const std::vector<ShapeMapDisplayData> &perDataMap,
+    const std::optional<unsigned int> &displayedShapeGraph,
+    const std::vector<ShapeMapDisplayData> &perShapeGraph);
 
-std::string MetaGraphReadWrite::getReadMessage(ReadStatus readStatus) {
+std::string MetaGraphReadWrite::getReadMessage(ReadWriteStatus readStatus) {
     switch (readStatus) {
-    case ReadStatus::OK:
+    case ReadWriteStatus::OK:
         return "OK";
-    case ReadStatus::WARN_BUGGY_VERSION:
+    case ReadWriteStatus::WARN_BUGGY_VERSION:
         return "File version is buggy";
-    case ReadStatus::WARN_CONVERTED:
+    case ReadWriteStatus::WARN_CONVERTED:
         return "File was converted from an older version";
-    case ReadStatus::NOT_A_GRAPH:
+    case ReadWriteStatus::NOT_A_GRAPH:
         return "Not a MetaGraph file";
-    case ReadStatus::DAMAGED_FILE:
+    case ReadWriteStatus::DAMAGED_FILE:
         return "Damaged file";
-    case ReadStatus::DISK_ERROR:
+    case ReadWriteStatus::DISK_ERROR:
         return "Disk error";
-    case ReadStatus::NEWER_VERSION:
+    case ReadWriteStatus::NEWER_VERSION:
         return "MetaGraph file too new";
-    case ReadStatus::DEPRECATED_VERSION:
+    case ReadWriteStatus::DEPRECATED_VERSION:
         return "MetaGraph file too old";
-    case ReadStatus::NOT_READ_YET:
+    case ReadWriteStatus::NOT_READ_YET:
         return "Reading interrupted";
     }
     return "<Unknown state>";

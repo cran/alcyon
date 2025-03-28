@@ -4,11 +4,11 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "agentanalysis.h"
+#include "agentanalysis.hpp"
 
-#include "agent.h"
+#include "agent.hpp"
 
-#include "../pushvalues.h"
+#include "../pushvalues.hpp"
 
 void AgentAnalysis::init(std::vector<Agent> &agents, std::vector<PixelRef> &releaseLocations,
                          size_t agent, int trailNum) {
@@ -59,28 +59,24 @@ void AgentAnalysis::runAgentEngine(std::vector<Agent> &agents,
     }
 
     int trailNum = -1;
-    if (m_recordTrails.has_value()) {
-        if (m_recordTrails->limit < 1) {
-            m_recordTrails->limit = 1;
-        }
-
-        auto recordTrailsLimit = m_recordTrails->limit;
-        if (recordTrailsLimit.has_value()) {
-            m_agentProgram.trails = std::vector<std::vector<Event2f>>(*recordTrailsLimit);
-        } else {
-            m_agentProgram.trails = std::vector<std::vector<Event2f>>(50);
-        }
-
-        trailNum = 0;
-    }
 
     // remove any agents that are left from a previous run
 
     agents.clear();
+    std::optional<int> maxNumTrails = std::nullopt; // no limit, do all
 
-    int maxValue = m_recordTrails.has_value() && m_recordTrails->limit.has_value()
-                       ? static_cast<int>(*(m_recordTrails->limit))
-                       : -1;
+    if (!m_recordTrails.has_value()) {
+        // not recording trails at all
+        maxNumTrails = 0;
+    } else if (m_recordTrails->limit.has_value()) {
+        // recording trails and given specific value
+        maxNumTrails = static_cast<int>(*(m_recordTrails->limit));
+    }
+
+    if (!maxNumTrails.has_value() || maxNumTrails > 0) {
+        trailNum = 0;
+        m_agentProgram.trails.emplace_back();
+    }
 
     for (size_t i = 0; i < m_systemTimesteps; i++) {
         auto q = static_cast<size_t>(pafmath::invcumpoisson(pafmath::prandomr(), m_releaseRate));
@@ -94,8 +90,11 @@ void AgentAnalysis::runAgentEngine(std::vector<Agent> &agents,
             if (trailNum != -1) {
                 trailNum++;
                 // after trail count, stop recording:
-                if (maxValue > 0 && trailNum == maxValue) {
+                if (maxNumTrails.has_value() && maxNumTrails.value() > 0 &&
+                    trailNum == maxNumTrails.value()) {
                     trailNum = -1;
+                } else {
+                    m_agentProgram.trails.emplace_back();
                 }
             }
         }
@@ -131,7 +130,7 @@ AnalysisResult AgentAnalysis::run(Communicator *comm) {
         m_agentProgram.vbin = (m_agentFOV - 1) / 2;
     }
 
-    m_agentProgram.steps = m_agentStepsToDecision;
+    m_agentProgram.steps = static_cast<int>(m_agentStepsToDecision);
     m_agentProgram.selType = m_agentAlgorithm;
 
     std::vector<PixelRef> releaseLocations;
@@ -153,7 +152,8 @@ AnalysisResult AgentAnalysis::run(Communicator *comm) {
         // switch the reference numbers from the gates layer to the vga layer
         table.insertOrResetColumn(AgentAnalysis::Column::INTERNAL_GATE);
         // Transferring refs here, so we need to get the column name of the "Ref" column
-        const std::string &colIn = m_gateLayer->get().getAttributeTable().getColumnName(-1);
+        const std::string &colIn =
+            m_gateLayer->get().getAttributeTable().getColumnName(static_cast<size_t>(-1));
         PushValues::shapeToPoint(m_gateLayer->get(), colIn, m_pointMap,
                                  AgentAnalysis::Column::INTERNAL_GATE, PushValues::Func::TOT);
 

@@ -4,15 +4,16 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "agentprogram.h"
+#include "agentprogram.hpp"
 
-#include "../genlib/pafmath.h"
-#include "../genlib/stringutils.h"
+#include "../genlib/pafmath.hpp"
+#include "../genlib/stringutils.hpp"
 
 #include <fstream>
 
 AgentProgram::AgentProgram()
-    : selType(SEL_LOS), steps(3), vbin(7), destinationDirected(false), losSqrd(false) {}
+    : selType(SEL_LOS), steps(3), vbin(7), vahead(0), aheadThreshold(), feelerThreshold(),
+      feelerProbability(), destinationDirected(false), losSqrd(false), fitness(), trails() {}
 
 void AgentProgram::mutate() {
     // do mutate rule order occassionally:
@@ -22,7 +23,7 @@ void AgentProgram::mutate() {
             ruleOrder[i] = -1;
         }
         for (int j = 0; j < 4; j++) {
-            int choice = pafmath::pafrand() % (4 - j);
+            auto choice = static_cast<int>(pafmath::pafrand() % static_cast<unsigned int>(4 - j));
             for (int k = 0; k < choice + 1; k++) {
                 if (ruleOrder[k] != -1) {
                     choice++;
@@ -34,10 +35,10 @@ void AgentProgram::mutate() {
     // mutate the rule threshold / probabilities
     for (int i = 0; i < 4; i++) {
         if (pafmath::pafrand() % 20 == 0) { // 5% mutation rate
-            ruleThreshold[i] = float(pafmath::prandom() * 100.0);
+            ruleThreshold[i] = static_cast<float>(pafmath::prandom() * 100.0);
         }
         if (pafmath::pafrand() % 20 == 0) { // 5% mutation rate
-            ruleProbability[i] = float(pafmath::prandom());
+            ruleProbability[i] = static_cast<float>(pafmath::prandom());
         }
     }
 }
@@ -152,9 +153,9 @@ bool AgentProgram::open(const std::string &filename) {
     if (!line.empty()) {
         dXstring::toLower(line);
         if (line.substr(0, 6) == "steps:") {
-            std::string steps = line.substr(6);
-            dXstring::ltrim(steps);
-            steps = stoi(steps);
+            std::string inputSteps = line.substr(6);
+            dXstring::ltrim(inputSteps);
+            inputSteps = static_cast<char>(std::stoi(inputSteps));
             file >> line;
             foundsteps = true;
         }
@@ -196,7 +197,7 @@ bool AgentProgram::open(const std::string &filename) {
                 return false;
             }
             for (int i = 0; i < 4; i++) {
-                ruleOrder[i] = stoi(orders[i]);
+                ruleOrder[i] = stoi(orders[static_cast<size_t>(i)]);
             }
             file >> line;
         } else {

@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "ngraph.h"
+#include "ngraph.hpp"
 
-#include "pointmap.h"
+#include "pointmap.hpp"
 
-#include "genlib/containerutils.h"
-#include "genlib/readwritehelpers.h"
+#include "genlib/containerutils.hpp"
+#include "genlib/readwritehelpers.hpp"
 
 void Node::make(const PixelRef pix, PixelRefVector *bins, float *binFarDists, int qOctants) {
     m_pixel = pix;
@@ -268,20 +268,20 @@ bool Bin::containsPoint(const PixelRef p) const {
 void Bin::first() const {
     m_curvec = 0;
     if (!pixelVecs.empty())
-        m_curpix = pixelVecs[m_curvec].start();
+        m_curpix = pixelVecs[static_cast<size_t>(m_curvec)].start();
 }
 
 void Bin::next() const {
-    if (m_curpix.move(dir).col(dir) > pixelVecs[m_curvec].end().col(dir)) {
+    if (m_curpix.move(dir).col(dir) > pixelVecs[static_cast<size_t>(m_curvec)].end().col(dir)) {
         m_curvec++;
         if (m_curvec < static_cast<int>(pixelVecs.size()))
-            m_curpix = pixelVecs[m_curvec].start();
+            m_curpix = pixelVecs[static_cast<size_t>(m_curvec)].start();
     }
 }
 
 bool Bin::is_tail() const { return m_curvec >= static_cast<int>(pixelVecs.size()); }
 
-PixelRef Bin::cursor() const { return (int)m_curpix; }
+PixelRef Bin::cursor() const { return static_cast<int>(m_curpix); }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -301,7 +301,7 @@ std::istream &Bin::read(std::istream &stream) {
             stream.read(reinterpret_cast<char *>(&length), sizeof(length));
             pixelVecs = std::vector<PixelVec>(length);
             pixelVecs[0].read(stream, dir);
-            for (int i = 1; i < length; i++) {
+            for (size_t i = 1; i < length; i++) {
                 pixelVecs[i].read(stream, dir, pixelVecs[i - 1]);
             }
         }
@@ -378,7 +378,7 @@ std::istream &PixelVec::read(std::istream &stream, const int8_t dir) {
 
 std::ostream &PixelVec::write(std::ostream &stream, const int8_t dir) {
     stream.write(reinterpret_cast<const char *>(&m_start), sizeof(m_start));
-    unsigned short runlength;
+    unsigned short runlength = 0;
     switch (dir) {
     case PixelRef::HORIZONTAL:
     case PixelRef::POSDIAGONAL:
@@ -424,16 +424,18 @@ std::istream &PixelVec::read(std::istream &stream, const int8_t dir, const Pixel
 
 std::ostream &PixelVec::write(std::ostream &stream, const int8_t dir, const PixelVec &context) {
     ShiftLength shiftlength;
+    shiftlength.runlength = 0;
+    shiftlength.shift = 0;
     switch (dir) {
     case PixelRef::HORIZONTAL:
         stream.write(reinterpret_cast<const char *>(&(m_start.x)), sizeof(m_start.x));
-        shiftlength.runlength = static_cast<unsigned short>(m_end.x - m_start.x);
-        shiftlength.shift = static_cast<unsigned short>(m_start.y - context.m_start.y);
+        shiftlength.runlength = static_cast<unsigned short>(m_end.x - m_start.x) & 0x0FFF;
+        shiftlength.shift = static_cast<unsigned short>(m_start.y - context.m_start.y) & 0x0F;
         break;
     case PixelRef::VERTICAL:
         stream.write(reinterpret_cast<const char *>(&(m_start.y)), sizeof(m_start.y));
-        shiftlength.runlength = static_cast<unsigned short>(m_end.y - m_start.y);
-        shiftlength.shift = static_cast<unsigned short>(m_start.x - context.m_start.x);
+        shiftlength.runlength = static_cast<unsigned short>(m_end.y - m_start.y) & 0x0FFF;
+        shiftlength.shift = static_cast<unsigned short>(m_start.x - context.m_start.x) & 0x0F;
         break;
     }
     stream.write(reinterpret_cast<const char *>(&shiftlength), sizeof(shiftlength));

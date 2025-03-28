@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgaangularopenmp.h"
+#include "vgaangularopenmp.hpp"
 #if defined(_OPENMP)
 #include <omp.h>
 #endif
@@ -12,7 +12,8 @@
 AnalysisResult VGAAngularOpenMP::run(Communicator *comm) {
 
 #if !defined(_OPENMP)
-    std::cerr << "OpenMP NOT available, only running on a single core" << std::endl;
+    if (comm)
+        comm->logWarning("OpenMP NOT available, only running on a single core");
     m_forceCommUpdatesMasterThread = false;
 #else
     if (m_limitToThreads.has_value()) {
@@ -26,7 +27,8 @@ AnalysisResult VGAAngularOpenMP::run(Communicator *comm) {
 
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     std::vector<AnalysisData> globalAnalysisData;
@@ -43,16 +45,16 @@ AnalysisResult VGAAngularOpenMP::run(Communicator *comm) {
     const auto refs = getRefVector(globalAnalysisData);
     const auto graph = getGraph(globalAnalysisData, refs, false);
 
-    int count = 0;
+    size_t count = 0;
 
     std::vector<DataPoint> colData(attributes.getNumRows());
 
-    int i, n = int(attributes.getNumRows());
+    auto n = static_cast<int>(attributes.getNumRows());
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+#pragma omp parallel for default(shared) schedule(dynamic)
 #endif
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         if (m_gatesOnly) {
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -61,31 +63,32 @@ AnalysisResult VGAAngularOpenMP::run(Communicator *comm) {
             continue;
         }
 
-        DataPoint &dp = colData[i];
+        DataPoint &dp = colData[static_cast<size_t>(i)];
 
         std::vector<AnalysisData> analysisData;
         analysisData.reserve(m_map.getAttributeTable().getNumRows());
 
-        size_t rowCounter = 0;
+        size_t localRowCounter = 0;
         for (auto &attRow : attributes) {
             auto &point = m_map.getPoint(attRow.getKey().value);
-            analysisData.push_back(AnalysisData(point, attRow.getKey().value, rowCounter, 0,
+            analysisData.push_back(AnalysisData(point, attRow.getKey().value, localRowCounter, 0,
                                                 attRow.getKey().value, 0.0f, -1.0f));
-            rowCounter++;
+            localRowCounter++;
         }
 
         float totalAngle = 0.0f;
         int totalNodes = 0;
 
-        auto &ad0 = analysisData.at(i);
+        auto &ad0 = analysisData.at(static_cast<size_t>(i));
 
         std::tie(totalAngle, totalNodes) = traverseSum(analysisData, graph, refs, m_radius, ad0);
 
         if (totalNodes > 0) {
-            dp.meanDepth = float(double(totalAngle) / double(totalNodes));
+            dp.meanDepth = static_cast<float>(static_cast<double>(totalAngle) /
+                                              static_cast<double>(totalNodes));
         }
         dp.totalDepth = totalAngle;
-        dp.count = float(totalNodes);
+        dp.count = static_cast<float>(totalNodes);
 
 #if defined(_OPENMP)
 #pragma omp atomic
@@ -123,15 +126,15 @@ AnalysisResult VGAAngularOpenMP::run(Communicator *comm) {
     AnalysisResult result({meanDepthColText, totalDetphColText, countColText},
                           attributes.getNumRows());
 
-    int meanDepthCol = result.getColumnIndex(meanDepthColText.c_str());
-    int totalDepthCol = result.getColumnIndex(totalDetphColText.c_str());
-    int countCol = result.getColumnIndex(countColText.c_str());
+    auto meanDepthCol = result.getColumnIndex(meanDepthColText.c_str());
+    auto totalDepthCol = result.getColumnIndex(totalDetphColText.c_str());
+    auto countCol = result.getColumnIndex(countColText.c_str());
 
     auto dataIter = colData.begin();
-    for (size_t i = 0; i < attributes.getNumRows(); i++) {
-        result.setValue(i, meanDepthCol, dataIter->meanDepth);
-        result.setValue(i, totalDepthCol, dataIter->totalDepth);
-        result.setValue(i, countCol, dataIter->count);
+    for (size_t ridx = 0; ridx < attributes.getNumRows(); ridx++) {
+        result.setValue(ridx, meanDepthCol, dataIter->meanDepth);
+        result.setValue(ridx, totalDepthCol, dataIter->totalDepth);
+        result.setValue(ridx, countCol, dataIter->count);
         dataIter++;
     }
 

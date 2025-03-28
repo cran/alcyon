@@ -4,9 +4,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "axialintegration.h"
+#include "axialintegration.hpp"
 
-#include "../genlib/pflipper.h"
+#include "../genlib/pflipper.hpp"
 
 std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> radii,
                                                               std::string weightingColName,
@@ -22,7 +22,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
             newColumns.push_back(getFormattedColumn( //
                 Column::INTEGRATION, radius, std::nullopt, Normalisation::HH));
 
-            if (m_weightedMeasureCol != -1) {
+            if (m_weightedMeasureCol.has_value()) {
                 newColumns.push_back(getFormattedColumn( //
                     Column::MEAN_DEPTH, radius, weightingColName));
                 newColumns.push_back(getFormattedColumn( //
@@ -51,7 +51,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                     Column::CHOICE, radius));
                 newColumns.push_back(getFormattedColumn( //
                     Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-                if (m_weightedMeasureCol != -1) {
+                if (m_weightedMeasureCol.has_value()) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::CHOICE, radius, weightingColName));
                     newColumns.push_back(getFormattedColumn( //
@@ -82,7 +82,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                     Column::CHOICE, radius));
                 newColumns.push_back(getFormattedColumn( //
                     Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-                if (m_weightedMeasureCol != -1) {
+                if (m_weightedMeasureCol.has_value()) {
                     newColumns.push_back(getFormattedColumn( //
                         Column::CHOICE, radius, weightingColName));
                     newColumns.push_back(getFormattedColumn( //
@@ -126,7 +126,7 @@ std::vector<std::string> AxialIntegration::getRequiredColumns(std::vector<int> r
                     Column::RELATIVISED_ENTROPY, radius));
             }
 
-            if (m_weightedMeasureCol != -1) {
+            if (m_weightedMeasureCol.has_value()) {
                 newColumns.push_back(getFormattedColumn( //
                     Column::MEAN_DEPTH, radius, weightingColName));
                 newColumns.push_back(getFormattedColumn( //
@@ -192,10 +192,10 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
     // retrieve weighted col data, as this may well be overwritten in the new analysis:
     std::vector<double> weights;
     std::string weightingColText;
-    if (m_weightedMeasureCol != -1) {
-        weightingColText = attributes.getColumnName(m_weightedMeasureCol);
+    if (m_weightedMeasureCol.has_value()) {
+        weightingColText = attributes.getColumnName(*m_weightedMeasureCol);
         for (size_t i = 0; i < map.getShapeCount(); i++) {
-            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(m_weightedMeasureCol));
+            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(*m_weightedMeasureCol));
         }
     }
 
@@ -218,7 +218,7 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                 attributes, Column::CHOICE, radius));
             nChoiceCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::CHOICE, radius, std::nullopt, Normalisation::NORM));
-            if (m_weightedMeasureCol != -1) {
+            if (m_weightedMeasureCol.has_value()) {
                 wChoiceCol.push_back(getFormattedColumnIdx( //
                     attributes, Column::CHOICE, radius, weightingColText));
                 nwChoiceCol.push_back(getFormattedColumnIdx( //
@@ -254,7 +254,7 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                 attributes, Column::RELATIVISED_ENTROPY, radius));
         }
 
-        if (m_weightedMeasureCol != -1) {
+        if (m_weightedMeasureCol.has_value()) {
             wDepthCol.push_back(getFormattedColumnIdx( //
                 attributes, Column::MEAN_DEPTH, radius, weightingColText, std::nullopt));
             totalWeightCol.push_back(getFormattedColumnIdx( //
@@ -277,9 +277,10 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
 
     // for choice
     AnalysisInfo **audittrail = nullptr;
+    auto nshapes = map.getShapeCount();
     if (m_choice) {
-        audittrail = new AnalysisInfo *[map.getShapeCount()];
-        for (size_t i = 0; i < map.getShapeCount(); i++) {
+        audittrail = new AnalysisInfo *[nshapes];
+        for (size_t i = 0; i < nshapes; i++) {
             audittrail[i] = new AnalysisInfo[radii.size()];
         }
     }
@@ -288,16 +289,16 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
     // has already failed due to this!  when intro hand drawn fewest line (where user may have
     // deleted) it's going to get worse...
 
-    bool *covered = new bool[map.getShapeCount()];
+    bool *covered = new bool[nshapes];
 
     size_t i = 0;
     for (auto &iter : attributes) {
         AttributeRow &row = iter.getRow();
-        for (size_t j = 0; j < map.getShapeCount(); j++) {
+        for (size_t j = 0; j < nshapes; j++) {
             covered[j] = false;
         }
         if (m_choice) {
-            for (size_t k = 0; k < map.getShapeCount(); k++) {
+            for (size_t k = 0; k < nshapes; k++) {
                 audittrail[k][0].previous.ref =
                     -1; // note, 0th member used as radius doesn't matter
                 // note, choice columns are not cleared, but cummulative over all shortest path
@@ -309,36 +310,37 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
         depthcounts.push_back(0);
 
         pflipper<std::vector<std::pair<int, int>>> foundlist;
-        foundlist.a().push_back(std::pair<int, int>(i, -1));
+        foundlist.a().push_back(std::pair<int, int>(static_cast<int>(i), -1));
         covered[i] = true;
         int totalDepth = 0, depth = 1, nodeCount = 1, pos = -1,
             previous = -1; // node_count includes this 1
         double weight = 0.0, rootweight = 0.0, totalWeight = 0.0, wTotalDepth = 0.0;
-        if (m_weightedMeasureCol != -1) {
+        if (m_weightedMeasureCol.has_value()) {
             rootweight = weights[i];
             // include this line in total weights (as per nodecount)
             totalWeight += rootweight;
         }
         int index = -1;
-        int r = 0;
+        size_t r = 0;
         for (int radius : radii) {
             while (foundlist.a().size()) {
                 if (!m_choice) {
                     index = foundlist.a().back().first;
                 } else {
-                    pos = pafmath::pafrand() % foundlist.a().size();
-                    index = foundlist.a().at(pos).first;
-                    previous = foundlist.a().at(pos).second;
+                    pos = static_cast<int>(pafmath::pafrand() % foundlist.a().size());
+                    index = foundlist.a().at(static_cast<size_t>(pos)).first;
+                    previous = foundlist.a().at(static_cast<size_t>(pos)).second;
                     audittrail[index][0].previous.ref =
                         previous; // note 0th member used here: can be used individually different
                                   // radius previous
                 }
-                Connector &line = map.getConnections()[index];
+                Connector &line = map.getConnections()[static_cast<size_t>(index)];
                 for (size_t k = 0; k < line.connections.size(); k++) {
                     if (!covered[line.connections[k]]) {
                         covered[line.connections[k]] = true;
-                        foundlist.b().push_back(std::pair<int, int>(line.connections[k], index));
-                        if (m_weightedMeasureCol != -1) {
+                        foundlist.b().push_back(
+                            std::make_pair(static_cast<int>(line.connections[k]), index));
+                        if (m_weightedMeasureCol.has_value()) {
                             // the weight is taken from the discovered node:
                             weight = weights[line.connections[k]];
                             totalWeight += weight;
@@ -347,17 +349,19 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                         if (m_choice && previous != -1) {
                             // both directional paths are now recorded for choice
                             // (coincidentally fixes choice problem which was completely wrong)
-                            size_t here = index; // note: start counting from index as actually
-                                                 // looking ahead here
-                            while (here != i) {  // not i means not the current root for the path
+                            size_t here =
+                                static_cast<size_t>(index); // note: start counting from index as
+                                                            // actually looking ahead here
+                            while (here != i) { // not i means not the current root for the path
                                 audittrail[here][r].choice += 1;
                                 audittrail[here][r].weightedChoice += weight * rootweight;
-                                here = audittrail[here][0]
-                                           .previous
-                                           .ref; // <- note, just using 0th position: radius for
-                                                 // the previous doesn't matter in this analysis
+                                here = static_cast<size_t>(
+                                    audittrail[here][0]
+                                        .previous
+                                        .ref); // <- note, just using 0th position: radius for
+                                               // the previous doesn't matter in this analysis
                             }
-                            if (m_weightedMeasureCol != -1) {
+                            if (m_weightedMeasureCol.has_value()) {
                                 // in weighted choice, root node and current node receive values:
                                 audittrail[i][r].weightedChoice += (weight * rootweight) * 0.5;
                                 audittrail[line.connections[k]][r].weightedChoice +=
@@ -383,53 +387,55 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                 }
             }
             // set the attributes for this node:
-            row.setValue(countCol[r], float(nodeCount));
-            if (m_weightedMeasureCol != -1) {
-                row.setValue(totalWeightCol[r], float(totalWeight));
+            row.setValue(countCol[r], static_cast<float>(nodeCount));
+            if (m_weightedMeasureCol.has_value()) {
+                row.setValue(totalWeightCol[r], static_cast<float>(totalWeight));
             }
             // node count > 1 to avoid divide by zero (was > 2)
             if (nodeCount > 1) {
                 // note -- node_count includes this one -- mean depth as per p.108 Social Logic of
                 // Space
-                double meanDepth = double(totalDepth) / double(nodeCount - 1);
-                row.setValue(depthCol[r], float(meanDepth));
-                if (m_weightedMeasureCol != -1) {
+                double meanDepth =
+                    static_cast<double>(totalDepth) / static_cast<double>(nodeCount - 1);
+                row.setValue(depthCol[r], static_cast<float>(meanDepth));
+                if (m_weightedMeasureCol.has_value()) {
                     // weighted mean depth:
-                    row.setValue(wDepthCol[r], float(wTotalDepth / totalWeight));
+                    row.setValue(wDepthCol[r], static_cast<float>(wTotalDepth / totalWeight));
                 }
                 // total nodes > 2 to avoid divide by 0 (was > 3)
                 if (nodeCount > 2 && meanDepth > 1.0) {
-                    double ra = 2.0 * (meanDepth - 1.0) / double(nodeCount - 2);
+                    double ra = 2.0 * (meanDepth - 1.0) / static_cast<double>(nodeCount - 2);
                     // d-value / p-value from Depthmap 4 manual, note: node_count includes this one
                     double rraD = ra / pafmath::dvalue(nodeCount);
                     double rraP = ra / pafmath::dvalue(nodeCount);
                     double integTk = pafmath::teklinteg(nodeCount, totalDepth);
-                    row.setValue(integDvCol[r], float(1.0 / rraD));
+                    row.setValue(integDvCol[r], static_cast<float>(1.0 / rraD));
 
                     if (!simpleVersion) {
-                        row.setValue(integPvCol[r], float(1.0 / rraP));
+                        row.setValue(integPvCol[r], static_cast<float>(1.0 / rraP));
                         if (totalDepth - nodeCount + 1 > 1) {
-                            row.setValue(integTkCol[r], float(integTk));
+                            row.setValue(integTkCol[r], static_cast<float>(integTk));
                         } else {
                             row.setValue(integTkCol[r], -1.0f);
                         }
                     }
 
                     if (m_fulloutput) {
-                        row.setValue(raCol[r], float(ra));
+                        row.setValue(raCol[r], static_cast<float>(ra));
 
                         if (!simpleVersion) {
-                            row.setValue(rraCol[r], float(rraD));
+                            row.setValue(rraCol[r], static_cast<float>(rraD));
                         }
-                        row.setValue(tdCol[r], float(totalDepth));
+                        row.setValue(tdCol[r], static_cast<float>(totalDepth));
 
                         if (!simpleVersion) {
                             // alan's palm-tree normalisation: palmtree
                             double dmin = nodeCount - 1;
                             double dmax = pafmath::palmtree(nodeCount, depth - 1);
                             if (dmax != dmin) {
-                                row.setValue(pennNormCol[r],
-                                             float((dmax - totalDepth) / (dmax - dmin)));
+                                row.setValue(
+                                    pennNormCol[r],
+                                    static_cast<float>((dmax - totalDepth) / (dmax - dmin)));
                             }
                         }
                     }
@@ -462,27 +468,29 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                         if (depthcounts[k] != 0) {
                             // some debate over whether or not this should be node count - 1
                             // (i.e., including or not including the node itself)
-                            double prob = double(depthcounts[k]) / double(nodeCount);
+                            double prob = static_cast<double>(depthcounts[k]) /
+                                          static_cast<double>(nodeCount);
                             entropy -= prob * pafmath::log2(prob);
                             // Formula from Turner 2001, "Depthmap"
-                            factorial *= double(k + 1);
-                            double q =
-                                (pow(meanDepth, double(k)) / double(factorial)) * exp(-meanDepth);
-                            relEntropy += (double)prob * pafmath::log2(prob / q);
+                            factorial *= static_cast<double>(k + 1);
+                            double q = (pow(meanDepth, static_cast<double>(k)) /
+                                        static_cast<double>(factorial)) *
+                                       exp(-meanDepth);
+                            relEntropy += static_cast<double>(prob) * pafmath::log2(prob / q);
                             //
-                            harmonic += 1.0 / double(depthcounts[k]);
+                            harmonic += 1.0 / static_cast<double>(depthcounts[k]);
                         }
                     }
-                    harmonic = double(depthcounts.size()) / harmonic;
+                    harmonic = static_cast<double>(depthcounts.size()) / harmonic;
                     if (totalDepth > nodeCount) {
                         intensity = nodeCount * entropy / (totalDepth - nodeCount);
                     } else {
                         intensity = -1;
                     }
-                    row.setValue(entropyCol[r], float(entropy));
-                    row.setValue(relEntropyCol[r], float(relEntropy));
-                    row.setValue(intensityCol[r], float(intensity));
-                    row.setValue(harmonicCol[r], float(harmonic));
+                    row.setValue(entropyCol[r], static_cast<float>(entropy));
+                    row.setValue(relEntropyCol[r], static_cast<float>(relEntropy));
+                    row.setValue(intensityCol[r], static_cast<float>(intensity));
+                    row.setValue(harmonicCol[r], static_cast<float>(harmonic));
                 }
             } else {
                 row.setValue(depthCol[r], -1.0f);
@@ -523,33 +531,42 @@ AnalysisResult AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool s
                 // routes)
                 double nodeCount = row.getValue(countCol[r]);
                 double totalWeight = 0;
-                if (m_weightedMeasureCol != -1) {
+                if (m_weightedMeasureCol.has_value()) {
                     totalWeight = row.getValue(totalWeightCol[r]);
                 }
                 if (nodeCount > 2) {
-                    row.setValue(choiceCol[r], float(totalChoice));
+                    row.setValue(choiceCol[r], static_cast<float>(totalChoice));
                     row.setValue(nChoiceCol[r],
-                                 float(2.0 * totalChoice / ((nodeCount - 1) * (nodeCount - 2))));
-                    if (m_weightedMeasureCol != -1) {
-                        row.setValue(wChoiceCol[r], float(wTotalChoice));
-                        row.setValue(nwChoiceCol[r],
-                                     float(2.0 * wTotalChoice / (totalWeight * totalWeight)));
+                                 static_cast<float>(2.0 * totalChoice /
+                                                    ((nodeCount - 1) * (nodeCount - 2))));
+                    if (m_weightedMeasureCol.has_value()) {
+                        row.setValue(wChoiceCol[r], static_cast<float>(wTotalChoice));
+                        row.setValue(
+                            nwChoiceCol[r],
+                            static_cast<float>(2.0 * wTotalChoice / (totalWeight * totalWeight)));
                     }
                 } else {
                     row.setValue(choiceCol[r], -1);
                     row.setValue(nChoiceCol[r], -1);
-                    if (m_weightedMeasureCol != -1) {
+                    if (m_weightedMeasureCol.has_value()) {
                         row.setValue(wChoiceCol[r], -1);
                         row.setValue(nwChoiceCol[r], -1);
                     }
                 }
             }
             i++;
+            // This check should not be necessary because we iterate on
+            // the attribute rows which should be the same size as the
+            // shapes. However to be super safe and to satisfy the clang
+            // analyser we can also add a sanity check here
+            if (i >= nshapes) {
+                break;
+            }
         }
-        for (size_t i = 0; i < map.getShapeCount(); i++) {
+        for (size_t j = 0; j < nshapes; j++) {
             // TODO: At this moment, GCC triggers a warning here. Find
             // a better solution rather than disabling the warnind
-            delete[] audittrail[i];
+            delete[] audittrail[j];
         }
         delete[] audittrail;
     }

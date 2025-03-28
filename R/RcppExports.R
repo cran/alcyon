@@ -105,8 +105,8 @@ Rcpp_axialToSegment <- function(shapeGraph, nameNV = NULL, copydataNV = NULL, st
     .Call('_alcyon_axialToSegment', PACKAGE = 'alcyon', shapeGraph, nameNV, copydataNV, stubremovalNV, progressNV)
 }
 
-Rcpp_shapeMapToSegment <- function(shapeMap, nameNV = NULL, keeporiginalNV = NULL, copydataNV = NULL, progressNV = NULL) {
-    .Call('_alcyon_shapeMapToSegment', PACKAGE = 'alcyon', shapeMap, nameNV, keeporiginalNV, copydataNV, progressNV)
+Rcpp_shapeMapToSegment <- function(shapeMap, nameNV = NULL, copydataNV = NULL, progressNV = NULL) {
+    .Call('_alcyon_shapeMapToSegment', PACKAGE = 'alcyon', shapeMap, nameNV, copydataNV, progressNV)
 }
 
 Rcpp_makeIsovists <- function(boundsMap, pointCoords, directionAngles, fieldOfViewAngles, progressNV = NULL) {

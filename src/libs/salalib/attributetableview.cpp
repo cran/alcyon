@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "attributetableview.h"
+#include "attributetableview.hpp"
 
-AttributeTableView::AttributeTableView(const AttributeTable &table)
-    : table(table), m_displayColumn(-1) {}
+AttributeTableView::AttributeTableView(const AttributeTable &tableIn)
+    : table(tableIn), m_index(), m_displayColumn(-1), _padding0(0) {}
 
 void AttributeTableView::setDisplayColIndex(int columnIndex) {
     if (columnIndex < -1) {
@@ -24,16 +24,16 @@ float AttributeTableView::getNormalisedValue(const AttributeKey &key,
     if (m_displayColumn < 0) {
         auto endIter = table.end();
         --endIter;
-        return (float)key.value / (float)endIter->getKey().value;
+        return static_cast<float>(key.value) / static_cast<float>(endIter->getKey().value);
     }
-    return row.getNormalisedValue(m_displayColumn);
+    return row.getNormalisedValue(static_cast<size_t>(m_displayColumn));
 }
 
 const DisplayParams &AttributeTableView::getDisplayParams() const {
     if (m_displayColumn < 0) {
         return table.getDisplayParams();
     }
-    return table.getColumn(m_displayColumn).getDisplayParams();
+    return table.getColumn(static_cast<size_t>(m_displayColumn)).getDisplayParams();
 }
 
 void AttributeTableHandle::setDisplayColIndex(int columnIndex) {
@@ -46,7 +46,8 @@ void AttributeTableHandle::setDisplayColIndex(int columnIndex) {
     }
     AttributeTableView::setDisplayColIndex(columnIndex);
 }
-int AttributeTableHandle::findInIndex(const AttributeKey &key) {
+AttributeTableHandle::Index::iterator::difference_type
+AttributeTableHandle::findInIndex(const AttributeKey &key) {
 
     auto iter = std::find_if(m_mutableIndex.begin(), m_mutableIndex.end(), index_item_key(key));
     if (iter != m_mutableIndex.end()) {

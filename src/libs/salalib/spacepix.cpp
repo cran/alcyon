@@ -6,20 +6,14 @@
 
 // spatial data
 
-#include "spacepix.h"
+#include "spacepix.hpp"
 
-#include "genlib/containerutils.h"
-#include "genlib/readwritehelpers.h"
-#include "genlib/stringutils.h"
+#include "genlib/readwritehelpers.hpp"
+#include "genlib/stringutils.hpp"
 
 #include <cmath>
-#include <float.h>
 #include <fstream>
 #include <set>
-
-#ifndef _WIN32
-#define _finite finite
-#endif
 
 /*
 // Algorithm from Chi
@@ -44,7 +38,7 @@
    }
 */
 
-PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
+PixelRefVector PixelBase::pixelateLine(Line4f l, int scalefactor) const {
     PixelRefVector pixelList;
 
     // this is *not* correct for lines that are off the edge...
@@ -84,23 +78,25 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
         double hwRatio = l.height() / l.width(); // Working all of these out leaves less scope
                                                  // for floating point error
         double whRatio = l.width() / l.height();
-        double x0Const = l.ay() - double(parity) * hwRatio * l.ax();
-        double y0Const = l.ax() - double(parity) * whRatio * l.ay();
+        double x0Const = l.ay() - static_cast<double>(parity) * hwRatio * l.ax();
+        double y0Const = l.ax() - static_cast<double>(parity) * whRatio * l.ay();
 
         while (a.x < b.x || a.y < b.y) {
             PixelRef e;
             e.y = static_cast<short>(
-                parity *
-                int(double(scaledrows) *
-                    (x0Const + parity * hwRatio * (double(a.x + 1) / double(scaledcols)))));
+                parity * static_cast<int>(static_cast<double>(scaledrows) *
+                                          (x0Const + parity * hwRatio *
+                                                         (static_cast<double>(a.x + 1) /
+                                                          static_cast<double>(scaledcols)))));
             // Note when decending 1.5 -> 1 and ascending 1.5 -> 2
             if (parity < 0) {
-                e.x = static_cast<short>(double(scaledcols) *
-                                         (y0Const + whRatio * (double(a.y) / double(scaledrows))));
+                e.x = static_cast<short>(static_cast<double>(scaledcols) *
+                                         (y0Const + whRatio * (static_cast<double>(a.y) /
+                                                               static_cast<double>(scaledrows))));
             } else {
-                e.x = static_cast<short>(
-                    double(scaledcols) *
-                    (y0Const + whRatio * (double(a.y + 1) / double(scaledrows))));
+                e.x = static_cast<short>(static_cast<double>(scaledcols) *
+                                         (y0Const + whRatio * (static_cast<double>(a.y + 1) /
+                                                               static_cast<double>(scaledrows))));
             }
 
             if (a.y < e.y) {
@@ -142,7 +138,7 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
 // this version includes all pixels through which the line passes with touching
 // counting as both pixels.
 
-PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
+PixelRefVector PixelBase::pixelateLineTouching(Line4f l, double tolerance) const {
     PixelRefVector pixelList;
 
     // now assume that scaling to region then scaling up is going to give
@@ -151,32 +147,33 @@ PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
     l.scale(Point2f(static_cast<double>(m_cols), static_cast<double>(m_rows)));
 
     // but it does give us a nice line...
-    int dir;
+    LineAxis dir;
     double grad, constant;
 
     if (l.width() > l.height()) {
-        dir = XAXIS;
-        grad = l.grad(YAXIS);
-        constant = l.constant(YAXIS);
+        dir = LineAxis::XAXIS;
+        grad = l.grad(LineAxis::YAXIS);
+        constant = l.constant(LineAxis::YAXIS);
     } else if (l.width() == 0 && l.height() == 0) {
-        dir = YAXIS;
+        dir = LineAxis::YAXIS;
         grad = 0;
         constant = 0;
     } else {
-        dir = YAXIS;
-        grad = l.grad(XAXIS);
-        constant = l.constant(XAXIS);
+        dir = LineAxis::YAXIS;
+        grad = l.grad(LineAxis::XAXIS);
+        constant = l.constant(LineAxis::XAXIS);
     }
     PixelRef bounds(static_cast<short>(m_cols), static_cast<short>(m_rows));
 
-    if (dir == XAXIS) {
-        int first = (int)floor(l.ax() - tolerance);
-        int last = (int)floor(l.bx() + tolerance);
+    if (dir == LineAxis::XAXIS) {
+        auto first = static_cast<int>(floor(l.ax() - tolerance));
+        auto last = static_cast<int>(floor(l.bx() + tolerance));
         for (int i = first; i <= last; i++) {
-            int j1 = (int)floor((first == i ? l.ax() : static_cast<double>(i)) * grad + constant -
-                                l.sign() * tolerance);
-            int j2 = (int)floor((last == i ? l.bx() : static_cast<double>(i + 1)) * grad +
-                                constant + l.sign() * tolerance);
+            auto j1 = static_cast<int>(floor((first == i ? l.ax() : static_cast<double>(i)) * grad +
+                                             constant - l.sign() * tolerance));
+            auto j2 =
+                static_cast<int>(floor((last == i ? l.bx() : static_cast<double>(i + 1)) * grad +
+                                       constant + l.sign() * tolerance));
             if (bounds.encloses(PixelRef(static_cast<short>(i), static_cast<short>(j1)))) {
                 pixelList.push_back(PixelRef(static_cast<short>(i), static_cast<short>(j1)));
             }
@@ -195,13 +192,15 @@ PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
             }
         }
     } else {
-        int first = (int)floor(l.bottomLeft.y - tolerance);
-        int last = (int)floor(l.topRight.y + tolerance);
+        auto first = static_cast<int>(floor(l.bottomLeft.y - tolerance));
+        auto last = static_cast<int>(floor(l.topRight.y + tolerance));
         for (int i = first; i <= last; i++) {
-            int j1 = (int)floor((first == i ? l.bottomLeft.y : double(i)) * grad + constant -
-                                l.sign() * tolerance);
-            int j2 = (int)floor((last == i ? l.topRight.y : double(i + 1)) * grad + constant +
-                                l.sign() * tolerance);
+            auto j1 = static_cast<int>(
+                floor((first == i ? l.bottomLeft.y : static_cast<double>(i)) * grad + constant -
+                      l.sign() * tolerance));
+            auto j2 = static_cast<int>(
+                floor((last == i ? l.topRight.y : static_cast<double>(i + 1)) * grad + constant +
+                      l.sign() * tolerance));
             if (bounds.encloses(PixelRef(static_cast<short>(j1), static_cast<short>(i)))) {
                 pixelList.push_back(PixelRef(static_cast<short>(j1), static_cast<short>(i)));
             }
@@ -258,20 +257,27 @@ PixelRefVector PixelBase::quickPixelateLine(PixelRef p, PixelRef q) const {
         polarity = 2;
     }
 
-    dx /= t;
-    dy /= t;
+    if (polarity != 0) {
+        dx /= t;
+        dy /= t;
+    }
     double ppx = p.x + 0.5;
     double ppy = p.y + 0.5;
 
     for (int i = 0; i <= t; i++) {
         if (polarity == 1 && fabs(floor(ppy) - ppy) < 1e-9) {
-            list.push_back(PixelRef((short)floor(ppx), (short)floor(ppy + 0.5)));
-            list.push_back(PixelRef((short)floor(ppx), (short)floor(ppy - 0.5)));
+            list.push_back(PixelRef(static_cast<short>(floor(ppx)), //
+                                    static_cast<short>(floor(ppy + 0.5))));
+            list.push_back(PixelRef(static_cast<short>(floor(ppx)), //
+                                    static_cast<short>(floor(ppy - 0.5))));
         } else if (polarity == 2 && fabs(floor(ppx) - ppx) < 1e-9) {
-            list.push_back(PixelRef((short)floor(ppx + 0.5), (short)floor(ppy)));
-            list.push_back(PixelRef((short)floor(ppx - 0.5), (short)floor(ppy)));
+            list.push_back(PixelRef(static_cast<short>(floor(ppx + 0.5)), //
+                                    static_cast<short>(floor(ppy))));
+            list.push_back(PixelRef(static_cast<short>(floor(ppx - 0.5)), //
+                                    static_cast<short>(floor(ppy))));
         } else {
-            list.push_back(PixelRef((short)floor(ppx), (short)floor(ppy)));
+            list.push_back(PixelRef(static_cast<short>(floor(ppx)), //
+                                    static_cast<short>(floor(ppy))));
         }
         ppx += dx;
         ppy += dy;
@@ -281,8 +287,8 @@ PixelRefVector PixelBase::quickPixelateLine(PixelRef p, PixelRef q) const {
 }
 
 SpacePixel::SpacePixel(const std::string &name)
-    : m_newline(false), m_style(0), m_name(name), m_show(true), m_edit(false), m_pixelLines(0, 0),
-      m_ref(-1), m_test(0) {
+    : m_lock(), m_newline(false), m_show(true), m_edit(false), m_color(), m_ref(-1), m_style(0),
+      m_name(name), m_pixelLines(0, 0), m_lines(), m_displayLines(), m_current(0), m_test(0) {
 
     m_cols = 0;
     m_rows = 0;
@@ -291,7 +297,9 @@ SpacePixel::SpacePixel(const std::string &name)
 }
 
 SpacePixel::SpacePixel(const SpacePixel &spacepixel)
-    : m_pixelLines(spacepixel.m_pixelLines.rows(), spacepixel.m_pixelLines.columns()) {
+    : m_lock(), m_newline(), m_show(), m_edit(), m_color(), m_ref(), m_style(),
+      m_pixelLines(spacepixel.m_pixelLines.rows(), spacepixel.m_pixelLines.columns()), m_lines(),
+      m_displayLines(), m_current(), m_test() {
     // n.b., not strictly allowed
     construct(spacepixel);
 }
@@ -336,16 +344,16 @@ PixelRef SpacePixel::pixelate(const Point2f &p, bool constrain, int) const {
     PixelRef r;
 
     Point2f p1 = p;
-    p1.normalScale(m_region);
+    p1.normalScale(m_region.bottomLeft, m_region.width(), m_region.height());
 
-    r.x = short(p1.x * double(static_cast<double>(m_cols) - 1e-9));
+    r.x = static_cast<short>(p1.x * static_cast<double>(static_cast<double>(m_cols) - 1e-9));
     if (constrain) {
         if (r.x >= static_cast<short>(m_cols))
             r.x = static_cast<short>(m_cols) - 1;
         else if (r.x < 0)
             r.x = 0;
     }
-    r.y = short(p1.y * double(static_cast<double>(m_rows) - 1e-9));
+    r.y = static_cast<short>(p1.y * static_cast<double>(static_cast<double>(m_rows) - 1e-9));
     if (constrain) {
         if (r.y >= static_cast<short>(m_rows))
             r.y = static_cast<short>(m_rows) - 1;
@@ -356,65 +364,6 @@ PixelRef SpacePixel::pixelate(const Point2f &p, bool constrain, int) const {
     return r;
 }
 
-void SpacePixel::makeViewportLines(const QtRegion &viewport) const {
-    if (m_displayLines.empty() || m_newline) {
-        m_displayLines = std::vector<int>(m_lines.size());
-        m_newline = false;
-        std::fill(m_displayLines.begin(), m_displayLines.end(), 0);
-    }
-
-    m_current = -1; // note: findNext expects first to be labelled -1
-
-    /*
-    // Fixing bounding rectangle: normalisation removed
-    QtRegion r_viewport = viewport;
-
-    r_viewport.normalScale( m_region );
-    */
-
-    PixelRef bl = pixelate(viewport.bottomLeft);
-    PixelRef tr = pixelate(viewport.topRight);
-
-    for (int i = bl.x; i <= tr.x; i++) {
-        for (int j = bl.y; j <= tr.y; j++) {
-            auto &pixelLines = m_pixelLines(static_cast<size_t>(j), static_cast<size_t>(i));
-            for (int pixelLine : pixelLines) {
-                m_displayLines[size_t(depthmapX::findIndexFromKey(m_lines, pixelLine))] = 1;
-            }
-        }
-    }
-}
-
-// expect to be used as:
-//
-// if (findNext())
-//    getNext();
-
-bool SpacePixel::findNextLine(bool &nextlayer) const {
-    if (m_newline) // after adding a line you must reinitialise the display lines
-        return false;
-
-    while (++m_current < (int)m_lines.size() && m_displayLines[static_cast<size_t>(m_current)] == 0)
-        ;
-
-    if (m_current < (int)m_lines.size()) {
-        return true;
-    } else {
-        m_current = (int)m_lines.size();
-        nextlayer = true;
-        return false;
-    }
-}
-
-const Line &SpacePixel::getNextLine() const {
-    m_displayLines[static_cast<size_t>(m_current)] = 0; // You've drawn it
-    /*
-    // Fixing: removed rectangle scaling
-    l.denormalScale( m_region );
-    */
-    return m_lines.find(m_current)->second.line;
-}
-
 void SpacePixel::initLines(int size, const Point2f &min, const Point2f &max, double density) {
     m_displayLines.clear();
     m_lines.clear();
@@ -422,22 +371,28 @@ void SpacePixel::initLines(int size, const Point2f &min, const Point2f &max, dou
     m_test = 0;
 
     // work out extents...
-    m_region = QtRegion(min, max);
+    m_region = Region4f(min, max);
 
-    double whRatio = m_region.width() / m_region.height();
-    double hwRatio = m_region.height() / m_region.width();
-
-    m_rows = (int)sqrt(double(size) * whRatio * density);
-    m_cols = (int)sqrt(double(size) * hwRatio * density);
-
-    if (m_rows < 1)
+    if (m_region.height() == 0) {
         m_rows = 1;
-    if (m_cols < 1)
-        m_cols = 1;
+    } else {
+        double whRatio = m_region.width() / m_region.height();
+        m_rows = static_cast<size_t>(sqrt(static_cast<double>(size) * whRatio * density));
+        if (m_rows < 1)
+            m_rows = 1;
+    }
 
+    if (m_region.width() == 0) {
+        m_cols = 1;
+    } else {
+        double hwRatio = m_region.height() / m_region.width();
+        m_cols = static_cast<size_t>(sqrt(static_cast<double>(size) * hwRatio * density));
+        if (m_cols < 1)
+            m_cols = 1;
+    }
     // could work these two out on the fly, but it's easier to have them stored:
-    // m_pixel_height = m_region.height() / double(m_rows);
-    // m_pixel_width  = m_region.width()  / double(m_cols);
+    // m_pixel_height = m_region.height() / static_cast<double>(m_rows);
+    // m_pixel_width  = m_region.width()  / static_cast<double>(m_cols);
 
     m_pixelLines = depthmapX::RowMatrix<std::vector<int>>(static_cast<size_t>(m_rows),
                                                           static_cast<size_t>(m_cols));
@@ -449,8 +404,8 @@ void SpacePixel::reinitLines(double density) {
     double whRatio = m_region.width() / m_region.height();
     double hwRatio = m_region.height() / m_region.width();
 
-    m_rows = (int)sqrt(double(m_lines.size()) * whRatio * density);
-    m_cols = (int)sqrt(double(m_lines.size()) * hwRatio * density);
+    m_rows = static_cast<size_t>(sqrt(static_cast<double>(m_lines.size()) * whRatio * density));
+    m_cols = static_cast<size_t>(sqrt(static_cast<double>(m_lines.size()) * hwRatio * density));
 
     if (m_rows < 1)
         m_rows = 1;
@@ -479,7 +434,7 @@ void SpacePixel::reinitLines(double density) {
 
 // Add line: pixelate the line
 
-void SpacePixel::addLine(const Line &line) {
+void SpacePixel::addLine(const Line4f &line) {
     // Fairly simple: just pixelates the line!
     m_ref++; // need unique keys for the lines so they can be added / removed at
              // any time
@@ -495,7 +450,7 @@ void SpacePixel::addLine(const Line &line) {
     }
 }
 
-int SpacePixel::addLineDynamic(const Line &line) {
+int SpacePixel::addLineDynamic(const Line4f &line) {
     m_ref++; // need unique keys for the lines so they can be added / removed at
              // any time
     m_lines.insert(std::make_pair(m_ref, LineTest(line, 0)));
@@ -532,7 +487,7 @@ void SpacePixel::sortPixelLines() {
     }
 }
 
-bool SpacePixel::intersect(const Line &l, double tolerance) {
+bool SpacePixel::intersect(const Line4f &l, double tolerance) {
     m_test++; // note loops! (but vary rarely: inevitabley, lines will have been
               // marked before it loops)
 
@@ -542,10 +497,15 @@ bool SpacePixel::intersect(const Line &l, double tolerance) {
         auto &pixelLines =
             m_pixelLines(static_cast<size_t>(list[i].y), static_cast<size_t>(list[i].x));
         for (int lineref : pixelLines) {
-            LineTest &linetest = m_lines.find(lineref)->second;
+            const auto &lineIt = m_lines.find(lineref);
+            if (lineIt == m_lines.end()) {
+                throw depthmapX::RuntimeException("Line " + std::to_string(lineref) +
+                                                  " not found when looking for intersections");
+            }
+            LineTest &linetest = lineIt->second;
             if (linetest.test != m_test) {
-                if (intersect_region(linetest.line, l)) {
-                    if (intersect_line(linetest.line, l, tolerance)) {
+                if (linetest.line.Region4f::intersects(l, tolerance)) {
+                    if (linetest.line.Line4f::intersects(l, tolerance)) {
                         return true;
                     }
                 }
@@ -557,7 +517,7 @@ bool SpacePixel::intersect(const Line &l, double tolerance) {
     return false;
 }
 
-bool SpacePixel::intersect_exclude(const Line &l, double tolerance) {
+bool SpacePixel::intersect_exclude(const Line4f &l, double tolerance) {
     m_test++; // note loops! (but vary rarely: inevitabley, lines will have been
               // marked before it loops)
 
@@ -567,10 +527,15 @@ bool SpacePixel::intersect_exclude(const Line &l, double tolerance) {
         auto &pixelLines =
             m_pixelLines(static_cast<size_t>(list[i].y), static_cast<size_t>(list[i].x));
         for (int lineref : pixelLines) {
-            LineTest &linetest = m_lines.find(lineref)->second;
+            const auto &lineIt = m_lines.find(lineref);
+            if (lineIt == m_lines.end()) {
+                throw depthmapX::RuntimeException("Line " + std::to_string(lineref) +
+                                                  " not found when looking for intersections");
+            }
+            LineTest &linetest = lineIt->second;
             if (linetest.test != m_test) {
-                if (intersect_region(linetest.line, l)) {
-                    if (intersect_line(linetest.line, l, tolerance)) {
+                if (linetest.line.Region4f::intersects(l, tolerance)) {
+                    if (linetest.line.Line4f::intersects(l, tolerance)) {
                         if (linetest.line.start() != l.start() &&
                             linetest.line.start() != l.end() && linetest.line.end() != l.start() &&
                             linetest.line.end() != l.end()) {
@@ -586,7 +551,7 @@ bool SpacePixel::intersect_exclude(const Line &l, double tolerance) {
     return false;
 }
 
-void SpacePixel::cutLine(Line &l, short dir) {
+void SpacePixel::cutLine(Line4f &l, short dir, Communicator *comm) {
     m_test++;
 
     double tolerance = l.length() * 1e-9;
@@ -594,29 +559,35 @@ void SpacePixel::cutLine(Line &l, short dir) {
     std::set<double> loc;
     PixelRefVector vec = pixelateLine(l);
 
-    int axis;
+    LineAxis axis;
     if (l.width() >= l.height()) {
-        axis = XAXIS;
+        axis = LineAxis::XAXIS;
     } else {
-        axis = YAXIS;
+        axis = LineAxis::YAXIS;
     }
     Point2f truestart = (dir == l.direction()) ? l.start() : l.end();
     Point2f trueend = (dir == l.direction()) ? l.end() : l.start();
 
     bool found = false;
-    std::vector<Line> touchingLines;
+    std::vector<Line4f> touchingLines;
 
     for (size_t i = 0; i < vec.size() && !found; i++) {
         // depending on direction of line either move head to tail or tail to head
         PixelRef pix = (dir == l.direction()) ? vec[i] : vec[vec.size() - 1 - i];
         auto &pixelLines = m_pixelLines(static_cast<size_t>(pix.y), static_cast<size_t>(pix.x));
         for (int lineref : pixelLines) {
-            // try {
-            LineTest &linetest = m_lines.find(lineref)->second;
+            const auto &lineIt = m_lines.find(lineref);
+            if (lineIt == m_lines.end()) {
+                // the lineref may have been deleted -- this is supposed to be tidied up
+                // just ignore...
+                if (comm)
+                    comm->logWarning("cut line exception -- missing line?");
+            }
+            LineTest &linetest = lineIt->second;
             if (linetest.test != m_test) {
-                if (intersect_region(linetest.line, l, tolerance * linetest.line.length())) {
-                    switch (intersect_line_distinguish(linetest.line, l,
-                                                       tolerance * linetest.line.length())) {
+                if (linetest.line.Region4f::intersects(l, tolerance * linetest.line.length())) {
+                    switch (linetest.line.Line4f::intersects_distinguish(
+                        l, tolerance * linetest.line.length())) {
                     case 0:
                         break;
                     case 2: {
@@ -636,17 +607,18 @@ void SpacePixel::cutLine(Line &l, short dir) {
                                     if (linetest.line.start() == touchingLines[k].start() ||
                                         linetest.line.end() == touchingLines[k].end()) {
                                         a = linetest.line.end() - linetest.line.start();
-                                        pair = k;
+                                        pair = static_cast<int>(k);
                                     } else if (linetest.line.start() == touchingLines[k].end() ||
                                                linetest.line.end() == touchingLines[k].start()) {
                                         a = linetest.line.start() - linetest.line.end();
-                                        pair = k;
+                                        pair = static_cast<int>(k);
                                     }
                                     if (pair != -1) {
-                                        b = touchingLines[pair].end() - touchingLines[pair].start();
+                                        b = touchingLines[static_cast<size_t>(pair)].end() -
+                                            touchingLines[static_cast<size_t>(pair)].start();
                                         Point2f p = trueend - truestart;
-                                        double oa = det(p, a);
-                                        double ob = det(p, b);
+                                        double oa = p.det(a);
+                                        double ob = p.det(b);
                                         if (pafmath::sgn(oa) != pafmath::sgn(ob) ||
                                             fabs(oa) < tolerance * linetest.line.length() ||
                                             fabs(ob) < tolerance * linetest.line.length()) {
@@ -659,13 +631,14 @@ void SpacePixel::cutLine(Line &l, short dir) {
                                                     l.intersection_point(linetest.line, axis));
                                             } else if (fabs(ob) >
                                                        tolerance * linetest.line.length()) {
-                                                loc.insert(l.intersection_point(touchingLines[pair],
-                                                                                axis));
+                                                loc.insert(l.intersection_point(
+                                                    touchingLines[static_cast<size_t>(pair)],
+                                                    axis));
                                             } else {
                                                 // parallel with both lines ... this shouldn't
                                                 // happen...
-                                                std::cerr << "couldn't chop at boundary"
-                                                          << std::endl;
+                                                if (comm)
+                                                    comm->logWarning("couldn't chop at boundary");
                                             }
                                         }
                                     }
@@ -681,18 +654,12 @@ void SpacePixel::cutLine(Line &l, short dir) {
                 }
                 linetest.test = m_test;
             }
-            //}
-            // catch (pexception) {
-            // the lineref may have been deleted -- this is supposed to be tidied up
-            // just ignore...
-            //   cerr << "cut line exception -- missing line?" << endl;
-            //}
         }
         if (loc.size()) {
             // there's no guarantee the loc actually happened in this pixel...
             // check the first loc actually occurred in this pixel...
-            if ((dir == l.direction() && (axis == XAXIS || l.sign() == 1)) ||
-                (dir != l.direction() && (axis == YAXIS && l.sign() == -1))) {
+            if ((dir == l.direction() && (axis == LineAxis::XAXIS || l.sign() == 1)) ||
+                (dir != l.direction() && (axis == LineAxis::YAXIS && l.sign() == -1))) {
                 if (pix == pixelate(l.point_on_line(*loc.begin(), axis))) {
                     found = true;
                 }
@@ -708,7 +675,7 @@ void SpacePixel::cutLine(Line &l, short dir) {
         // it intersected...
         double pos;
         if (dir == l.direction()) {
-            if (axis == XAXIS) {
+            if (axis == LineAxis::XAXIS) {
                 pos = *loc.begin();
                 l.by() = l.ay() + l.sign() * l.height() * (pos - l.ax()) / l.width();
                 l.bx() = pos;
@@ -722,7 +689,7 @@ void SpacePixel::cutLine(Line &l, short dir) {
                 l.by() = pos;
             }
         } else {
-            if (axis == XAXIS) {
+            if (axis == LineAxis::XAXIS) {
                 pos = *loc.rbegin();
                 l.ay() = l.by() - l.sign() * l.height() * (l.bx() - pos) / l.width();
                 l.ax() = pos;
@@ -768,8 +735,8 @@ bool SpacePixel::read(std::istream &stream) {
     m_cols = static_cast<size_t>(cols);
 
     // could work these two out on the fly, but it's easier to have them stored:
-    // m_pixel_height = m_region.height() / double(m_rows);
-    // m_pixel_width  = m_region.width()  / double(m_cols);
+    // m_pixel_height = m_region.height() / static_cast<double>(m_rows);
+    // m_pixel_width  = m_region.width()  / static_cast<double>(m_cols);
 
     // prepare loader:
     m_pixelLines = depthmapX::RowMatrix<std::vector<int>>(static_cast<size_t>(m_rows),

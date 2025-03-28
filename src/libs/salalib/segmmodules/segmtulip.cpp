@@ -4,26 +4,29 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "segmtulip.h"
+#include "segmtulip.hpp"
 
-#include "../genlib/stringutils.h"
+#include "../genlib/stringutils.hpp"
 
 std::vector<std::string> SegmentTulip::getRequiredColumns(ShapeGraph &map,
                                                           std::vector<double> radii) {
     std::vector<std::string> newColumns;
     std::optional<std::string> weightingColText2 = std::nullopt;
     if (m_weightedMeasureCol2 != -1) {
-        weightingColText2 = map.getAttributeTable().getColumnName(m_weightedMeasureCol2);
+        weightingColText2 =
+            map.getAttributeTable().getColumnName(static_cast<size_t>(m_weightedMeasureCol2));
     }
 
     std::optional<std::string> routeweightColText = std::nullopt;
     if (m_routeweightCol != -1) {
-        routeweightColText = map.getAttributeTable().getColumnName(m_routeweightCol);
+        routeweightColText =
+            map.getAttributeTable().getColumnName(static_cast<size_t>(m_routeweightCol));
     }
 
     std::optional<std::string> weightingColText = std::nullopt;
     if (m_weightedMeasureCol != -1) {
-        weightingColText = map.getAttributeTable().getColumnName(m_weightedMeasureCol);
+        weightingColText =
+            map.getAttributeTable().getColumnName(static_cast<size_t>(m_weightedMeasureCol));
     }
     for (auto radius : radii) {
         if (!m_forceLegacyColumnOrder) {
@@ -244,7 +247,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     // ...to ensure no mess ups, we'll re-sort here:
     bool radiusN = false;
     std::vector<double> radiusUnconverted;
-    for (int radius : m_radiusSet) {
+    for (auto radius : m_radiusSet) {
         if (radius == -1.0) {
             radiusN = true;
         } else {
@@ -263,9 +266,10 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     int tulipBins = m_tulipBins;
 
     if (m_weightedMeasureCol != -1) {
-        weightingColText = attributes.getColumnName(m_weightedMeasureCol);
+        weightingColText = attributes.getColumnName(static_cast<size_t>(m_weightedMeasureCol));
         for (size_t i = 0; i < map.getConnections().size(); i++) {
-            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(m_weightedMeasureCol));
+            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(
+                static_cast<size_t>(m_weightedMeasureCol)));
         }
     } else { // Normal run // TV
         for (size_t i = 0; i < map.getConnections().size(); i++) {
@@ -277,12 +281,13 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     if (routeweightCol != -1) {
         // we normalise the column values between 0 and 1 and reverse it so that high values can be
         // treated as a 'low cost' - similar to the angular cost
-        double maxValue = attributes.getColumn(routeweightCol).getStats().max;
-        routeweightColText = attributes.getColumnName(routeweightCol);
+        double maxValue = attributes.getColumn(static_cast<size_t>(routeweightCol)).getStats().max;
+        routeweightColText = attributes.getColumnName(static_cast<size_t>(routeweightCol));
         for (size_t i = 0; i < map.getConnections().size(); i++) {
-            routeweights.push_back(1.0 -
-                                   (map.getAttributeRowFromShapeIndex(i).getValue(routeweightCol) /
-                                    maxValue)); // scale and revert!
+            routeweights.push_back(
+                static_cast<float>(1.0 - (map.getAttributeRowFromShapeIndex(i).getValue(
+                                              static_cast<size_t>(routeweightCol)) /
+                                          maxValue))); // scale and revert!
         }
     } else { // Normal run // TV
         for (size_t i = 0; i < map.getConnections().size(); i++) {
@@ -296,9 +301,10 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     std::vector<float> weights2;
     std::string weightingColText2;
     if (weightingCol2 != -1) {
-        weightingColText2 = attributes.getColumnName(weightingCol2);
+        weightingColText2 = attributes.getColumnName(static_cast<size_t>(weightingCol2));
         for (size_t i = 0; i < map.getConnections().size(); i++) {
-            weights2.push_back(map.getAttributeRowFromShapeIndex(i).getValue(weightingCol2));
+            weights2.push_back(
+                map.getAttributeRowFromShapeIndex(i).getValue(static_cast<size_t>(weightingCol2)));
         }
     } else { // Normal run // TV
         for (size_t i = 0; i < map.getConnections().size(); i++) {
@@ -409,16 +415,19 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     tulipBins /= 2; // <- actually use semicircle of tulip bins
     tulipBins += 1;
 
-    std::vector<std::vector<SegmentData>> bins(tulipBins);
+    std::vector<std::vector<SegmentData>> bins(static_cast<size_t>(tulipBins));
+
+    auto nconnections = map.getConnections().size();
+    auto nradii = radiusUnconverted.size();
 
     // TODO: Replace these with STL
     AnalysisInfo ***audittrail;
     unsigned int **uncovered;
-    audittrail = new AnalysisInfo **[map.getConnections().size()];
-    uncovered = new unsigned int *[map.getConnections().size()];
-    for (size_t i = 0; i < map.getConnections().size(); i++) {
-        audittrail[i] = new AnalysisInfo *[radiusUnconverted.size()];
-        for (size_t j = 0; j < radiusUnconverted.size(); j++) {
+    audittrail = new AnalysisInfo **[nconnections];
+    uncovered = new unsigned int *[nconnections];
+    for (size_t i = 0; i < nconnections; i++) {
+        audittrail[i] = new AnalysisInfo *[nradii];
+        for (size_t j = 0; j < nradii; j++) {
             audittrail[i][j] = new AnalysisInfo[2];
         }
         uncovered[i] = new unsigned int[2];
@@ -433,22 +442,19 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
         }
     }
     // entered once for each segment
-    int lengthCol = attributes.getColumnIndex("Segment Length");
     std::vector<float> lengths;
-    if (lengthCol != -1) {
-        for (size_t i = 0; i < map.getConnections().size(); i++) {
-            AttributeRow &row = map.getAttributeRowFromShapeIndex(i);
-            lengths.push_back(row.getValue(lengthCol));
-        }
+    auto lengthCol = attributes.getColumnIndex("Segment Length");
+    for (size_t i = 0; i < nconnections; i++) {
+        AttributeRow &row = map.getAttributeRowFromShapeIndex(i);
+        lengths.push_back(row.getValue(lengthCol));
     }
 
-    auto radiussize = radius.size();
     int radiusmask = 0;
-    for (size_t i = 0; i < radiussize; i++) {
+    for (size_t i = 0; i < nradii; i++) {
         radiusmask |= (1 << i);
     }
 
-    for (size_t cursor = 0; cursor < map.getConnections().size(); cursor++) {
+    for (size_t cursor = 0; cursor < nconnections; cursor++) {
         auto &shapeRef = map.getShapeRefFromIndex(cursor)->first;
         AttributeRow &row = map.getAttributeTable().getRow(AttributeKey(shapeRef));
 
@@ -459,14 +465,14 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
         }
 
         for (int k = 0; k < tulipBins; k++) {
-            bins[k].clear();
+            bins[static_cast<size_t>(k)].clear();
         }
-        for (size_t j = 0; j < map.getConnections().size(); j++) {
+        for (size_t j = 0; j < nconnections; j++) {
             for (int dir = 0; dir < 2; dir++) {
-                for (size_t k = 0; k < radiussize; k++) {
+                for (size_t k = 0; k < nradii; k++) {
                     audittrail[j][k][dir].clearLine();
                 }
-                uncovered[j][dir] = radiusmask;
+                uncovered[j][dir] = static_cast<unsigned int>(radiusmask);
             }
         }
 
@@ -475,7 +481,9 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
 
         // setup: direction 0 (both ways), segment i, previous -1, segdepth (step depth) 0,
         // metricdepth 0.5 * rootseglength, bin 0
-        SegmentData segmentData(0, cursor, SegmentRef(), 0, 0.5 * rootseglength, radiusmask);
+        SegmentData segmentData(0, static_cast<int>(cursor), SegmentRef(), 0,
+                                static_cast<float>(0.5 * rootseglength),
+                                static_cast<unsigned int>(radiusmask));
         auto it = std::lower_bound(bins[0].begin(), bins[0].end(), segmentData);
         if (it == bins[0].end() || segmentData != *it) {
             bins[0].insert(it, segmentData);
@@ -501,7 +509,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
 
             int ref = lineindex.ref;
             int dir = (lineindex.dir == 1) ? 0 : 1;
-            int coverage = lineindex.coverage & uncovered[ref][dir];
+            auto coverage = lineindex.coverage & uncovered[ref][dir];
             if (coverage != 0) {
                 int rbin = 0;
                 int rbinbase;
@@ -510,7 +518,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                     while (((coverage >> rbin) & 0x1) == 0)
                         rbin++;
                     rbinbase = rbin;
-                    while (rbin < static_cast<int>(radiussize)) {
+                    while (rbin < static_cast<int>(nradii)) {
                         if (((coverage >> rbin) & 0x1) == 1) {
                             audittrail[ref][rbin][dir].depth = depthlevel;
                             audittrail[ref][rbin][dir].previous = lineindex.previous;
@@ -525,7 +533,7 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                     uncovered[ref][0] &= ~coverage;
                     uncovered[ref][1] &= ~coverage;
                 }
-                Connector &line = map.getConnections()[ref];
+                Connector &line = map.getConnections()[static_cast<size_t>(ref)];
                 float seglength;
                 int extradepth;
                 if (lineindex.dir != -1) {
@@ -540,30 +548,38 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                 // note that the content of the routeweights array is scaled between
                                 // 0 and 1 and is reversed such that: = 1.0-(attributes.getValue(i,
                                 // routeweight_col)/max_value)
-                                extradepth = (int)floor(segconn.second * tulipBins * 0.5 *
-                                                        routeweights[conn.ref]);
+                                extradepth = static_cast<int>(
+                                    floor(segconn.second * static_cast<float>(tulipBins) * 0.5 *
+                                          routeweights[static_cast<size_t>(conn.ref)]));
                             }
                             //*EF routeweight
                             else {
-                                extradepth = (int)floor(segconn.second * tulipBins * 0.5);
+                                extradepth = static_cast<int>(
+                                    floor(segconn.second * static_cast<float>(tulipBins) * 0.5));
                             }
-                            seglength = lengths[conn.ref];
+                            seglength = lengths[static_cast<size_t>(conn.ref)];
                             switch (m_radiusType) {
                             case RadiusType::ANGULAR:
-                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                       depthlevel + extradepth > (int)radius[rbin]) {
+                                while (rbin != static_cast<int>(nradii) &&
+                                       radius[static_cast<size_t>(rbin)] != -1 &&
+                                       depthlevel + extradepth >
+                                           static_cast<int>(radius[static_cast<size_t>(rbin)])) {
                                     rbin++;
                                 }
                                 break;
                             case RadiusType::METRIC:
-                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                       lineindex.metricdepth + seglength * 0.5 > radius[rbin]) {
+                                while (rbin != static_cast<int>(nradii) &&
+                                       radius[static_cast<size_t>(rbin)] != -1 &&
+                                       lineindex.metricdepth + seglength * 0.5 >
+                                           radius[static_cast<size_t>(rbin)]) {
                                     rbin++;
                                 }
                                 break;
                             case RadiusType::TOPOLOGICAL:
-                                if (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                    lineindex.segdepth >= (int)radius[rbin]) {
+                                if (rbin != static_cast<int>(nradii) &&
+                                    radius[static_cast<size_t>(rbin)] != -1 &&
+                                    lineindex.segdepth >=
+                                        static_cast<int>(radius[static_cast<size_t>(rbin)])) {
                                     rbin++;
                                 }
                                 break;
@@ -574,7 +590,9 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                 SegmentData sd(
                                     conn, SegmentRef(1, lineindex.ref), lineindex.segdepth + 1,
                                     lineindex.metricdepth + seglength, (coverage >> rbin) << rbin);
-                                size_t bin = (currentbin + tulipBins + extradepth) % tulipBins;
+                                size_t bin = (currentbin + static_cast<size_t>(tulipBins) +
+                                              static_cast<size_t>(extradepth)) %
+                                             static_cast<size_t>(tulipBins);
                                 depthmapX::insert_sorted(bins[bin], sd);
                                 opencount++;
                             }
@@ -593,30 +611,38 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                 // note that the content of the routeweights array is scaled between
                                 // 0 and 1 and is reversed such that: = 1.0-(attributes.getValue(i,
                                 // routeweight_col)/max_value)
-                                extradepth = (int)floor(segconn.second * tulipBins * 0.5 *
-                                                        routeweights[conn.ref]);
+                                extradepth = static_cast<int>(
+                                    floor(segconn.second * static_cast<float>(tulipBins) * 0.5 *
+                                          routeweights[static_cast<size_t>(conn.ref)]));
                             }
                             //*EF routeweight
                             else {
-                                extradepth = (int)floor(segconn.second * tulipBins * 0.5);
+                                extradepth = static_cast<int>(
+                                    floor(segconn.second * static_cast<float>(tulipBins) * 0.5));
                             }
-                            seglength = lengths[conn.ref];
+                            seglength = lengths[static_cast<size_t>(conn.ref)];
                             switch (m_radiusType) {
                             case RadiusType::ANGULAR:
-                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                       depthlevel + extradepth > (int)radius[rbin]) {
+                                while (rbin != static_cast<int>(nradii) &&
+                                       radius[static_cast<size_t>(rbin)] != -1 &&
+                                       depthlevel + extradepth >
+                                           static_cast<int>(radius[static_cast<size_t>(rbin)])) {
                                     rbin++;
                                 }
                                 break;
                             case RadiusType::METRIC:
-                                while (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                       lineindex.metricdepth + seglength * 0.5 > radius[rbin]) {
+                                while (rbin != static_cast<int>(nradii) &&
+                                       radius[static_cast<size_t>(rbin)] != -1 &&
+                                       lineindex.metricdepth + seglength * 0.5 >
+                                           radius[static_cast<size_t>(rbin)]) {
                                     rbin++;
                                 }
                                 break;
                             case RadiusType::TOPOLOGICAL:
-                                if (rbin != static_cast<int>(radiussize) && radius[rbin] != -1 &&
-                                    lineindex.segdepth >= (int)radius[rbin]) {
+                                if (rbin != static_cast<int>(nradii) &&
+                                    radius[static_cast<size_t>(rbin)] != -1 &&
+                                    lineindex.segdepth >=
+                                        static_cast<int>(radius[static_cast<size_t>(rbin)])) {
                                     rbin++;
                                 }
                                 break;
@@ -627,7 +653,9 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                 SegmentData sd(
                                     conn, SegmentRef(-1, lineindex.ref), lineindex.segdepth + 1,
                                     lineindex.metricdepth + seglength, (coverage >> rbin) << rbin);
-                                size_t bin = (currentbin + tulipBins + extradepth) % tulipBins;
+                                size_t bin = (currentbin + static_cast<size_t>(tulipBins) +
+                                              static_cast<size_t>(extradepth)) %
+                                             static_cast<size_t>(tulipBins);
                                 depthmapX::insert_sorted(bins[bin], sd);
                                 opencount++;
                             }
@@ -637,13 +665,13 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
             }
         }
         // set the attributes for this node:
-        for (size_t k = 0; k < radiussize; k++) {
+        for (size_t k = 0; k < nradii; k++) {
             // note, curs_total_depth must use double as mantissa can get too long for int in large
             // systems
             double cursNodeCount = 0.0, cursTotalDepth = 0.0;
             double cursTotalWeight = 0.0, cursTotalWeightedDepth = 0.0;
             size_t j;
-            for (j = 0; j < map.getConnections().size(); j++) {
+            for (j = 0; j < nconnections; j++) {
                 // find dir according
                 bool m0 = ((uncovered[j][0] >> k) & 0x1) == 0;
                 bool m1 = ((uncovered[j][1] >> k) & 0x1) == 0;
@@ -662,12 +690,13 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                     cursNodeCount++;
                     cursTotalDepth += audittrail[j][k][dir].depth;
                     cursTotalWeight += weights[j];
-                    cursTotalWeightedDepth += audittrail[j][k][dir].depth * weights[j];
+                    cursTotalWeightedDepth +=
+                        static_cast<float>(audittrail[j][k][dir].depth) * weights[j];
                     //
                     if (m_choice && audittrail[j][k][dir].leaf) {
                         // note, graph may be directed (e.g., for one way streets), so both ways
                         // must be included from now on:
-                        SegmentRef here = SegmentRef(dir == 0 ? 1 : -1, j);
+                        SegmentRef here = SegmentRef(dir == 0 ? 1 : -1, static_cast<int>(j));
                         if (here.ref != static_cast<int>(cursor)) {
                             int choicecount = 0;
                             double choiceweight = 0.0;
@@ -694,9 +723,11 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                     // this node has not been encountered before: this adds the
                                     // choicecount and weight for this node, and flags it as visited
                                     choicecount++;
-                                    choiceweight += weights[here.ref] * rootweight;
+                                    choiceweight +=
+                                        weights[static_cast<size_t>(here.ref)] * rootweight;
                                     // EFEF*
-                                    choiceweight2 += weights2[here.ref] * rootweight; // rootweight!
+                                    choiceweight2 += weights2[static_cast<size_t>(here.ref)] *
+                                                     rootweight; // rootweight!
                                     //*EFEF
 
                                     audittrail[here.ref][k][heredir].choicecovered = true;
@@ -704,11 +735,13 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                                     // choice added to them:
                                     if (m_weightedMeasureCol != -1) {
                                         audittrail[here.ref][k][heredir].weightedChoice +=
-                                            (weights[here.ref] * rootweight) / 2.0;
+                                            (weights[static_cast<size_t>(here.ref)] * rootweight) /
+                                            2.0;
                                         // EFEF*
                                         if (weightingCol2 != -1) {
                                             audittrail[here.ref][k][heredir].weightedChoice2 +=
-                                                (weights2[here.ref] * rootweight) /
+                                                (weights2[static_cast<size_t>(here.ref)] *
+                                                 rootweight) /
                                                 2.0; // rootweight!
                                         }
                                         //*EFEF
@@ -733,17 +766,18 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                     }
                 }
             }
-            double totalDepthConv = cursTotalDepth / ((tulipBins - 1.0f) * 0.5f);
-            double totalWeightedDepthConv = cursTotalWeightedDepth / ((tulipBins - 1.0f) * 0.5f);
+            double totalDepthConv = cursTotalDepth / (static_cast<float>(tulipBins - 1) * 0.5f);
+            double totalWeightedDepthConv =
+                cursTotalWeightedDepth / (static_cast<float>(tulipBins - 1) * 0.5f);
             //
-            row.setValue(countCol[k], float(cursNodeCount));
+            row.setValue(countCol[k], static_cast<float>(cursNodeCount));
             if (cursNodeCount > 1) {
                 // for dmap 8 and above, mean depth simply isn't calculated as for radius measures
                 // it is meaningless
-                row.setValue(tdCol[k], totalDepthConv);
+                row.setValue(tdCol[k], static_cast<float>(totalDepthConv));
                 if (m_weightedMeasureCol != -1) {
-                    row.setValue(totalWeightCol[k], float(cursTotalWeight));
-                    row.setValue(wTdCol[k], float(totalWeightedDepthConv));
+                    row.setValue(totalWeightCol[k], static_cast<float>(cursTotalWeight));
+                    row.setValue(wTdCol[k], static_cast<float>(totalWeightedDepthConv));
                 }
             } else {
                 row.setValue(tdCol[k], -1);
@@ -754,10 +788,12 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
             }
             // for dmap 10 an above, integration is included!
             if (totalDepthConv > 1e-9) {
-                row.setValue(integCol[k], (float)(cursNodeCount * cursNodeCount / totalDepthConv));
+                row.setValue(integCol[k],
+                             static_cast<float>(cursNodeCount * cursNodeCount / totalDepthConv));
                 if (m_weightedMeasureCol != -1) {
-                    row.setValue(wIntegCol[k], (float)(cursTotalWeight * cursTotalWeight /
-                                                       totalWeightedDepthConv));
+                    row.setValue(wIntegCol[k],
+                                 static_cast<float>(cursTotalWeight * cursTotalWeight /
+                                                    totalWeightedDepthConv));
                 }
             } else {
                 row.setValue(integCol[k], -1);
@@ -774,8 +810,8 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                 if (comm->IsCancelled()) {
                     // interactive is usual Depthmap: throw an exception if cancelled
                     if (interactive) {
-                        for (size_t i = 0; i < map.getConnections().size(); i++) {
-                            for (size_t j = 0; j < size_t(radiussize); j++) {
+                        for (size_t i = 0; i < nconnections; i++) {
+                            for (size_t j = 0; j < static_cast<size_t>(nradii); j++) {
                                 delete[] audittrail[i][j];
                             }
                             delete[] audittrail[i];
@@ -794,10 +830,10 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
         }
     }
     if (m_choice) {
-        for (size_t cursor = 0; cursor < map.getConnections().size(); cursor++) {
+        for (size_t cursor = 0; cursor < nconnections; cursor++) {
             AttributeRow &row = attributes.getRow(
                 AttributeKey(depthmapX::getMapAtIndex(map.getAllShapes(), cursor)->first));
-            for (size_t r = 0; r < radius.size(); r++) {
+            for (size_t r = 0; r < nradii; r++) {
                 // according to Eva's correction, total choice and total weighted choice
                 // should already have been accumulated by radius at this stage
                 double totalChoice =
@@ -819,20 +855,20 @@ AnalysisResult SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
                 // divide by 2 for the new implementation
                 //
                 //
-                row.setValue(choiceCol[r], float(totalChoice));
+                row.setValue(choiceCol[r], static_cast<float>(totalChoice));
                 if (m_weightedMeasureCol != -1) {
-                    row.setValue(wChoiceCol[r], float(totalWeightedChoice));
+                    row.setValue(wChoiceCol[r], static_cast<float>(totalWeightedChoice));
                     // EFEF*
                     if (weightingCol2 != -1) {
-                        row.setValue(wChoiceCol2[r], float(totalWeightedChoice2));
+                        row.setValue(wChoiceCol2[r], static_cast<float>(totalWeightedChoice2));
                     }
                     //*EFEF
                 }
             }
         }
     }
-    for (size_t i = 0; i < map.getConnections().size(); i++) {
-        for (size_t j = 0; j < radiussize; j++) {
+    for (size_t i = 0; i < nconnections; i++) {
+        for (size_t j = 0; j < nradii; j++) {
             delete[] audittrail[i][j];
         }
         delete[] audittrail[i];

@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgavisuallocaladjmatrix.h"
+#include "vgavisuallocaladjmatrix.hpp"
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -13,7 +13,8 @@
 AnalysisResult VGAVisualLocalAdjMatrix::run(Communicator *comm) {
 
 #if !defined(_OPENMP)
-    std::cerr << "OpenMP NOT available, only running on a single core" << std::endl;
+    if (comm)
+        comm->logWarning("OpenMP NOT available, only running on a single core");
     m_forceCommUpdatesMasterThread = false;
 #else
     if (m_limitToThreads.has_value()) {
@@ -25,7 +26,8 @@ AnalysisResult VGAVisualLocalAdjMatrix::run(Communicator *comm) {
 
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     AttributeTable &attributes = m_map.getAttributeTable();
@@ -43,74 +45,75 @@ AnalysisResult VGAVisualLocalAdjMatrix::run(Communicator *comm) {
         }
     }
 
-    int count = 0;
+    size_t count = 0;
 
     std::vector<DataPoint> colData(filled.size());
 
-    int i;
     const long n = long(filled.size());
 
     std::map<PixelRef, int> refToFilled;
-    for (i = 0; i < n; ++i) {
-        refToFilled.insert(std::make_pair(filled[size_t(i)], i));
+    for (int i = 0; i < n; ++i) {
+        refToFilled.insert(std::make_pair(filled[static_cast<size_t>(i)], i));
     }
 
-    std::vector<bool> hoods(n * n);
+    std::vector<bool> hoods(static_cast<size_t>(n * n));
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+#pragma omp parallel for default(shared) schedule(dynamic)
 #endif
-    for (i = 0; i < n; ++i) {
-        Point &p = m_map.getPoint(filled[size_t(i)]);
+    for (int i = 0; i < n; ++i) {
+        Point &p = m_map.getPoint(filled[static_cast<size_t>(i)]);
         std::set<PixelRef> neighbourhood;
 #if defined(_OPENMP)
 #pragma omp critical(dumpNeighbourhood)
 #endif
-        { dumpNeighbourhood(p.getNode(), neighbourhood); }
+        {
+            dumpNeighbourhood(p.getNode(), neighbourhood);
+        }
         for (auto &neighbour : neighbourhood) {
             if (m_map.getPoint(neighbour).hasNode()) {
-                hoods[long(i * n + refToFilled[neighbour])] = true;
+                hoods[static_cast<size_t>(i * n + refToFilled[neighbour])] = true;
             }
         }
     }
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(shared) private(i) schedule(dynamic)
+#pragma omp parallel for default(shared) schedule(dynamic)
 #endif
-    for (i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i) {
 
-        DataPoint &dp = colData[i];
+        DataPoint &dp = colData[static_cast<size_t>(i)];
 
-        Point &p = m_map.getPoint(filled[size_t(i)]);
-        if ((p.contextfilled() && !filled[size_t(i)].iseven()) || (m_gatesOnly)) {
+        Point &p = m_map.getPoint(filled[static_cast<size_t>(i)]);
+        if ((p.contextfilled() && !filled[static_cast<size_t>(i)].iseven()) || (m_gatesOnly)) {
             count++;
             continue;
         }
 
-        std::vector<bool> totalHood(n);
+        std::vector<bool> totalHood(static_cast<size_t>(n));
 
         int cluster = 0;
         float control = 0.0f;
 
         int hoodSize = 0;
         for (int j = 0; j < n; j++) {
-            if (hoods[i * n + j]) {
+            if (hoods[static_cast<size_t>(i * n + j)]) {
                 hoodSize++;
                 int retHood = 0;
                 for (int k = 0; k < n; k++) {
-                    if (hoods[j * n + k]) {
-                        totalHood[k] = true;
+                    if (hoods[static_cast<size_t>(j * n + k)]) {
+                        totalHood[static_cast<size_t>(k)] = true;
                         retHood++;
-                        if (hoods[i * n + k])
+                        if (hoods[static_cast<size_t>(i * n + k)])
                             cluster++;
                     }
                 }
-                control += 1.0f / float(retHood);
+                control += 1.0f / static_cast<float>(retHood);
             }
         }
         int totalReach = 0;
         for (int j = 0; j < n; j++) {
-            if (totalHood[j])
+            if (totalHood[static_cast<size_t>(j)])
                 totalReach++;
         }
 #if defined(_OPENMP)
@@ -118,9 +121,11 @@ AnalysisResult VGAVisualLocalAdjMatrix::run(Communicator *comm) {
 #endif
         {
             if (hoodSize > 1) {
-                dp.cluster = float(cluster / double(hoodSize * (hoodSize - 1.0)));
-                dp.control = float(control);
-                dp.controllability = float(double(hoodSize) / double(totalReach));
+                dp.cluster =
+                    static_cast<float>(cluster / static_cast<double>(hoodSize * (hoodSize - 1.0)));
+                dp.control = static_cast<float>(control);
+                dp.controllability = static_cast<float>(static_cast<double>(hoodSize) /
+                                                        static_cast<double>(totalReach));
             } else {
                 dp.cluster = -1.0f;
                 dp.control = -1.0f;
@@ -149,15 +154,12 @@ AnalysisResult VGAVisualLocalAdjMatrix::run(Communicator *comm) {
 
     AnalysisResult result;
 
-    std::string clusterColName = Column::VISUAL_CLUSTERING_COEFFICIENT;
-    std::string controlColName = Column::VISUAL_CONTROL;
-    std::string controllabilityColName = Column::VISUAL_CONTROLLABILITY;
-    int clusterCol = attributes.insertOrResetColumn(clusterColName);
-    result.addAttribute(clusterColName);
-    int controlCol = attributes.insertOrResetColumn(controlColName);
-    result.addAttribute(controlColName);
-    int controllabilityCol = attributes.insertOrResetColumn(controllabilityColName);
-    result.addAttribute(controllabilityColName);
+    auto clusterCol = attributes.insertOrResetColumn(Column::VISUAL_CLUSTERING_COEFFICIENT);
+    result.addAttribute(Column::VISUAL_CLUSTERING_COEFFICIENT);
+    auto controlCol = attributes.insertOrResetColumn(Column::VISUAL_CONTROL);
+    result.addAttribute(Column::VISUAL_CONTROL);
+    auto controllabilityCol = attributes.insertOrResetColumn(Column::VISUAL_CONTROLLABILITY);
+    result.addAttribute(Column::VISUAL_CONTROLLABILITY);
 
     auto dataIter = colData.begin();
     for (auto row : rows) {

@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgaangular.h"
+#include "vgaangular.hpp"
 
 AnalysisResult VGAAngular::run(Communicator *comm) {
     auto &attributes = m_map.getAttributeTable();
@@ -12,7 +12,8 @@ AnalysisResult VGAAngular::run(Communicator *comm) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     std::string meanDepthColText = getColumnWithRadius(Column::ANGULAR_MEAN_DEPTH,    //
@@ -25,15 +26,15 @@ AnalysisResult VGAAngular::run(Communicator *comm) {
     AnalysisResult result({meanDepthColText, totalDetphColText, countColText},
                           attributes.getNumRows());
 
-    int meanDepthCol = result.getColumnIndex(meanDepthColText);
-    int countCol = result.getColumnIndex(countColText);
-    int totalDepthCol = result.getColumnIndex(totalDetphColText);
+    auto meanDepthCol = result.getColumnIndex(meanDepthColText);
+    auto countCol = result.getColumnIndex(countColText);
+    auto totalDepthCol = result.getColumnIndex(totalDetphColText);
 
     std::vector<AnalysisData> analysisData = getAnalysisData(attributes);
     const auto refs = getRefVector(analysisData);
     const auto graph = getGraph(analysisData, refs, false);
 
-    int count = 0;
+    size_t count = 0;
 
     for (auto &ad0 : analysisData) {
 
@@ -54,10 +55,11 @@ AnalysisResult VGAAngular::run(Communicator *comm) {
 
         if (totalNodes > 0) {
             result.setValue(ad0.attributeDataRow, meanDepthCol,
-                            float(double(totalAngle) / double(totalNodes)));
+                            static_cast<float>(static_cast<double>(totalAngle) /
+                                               static_cast<double>(totalNodes)));
         }
         result.setValue(ad0.attributeDataRow, totalDepthCol, totalAngle);
-        result.setValue(ad0.attributeDataRow, countCol, float(totalNodes));
+        result.setValue(ad0.attributeDataRow, countCol, static_cast<float>(totalNodes));
 
         count++; // <- increment count
 

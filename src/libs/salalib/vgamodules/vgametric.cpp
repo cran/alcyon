@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgametric.h"
+#include "vgametric.hpp"
 
 AnalysisResult VGAMetric::run(Communicator *comm) {
 
@@ -13,7 +13,8 @@ AnalysisResult VGAMetric::run(Communicator *comm) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     std::string mspaColText = getColumnWithRadius(Column::METRIC_MEAN_SHORTEST_PATH_ANGLE,    //
@@ -28,10 +29,10 @@ AnalysisResult VGAMetric::run(Communicator *comm) {
     AnalysisResult result({mspaColText, msplColText, distColText, countColText},
                           attributes.getNumRows());
 
-    int mspaCol = result.getColumnIndex(mspaColText);
-    int msplCol = result.getColumnIndex(msplColText);
-    int distCol = result.getColumnIndex(distColText);
-    int countCol = result.getColumnIndex(countColText);
+    auto mspaCol = result.getColumnIndex(mspaColText);
+    auto msplCol = result.getColumnIndex(msplColText);
+    auto distCol = result.getColumnIndex(distColText);
+    auto countCol = result.getColumnIndex(countColText);
 
     std::vector<AnalysisData> analysisData = getAnalysisData(attributes);
     const auto refs = getRefVector(analysisData);
@@ -53,14 +54,17 @@ AnalysisResult VGAMetric::run(Communicator *comm) {
         auto [totalDepth, totalAngle, euclidDepth, totalNodes] =
             traverseSum(analysisData, graph, refs, m_radius, ad0);
 
-        result.setValue(ad0.attributeDataRow, mspaCol,                    //
-                        float(double(totalAngle) / double(totalNodes)));  //
-        result.setValue(ad0.attributeDataRow, msplCol,                    //
-                        float(double(totalDepth) / double(totalNodes)));  //
-        result.setValue(ad0.attributeDataRow, distCol,                    //
-                        float(double(euclidDepth) / double(totalNodes))); //
-        result.setValue(ad0.attributeDataRow, countCol,                   //
-                        float(totalNodes));                               //
+        result.setValue(ad0.attributeDataRow, mspaCol, //
+                        static_cast<float>(static_cast<double>(totalAngle) /
+                                           static_cast<double>(totalNodes))); //
+        result.setValue(ad0.attributeDataRow, msplCol,                        //
+                        static_cast<float>(static_cast<double>(totalDepth) /
+                                           static_cast<double>(totalNodes))); //
+        result.setValue(ad0.attributeDataRow, distCol,                        //
+                        static_cast<float>(static_cast<double>(euclidDepth) /
+                                           static_cast<double>(totalNodes))); //
+        result.setValue(ad0.attributeDataRow, countCol,                       //
+                        static_cast<float>(totalNodes));                      //
 
         count++; // <- increment count
 

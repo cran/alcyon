@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "vgavisualglobalopenmp.h"
+#include "vgavisualglobalopenmp.hpp"
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -13,7 +13,8 @@
 AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
 
 #if !defined(_OPENMP)
-    std::cerr << "OpenMP NOT available, only running on a single core" << std::endl;
+    if (comm)
+        comm->logWarning("OpenMP NOT available, only running on a single core");
     m_forceCommUpdatesMasterThread = false;
 #else
     if (m_limitToThreads.has_value()) {
@@ -27,12 +28,13 @@ AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
 
     if (comm) {
         qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, m_map.getFilledPointCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS,
+                              static_cast<size_t>(m_map.getFilledPointCount()));
     }
 
     const auto refs = getRefVector(attributes);
 
-    int count = 0;
+    size_t count = 0;
 
     if (comm) {
         qtimer(atime, 0);
@@ -43,25 +45,27 @@ AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
 
     std::vector<DataPoint> colData(attributes.getNumRows());
 
-    int i, n = int(attributes.getNumRows());
+    int n = static_cast<int>(attributes.getNumRows());
 
 #if defined(_OPENMP)
-#pragma omp parallel for
+#pragma omp parallel for default(shared) schedule(dynamic)
 #endif
-    for (i = 0; i < n; i++) {
-        if ((m_map.getPoint(refs[i]).contextfilled() && !refs[i].iseven()) || (m_gatesOnly)) {
+    for (int i = 0; i < n; i++) {
+        if ((m_map.getPoint(refs[static_cast<size_t>(i)]).contextfilled() &&
+             !refs[static_cast<size_t>(i)].iseven()) ||
+            (m_gatesOnly)) {
 #if defined(_OPENMP)
 #pragma omp atomic
 #endif
             count++;
             continue;
         }
-        DataPoint &dp = colData[i];
+        DataPoint &dp = colData[static_cast<size_t>(i)];
 
         std::vector<AnalysisData> analysisData = getAnalysisData(attributes);
         const auto graph = getGraph(analysisData, refs, false);
 
-        auto &ad0 = analysisData.at(i);
+        auto &ad0 = analysisData.at(static_cast<size_t>(i));
 
         auto [totalDepth, totalNodes, distribution] =
             traverseSum(analysisData, graph, refs, m_radius, ad0);
@@ -69,24 +73,25 @@ AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
         // only set to single float precision after divide
         // note -- total_nodes includes this one -- mean depth as per p.108 Social Logic of Space
 
-        dp.count = float(totalNodes); // note: total nodes includes this one;
+        dp.count = static_cast<float>(totalNodes); // note: total nodes includes this one;
 
         // ERROR !!!!!!
         if (totalNodes > 1) {
-            double meanDepth = double(totalDepth) / double(totalNodes - 1);
-            dp.depth = float(meanDepth);
+            double meanDepth =
+                static_cast<double>(totalDepth) / static_cast<double>(totalNodes - 1);
+            dp.depth = static_cast<float>(meanDepth);
             // total nodes > 2 to avoid divide by 0 (was > 3)
             if (totalNodes > 2 && meanDepth > 1.0) {
-                double ra = 2.0 * (meanDepth - 1.0) / double(totalNodes - 2);
+                double ra = 2.0 * (meanDepth - 1.0) / static_cast<double>(totalNodes - 2);
                 // d-value / p-values from Depthmap 4 manual, note: node_count includes this one
                 double rraD = ra / pafmath::dvalue(totalNodes);
                 double rraP = ra / pafmath::pvalue(totalNodes);
                 double integTk = pafmath::teklinteg(totalNodes, totalDepth);
-                dp.integDv = float(1.0 / rraD);
-                dp.integPv = float(1.0 / rraP);
+                dp.integDv = static_cast<float>(1.0 / rraD);
+                dp.integPv = static_cast<float>(1.0 / rraP);
 
                 if (totalDepth - totalNodes + 1 > 1) {
-                    dp.integTk = float(integTk);
+                    dp.integTk = static_cast<float>(integTk);
                 } else {
                     dp.integTk = -1.0f;
                 }
@@ -100,16 +105,19 @@ AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
             // -> chopped from entropy to avoid divide by zero if only one node
             for (size_t k = 1; k < distribution.size(); k++) {
                 if (distribution[k] > 0) {
-                    double prob = double(distribution[k]) / double(totalNodes - 1);
+                    double prob =
+                        static_cast<double>(distribution[k]) / static_cast<double>(totalNodes - 1);
                     entropy -= prob * log2(prob);
                     // Formula from Turner 2001, "Depthmap"
-                    factorial *= double(k + 1);
-                    double q = (pow(meanDepth, double(k)) / double(factorial)) * exp(-meanDepth);
-                    relEntropy += (float)prob * log2(prob / q);
+                    factorial *= static_cast<double>(k + 1);
+                    double q =
+                        (pow(meanDepth, static_cast<double>(k)) / static_cast<double>(factorial)) *
+                        exp(-meanDepth);
+                    relEntropy += static_cast<float>(prob) * log2(prob / q);
                 }
             }
-            dp.entropy = float(entropy);
-            dp.relEntropy = float(relEntropy);
+            dp.entropy = static_cast<float>(entropy);
+            dp.relEntropy = static_cast<float>(relEntropy);
         } else {
             dp.depth = -1.0f;
             dp.entropy = -1.0f;
@@ -156,23 +164,23 @@ AnalysisResult VGAVisualGlobalOpenMP::run(Communicator *comm) {
                            depthColText, countColText, relEntropyColText},
                           attributes.getNumRows());
 
-    int entropyCol = attributes.getColumnIndex(entropyColText);
-    int integDvCol = attributes.getColumnIndex(integDvColText);
-    int integPvCol = attributes.getColumnIndex(integPvColText);
-    int integTkCol = attributes.getColumnIndex(integTkColText);
-    int depthCol = attributes.getColumnIndex(depthColText);
-    int countCol = attributes.getColumnIndex(countColText);
-    int relEntropyCol = attributes.getColumnIndex(relEntropyColText);
+    auto entropyCol = attributes.getColumnIndex(entropyColText);
+    auto integDvCol = attributes.getColumnIndex(integDvColText);
+    auto integPvCol = attributes.getColumnIndex(integPvColText);
+    auto integTkCol = attributes.getColumnIndex(integTkColText);
+    auto depthCol = attributes.getColumnIndex(depthColText);
+    auto countCol = attributes.getColumnIndex(countColText);
+    auto relEntropyCol = attributes.getColumnIndex(relEntropyColText);
 
     auto dataIter = colData.begin();
-    for (size_t i = 0; i < attributes.getNumRows(); i++) {
-        result.setValue(i, integDvCol, dataIter->integDv);
-        result.setValue(i, integPvCol, dataIter->integPv);
-        result.setValue(i, integTkCol, dataIter->integTk);
-        result.setValue(i, countCol, dataIter->count);
-        result.setValue(i, depthCol, dataIter->depth);
-        result.setValue(i, entropyCol, dataIter->entropy);
-        result.setValue(i, relEntropyCol, dataIter->relEntropy);
+    for (size_t ridx = 0; ridx < attributes.getNumRows(); ridx++) {
+        result.setValue(ridx, integDvCol, dataIter->integDv);
+        result.setValue(ridx, integPvCol, dataIter->integPv);
+        result.setValue(ridx, integTkCol, dataIter->integTk);
+        result.setValue(ridx, countCol, dataIter->count);
+        result.setValue(ridx, depthCol, dataIter->depth);
+        result.setValue(ridx, entropyCol, dataIter->entropy);
+        result.setValue(ridx, relEntropyCol, dataIter->relEntropy);
         dataIter++;
     }
 
