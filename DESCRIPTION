@@ -1,7 +1,7 @@
 Package: alcyon
 Type: Package
 Title: Spatial Network Analysis
-Version: 0.8.0
+Version: 0.8.1
 Authors@R: c(
     person(given = "Petros",
            family = "Koutsolampros",
@@ -73,19 +73,19 @@ Language: en-GB
 URL: https://github.com/spatialnous/alcyon,
         https://spatialnous.github.io/alcyon/
 NeedsCompilation: yes
-Packaged: 2025-03-28 08:06:05 UTC; petros
-Author: Petros Koutsolampros [cre, aut]
-    (<https://orcid.org/0000-0003-2842-9899>, 'sala' library
-    contributor through 'depthmapX'),
-  Fani Kostourou [ctb] (<https://orcid.org/0000-0002-6544-7693>),
-  Kimon Krenz [ctb] (<https://orcid.org/0000-0001-6077-7282>),
+Packaged: 2025-05-05 23:12:33 UTC; petros
+Author: Petros Koutsolampros [cre, aut] (ORCID:
+    <https://orcid.org/0000-0003-2842-9899>, 'sala' library contributor
+    through 'depthmapX'),
+  Fani Kostourou [ctb] (ORCID: <https://orcid.org/0000-0002-6544-7693>),
+  Kimon Krenz [ctb] (ORCID: <https://orcid.org/0000-0001-6077-7282>),
   Alasdair Turner [ctb] ('sala' library contributor through 'depthmapX'),
-  Tasos Varoudis [ctb] (<https://orcid.org/0000-0001-7790-5623>, 'sala'
-    library contributor through 'depthmapX'),
+  Tasos Varoudis [ctb] (ORCID: <https://orcid.org/0000-0001-7790-5623>,
+    'sala' library contributor through 'depthmapX'),
   Christian Sailer [ctb] ('sala' library contributor through 'depthmapX'),
   Eva Friedrich [ctb] ('sala' library contributor through 'depthmapX'),
   University College London [fnd, cph] (2015 - 2020),
   Spacelab UK [fnd] (2015 - 2020)
 Maintainer: Petros Koutsolampros <r-devel@pklampros.net>
 Repository: CRAN
-Date/Publication: 2025-03-28 09:00:02 UTC
+Date/Publication: 2025-05-05 23:50:06 UTC
